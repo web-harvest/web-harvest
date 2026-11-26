@@ -2,9 +2,16 @@ package org.webharvest.runtime.templaters;
 
 import com.google.inject.Guice;
 import com.google.inject.Injector;
+import com.google.inject.AbstractModule;
+import com.google.inject.util.Modules;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.webharvest.ioc.ScraperModule;
+import org.webharvest.runtime.DynamicScopeContext;
+import org.webharvest.runtime.ScraperContext;
+import org.webharvest.runtime.scripting.ScriptEngine;
+import org.webharvest.runtime.scripting.ScriptSource;
+import org.webharvest.runtime.scripting.ScriptingLanguage;
 import org.webharvest.runtime.scripting.ScriptEngineFactory;
 import org.webharvest.runtime.scripting.jsr.JSRScriptEngineFactory;
 
@@ -44,6 +51,54 @@ public class BaseTemplaterStaticInjectionTest {
             "scriptEngineFactory should be JSRScriptEngineFactory");
     }
     
+    @Test
+    public void runtimeContextsUseTheirOwnScriptEngineFactory() {
+        ScriptEngineFactory firstFactory = markerFactory("runtime-A");
+        ScriptEngineFactory secondFactory = markerFactory("runtime-B");
+
+        Injector firstInjector = Guice.createInjector(
+            Modules.override(new ScraperModule("target")).with(new AbstractModule() {
+                @Override
+                protected void configure() {
+                    bind(ScriptEngineFactory.class).toInstance(firstFactory);
+                }
+            }));
+        Injector secondInjector = Guice.createInjector(
+            Modules.override(new ScraperModule("target")).with(new AbstractModule() {
+                @Override
+                protected void configure() {
+                    bind(ScriptEngineFactory.class).toInstance(secondFactory);
+                }
+            }));
+
+        ScraperContext firstContext = firstInjector.getInstance(ScraperContext.class);
+        ScraperContext secondContext = secondInjector.getInstance(ScraperContext.class);
+
+        assertSame(firstContext.getScriptEngineFactory(), firstFactory);
+        assertSame(secondContext.getScriptEngineFactory(), secondFactory);
+        assertSame(BaseTemplater.scriptEngineFactory, secondFactory,
+            "The legacy static field is deliberately overwritten by the second injector");
+
+        assertEquals(BaseTemplater.evaluateToString("${value}", ScriptingLanguage.BEANSHELL, firstContext),
+            "runtime-A", "The first context must not use the second runtime's static factory");
+        assertEquals(BaseTemplater.evaluateToString("${value}", ScriptingLanguage.BEANSHELL, secondContext),
+            "runtime-B");
+    }
+
+    private static ScriptEngineFactory markerFactory(final String marker) {
+        return new ScriptEngineFactory() {
+            @Override
+            public ScriptEngine getEngine(ScriptSource scriptSource) {
+                return new ScriptEngine() {
+                    @Override
+                    public Object evaluate(DynamicScopeContext context, ScriptSource source) {
+                        return marker;
+                    }
+                };
+            }
+        };
+    }
+
     @Test
     public void testManualInjection() {
         // GIVEN: Guice injector
