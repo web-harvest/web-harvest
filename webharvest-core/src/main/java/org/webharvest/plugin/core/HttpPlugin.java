@@ -34,8 +34,8 @@
 package org.webharvest.plugin.core;
 
 import java.net.URLEncoder;
-import java.time.Duration;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
