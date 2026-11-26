@@ -89,8 +89,9 @@ public interface HttpService {
      * optional execution-owned cancellation.
      *
      * <p>The default preserves source and binary compatibility for existing
-     * providers. Such providers retain their legacy timeout/cancellation
-     * behavior until they override this method.</p>
+     * providers in standalone contexts. A provider used by a service-managed
+     * execution must override this method; silently dropping the owner-bound
+     * resource capability would make cancellation guarantees misleading.</p>
      *
      * @param method HTTP method
      * @param url request URL
@@ -105,6 +106,10 @@ public interface HttpService {
                                  Map<String, String> headers, Duration timeout,
                                  ExecutionResourceAccess resourceAccess)
             throws HttpServiceException {
+        if (resourceAccess != null) {
+            throw new HttpServiceException(
+                "HTTP provider does not support execution-owned request cancellation");
+        }
         return request(method, url, body, headers);
     }
 }
