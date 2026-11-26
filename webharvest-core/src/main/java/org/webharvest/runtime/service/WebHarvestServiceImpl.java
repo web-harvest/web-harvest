@@ -964,9 +964,9 @@ public class WebHarvestServiceImpl implements WebHarvestService {
                 for (org.webharvest.runtime.resource.LedgerExecutionResourceContext.DrainReport report
                     : resourceCoordinator.markOwnerQuiescentAndDrain(budget)) {
                     if (report.getState() != ResourceState.CLOSED) {
-                        LOG.warn("Resource {} for session {} remains {} (active leases: {})",
+                        LOG.warn("Resource {} for session {} remains {} (active leases: {}, abort: {})",
                             report.getResourceId(), session.getSessionId(),
-                            report.getState(), report.getActiveLeases());
+                            report.getState(), report.getActiveLeases(), report.getAbortState());
                     }
                     // Abort failure remains operationally relevant even when the
                     // resource's subsequent close succeeds and reaches CLOSED.
