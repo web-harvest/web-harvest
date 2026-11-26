@@ -53,11 +53,13 @@ public class EventBusTypeListenerTest {
         @SuppressWarnings("unchecked")
         TypeEncounter<Subscriber> encounter = mock(TypeEncounter.class);
         @SuppressWarnings("unchecked")
-        Provider<EventBus> provider = mock(Provider.class);
+        Provider<RuntimeRegistrationCoordinator> provider = mock(Provider.class);
         EventBus eventBus = mock(EventBus.class);
+        RuntimeRegistrationCoordinator coordinator =
+            new RuntimeRegistrationCoordinator(eventBus, new ScrapingInterceptor.ScrapingAwareHelper());
         Subscriber subscriber = new Subscriber();
-        when(encounter.getProvider(EventBus.class)).thenReturn(provider);
-        when(provider.get()).thenReturn(eventBus);
+        when(encounter.getProvider(RuntimeRegistrationCoordinator.class)).thenReturn(provider);
+        when(provider.get()).thenReturn(coordinator);
 
         listener.hear(TypeLiteral.get(Subscriber.class), encounter);
 
@@ -69,6 +71,7 @@ public class EventBusTypeListenerTest {
 
         verify(provider).get();
         verify(eventBus).register(subscriber);
+        assertEquals(coordinator.getSubscriberRegistrationCount(), 1);
     }
 
     @Test
@@ -79,7 +82,7 @@ public class EventBusTypeListenerTest {
 
         listener.hear(TypeLiteral.get(NonSubscriber.class), encounter);
 
-        verify(encounter, never()).getProvider(EventBus.class);
+        verify(encounter, never()).getProvider(RuntimeRegistrationCoordinator.class);
         verify(encounter, never()).register(any(InjectionListener.class));
     }
 
