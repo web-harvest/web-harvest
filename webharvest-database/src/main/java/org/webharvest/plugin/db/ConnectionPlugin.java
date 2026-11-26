@@ -300,8 +300,10 @@ public class ConnectionPlugin extends AbstractPlugin {
 
         public void close() {
             if (resourceHandle != null) {
-                throw new IllegalStateException(
-                    "Managed JDBC pools are closed by their execution resource owner");
+                // A managed pool is closed by its owning ResourceLedger. Preserve
+                // the legacy helper as a harmless no-op rather than allowing a
+                // caller to bypass active connection leases.
+                return;
             }
             factory.closeAllConnections();
         }
