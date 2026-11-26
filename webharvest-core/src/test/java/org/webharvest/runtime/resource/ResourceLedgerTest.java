@@ -1079,7 +1079,7 @@ public class ResourceLedgerTest {
     }
 
     @Test(groups = {"unit", "runtime"})
-    public void abortCompletionListenerRegisteredAfterTerminalAbortRunsImmediately() {
+    public void abortCompletionListenerRegisteredAfterTerminalAbortRunsImmediately() throws InterruptedException {
         ResourceLedger ledger = new ResourceLedger("runtime-a");
         AtomicInteger completions = new AtomicInteger();
         ResourceLedger.Registration registration = ledger.registerRuntime(
