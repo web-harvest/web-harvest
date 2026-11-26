@@ -96,7 +96,7 @@ public class WebHarvestServiceExecutionLifecycleTest {
         WebHarvestServiceImpl service = new WebHarvestServiceImpl(
             java.util.concurrent.Executors.newSingleThreadExecutor(),
             new SessionRegistryImpl(), eventBus, coordinator);
-        WorkerInitiatedShutdownListener listener = new WorkerInitiatedShutdownListener(service);
+        WorkerInitiatedShutdownListener listener = new WorkerInitiatedShutdownListener(service, false);
         coordinator.registerSubscriber(listener);
 
         try {
@@ -115,6 +115,39 @@ public class WebHarvestServiceExecutionLifecycleTest {
                 "Deferred finalization must close the runtime registration owner after worker exit");
             assertEquals(coordinator.getSubscriberRegistrationCount(), 0,
                 "Deferred finalization must unregister the worker's subscriber");
+        } finally {
+            if (!coordinator.isCloseRequested()) {
+                service.shutdownNow();
+            }
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
+    public void workerInitiatedShutdownNowRetiresRuntimeRegistrationsAfterTaskExit() throws Exception {
+        EventBus eventBus = new EventBus();
+        ScrapingAwareHelper helper = new ScrapingAwareHelper();
+        RuntimeRegistrationCoordinator coordinator =
+            new RuntimeRegistrationCoordinator(eventBus, helper);
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            java.util.concurrent.Executors.newSingleThreadExecutor(),
+            new SessionRegistryImpl(), eventBus, coordinator);
+        WorkerInitiatedShutdownListener listener = new WorkerInitiatedShutdownListener(service, true);
+        coordinator.registerSubscriber(listener);
+
+        try {
+            service.executeAsync(Mockito.mock(Config.class), null, null);
+
+            assertTrue(listener.shutdownReturned.await(5, TimeUnit.SECONDS),
+                "The session worker must return from its own forced-shutdown request");
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+            while (!coordinator.isCloseRequested() && System.nanoTime() < deadline) {
+                Thread.yield();
+            }
+
+            assertTrue(coordinator.isCloseRequested(),
+                "Deferred finalization must close the runtime registration owner after forced worker exit");
+            assertEquals(coordinator.getSubscriberRegistrationCount(), 0,
+                "Deferred finalization must unregister the worker's subscriber after shutdownNow");
         } finally {
             if (!coordinator.isCloseRequested()) {
                 service.shutdownNow();
@@ -1735,17 +1768,23 @@ public class WebHarvestServiceExecutionLifecycleTest {
 
     private static class WorkerInitiatedShutdownListener {
         private final WebHarvestService service;
+        private final boolean immediate;
         private final CountDownLatch shutdownReturned = new CountDownLatch(1);
         private final AtomicReference<Throwable> shutdownFailure = new AtomicReference<>();
 
-        private WorkerInitiatedShutdownListener(WebHarvestService service) {
+        private WorkerInitiatedShutdownListener(WebHarvestService service, boolean immediate) {
             this.service = service;
+            this.immediate = immediate;
         }
 
         @Subscribe
         public void onStarted(SessionStartedEvent event) {
             try {
-                service.shutdown();
+                if (immediate) {
+                    service.shutdownNow();
+                } else {
+                    service.shutdown();
+                }
             } catch (Throwable failure) {
                 shutdownFailure.set(failure);
             } finally {
