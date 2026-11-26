@@ -287,7 +287,7 @@ public class WebBrowserPlugin extends AbstractPlugin {
         }
 
         private synchronized boolean isClosed() {
-            return closed;
+            return aborted || closed;
         }
 
         private synchronized ExecutionResourceAccess.Lease acquire() {
@@ -601,7 +601,7 @@ public class WebBrowserPlugin extends AbstractPlugin {
      * <p>Bug #33 Fix: Uses HtmlUnit to fully execute JavaScript and wait for AJAX.</p>
      */
     private Variable handleLoad(String url, String pageName, int waitTime, boolean javascriptEnabled,
-                                DynamicScopeContext context) throws PluginException {
+                                DynamicScopeContext context) throws PluginException, InterruptedException {
         LOGGER.info("WebBrowser load: " + url + " (page: " + pageName + 
             ", wait: " + waitTime + "ms, js: " + javascriptEnabled + ")");
         
@@ -638,7 +638,7 @@ public class WebBrowserPlugin extends AbstractPlugin {
             throw new PluginException("Failed to load page: " + e.getMessage(), e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new PluginException("Interrupted while waiting for page load", e);
+            throw e;
         } finally {
             if (!loaded) {
                 WebClient removed = state.remove(pageName);
