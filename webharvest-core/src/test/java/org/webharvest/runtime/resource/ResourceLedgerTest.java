@@ -453,6 +453,30 @@ public class ResourceLedgerTest {
     }
 
     @Test(groups = {"unit", "runtime"})
+    public void generationAbortIsAllowedAfterRetirementAndRunsOnlyOnce() throws InterruptedException {
+        ResourceLedger ledger = new ResourceLedger("runtime-a");
+        RegistryGenerationId generation = new RegistryGenerationId("runtime-a", "snapshot-abort");
+        AtomicInteger aborts = new AtomicInteger();
+        AtomicInteger closes = new AtomicInteger();
+        ResourceLedger.Registration registration = ledger.registerGeneration(
+            "generation-resource", generation, aborts::incrementAndGet, closes::incrementAndGet);
+
+        ledger.beginGenerationRetirement(generation);
+        registration.abort();
+        registration.abort();
+
+        assertEquals(aborts.get(), 1);
+        assertEquals(registration.getAbortState(), ResourceLedger.AbortState.SUCCEEDED);
+        assertEquals(closes.get(), 0);
+
+        ResourceLedger.DrainResult drained = registration.drainAndClose(Duration.ofSeconds(1));
+        assertTrue(drained.isClosed());
+        assertEquals(closes.get(), 1);
+        registration.close();
+        assertEquals(ledger.size(), 0);
+    }
+
+    @Test(groups = {"unit", "runtime"})
     public void testGenerationResourcesRequireExactPinnedGenerationAndDrainAllSessions()
         throws InterruptedException {
         ResourceLedger ledger = new ResourceLedger("runtime-a");
