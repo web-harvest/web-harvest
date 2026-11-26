@@ -88,7 +88,8 @@ public class HttpServiceImpl implements HttpService, AutoCloseable {
     private static final Timeout DEFAULT_CONNECT_TIMEOUT = Timeout.ofSeconds(30);
 
     private final CloseableHttpClient httpClient;
-    private final Boolean followRedirects;
+    private final boolean followRedirects;
+    private final boolean configurePerRequestTimeouts;
     
     /**
      * Creates a new HttpServiceImpl with a default HttpClient.
@@ -102,16 +103,18 @@ public class HttpServiceImpl implements HttpService, AutoCloseable {
     public HttpServiceImpl() {
         this.httpClient = createHttpClientBuilder().build();
         this.followRedirects = true;
+        this.configurePerRequestTimeouts = true;
     }
     
     /**
      * Creates a new HttpServiceImpl with custom HttpClient.
      * 
-     * @param httpClient the HTTP client to use
+     * @param httpClient the HTTP client to use; its request configuration is preserved
      */
     public HttpServiceImpl(CloseableHttpClient httpClient) {
         this.httpClient = Objects.requireNonNull(httpClient, "HTTP client cannot be null");
-        this.followRedirects = null;
+        this.followRedirects = true;
+        this.configurePerRequestTimeouts = false;
     }
     
     /**
@@ -169,6 +172,7 @@ public class HttpServiceImpl implements HttpService, AutoCloseable {
         
         this.httpClient = builder.build();
         this.followRedirects = followRedirects;
+        this.configurePerRequestTimeouts = true;
     }
     
     @Override
@@ -217,14 +221,15 @@ public class HttpServiceImpl implements HttpService, AutoCloseable {
             request.setEntity(new StringEntity(body));
         }
 
-        RequestConfig.Builder requestConfigBuilder = RequestConfig.custom()
-            .setResponseTimeout(Timeout.ofMilliseconds(timeoutMillis))
-            .setConnectionRequestTimeout(Timeout.ofMilliseconds(timeoutMillis))
-            .setHardCancellationEnabled(true);
-        if (followRedirects != null) {
-            requestConfigBuilder.setRedirectsEnabled(followRedirects);
+        if (configurePerRequestTimeouts) {
+            RequestConfig requestConfig = RequestConfig.custom()
+                .setRedirectsEnabled(followRedirects)
+                .setResponseTimeout(Timeout.ofMilliseconds(timeoutMillis))
+                .setConnectionRequestTimeout(Timeout.ofMilliseconds(timeoutMillis))
+                .setHardCancellationEnabled(true)
+                .build();
+            request.setConfig(requestConfig);
         }
-        request.setConfig(requestConfigBuilder.build());
 
         if (resourceAccess == null) {
             return executeRequest(request);
