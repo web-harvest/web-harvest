@@ -61,6 +61,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
@@ -270,7 +271,6 @@ public class WebBrowserPlugin extends AbstractPlugin {
             this.owner = resourceAccess != null ? resourceAccess.getOwner() : null;
             if (resourceAccess != null) {
                 this.eventBus = null;
-                String ownerSessionId = owner.getSessionId();
                 this.resourceHandle = resourceAccess.registerSessionResource(
                     "web-browser-session-" + owner.toString(), this::abort, this::close);
             } else {
@@ -361,14 +361,33 @@ public class WebBrowserPlugin extends AbstractPlugin {
         }
 
         private void closeClients() {
-            if (defaultPage != null) {
-                defaultPage.close();
-                defaultPage = null;
-            }
-            for (WebClient client : namedPages.values()) {
-                client.close();
-            }
+            Map<String, WebClient> pagesToClose = new HashMap<>(namedPages);
             namedPages.clear();
+            WebClient defaultPageToClose = defaultPage;
+            defaultPage = null;
+
+            RuntimeException failure = null;
+            if (defaultPageToClose != null) {
+                try {
+                    defaultPageToClose.close();
+                } catch (RuntimeException closeFailure) {
+                    failure = closeFailure;
+                }
+            }
+            for (WebClient client : pagesToClose.values()) {
+                try {
+                    client.close();
+                } catch (RuntimeException closeFailure) {
+                    if (failure == null) {
+                        failure = closeFailure;
+                    } else {
+                        failure.addSuppressed(closeFailure);
+                    }
+                }
+            }
+            if (failure != null) {
+                throw failure;
+            }
         }
 
         @Subscribe
