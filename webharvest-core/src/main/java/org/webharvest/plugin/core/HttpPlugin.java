@@ -301,6 +301,9 @@ public class HttpPlugin extends AbstractPlugin {
             }
 
             String timeoutValue = getConfiguration().getProperty("timeout", "30000");
+            if (timeoutValue == null || timeoutValue.isBlank()) {
+                timeoutValue = "30000";
+            }
             long timeoutMillis;
             try {
                 timeoutMillis = Long.parseLong(timeoutValue.trim());
