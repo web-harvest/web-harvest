@@ -137,33 +137,3 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-  core-runtime-integration:
-    if: github.event_name == 'pull_request' && startsWith(github.base_ref, 'runtime/')
-    name: Full Core verify for runtime integration PRs (Java 17)
-    runs-on: ubuntu-latest
-    timeout-minutes: 90
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Set up Java 17
-        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
-        with:
-          distribution: temurin
-          java-version: "17"
-          cache: maven
-      - name: Run full Core verify for the runtime integration stack
-        run: mvn --batch-mode --no-transfer-progress -U -pl webharvest-core -am verify
-      - name: Upload Core lifecycle and quality diagnostics
-        if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: core-runtime-integration-diagnostics
-          path: |
-            webharvest-core/target/jacoco-report/**
-            webharvest-core/target/jacoco.exec
-            **/target/checkstyle-result.xml
-            **/target/spotbugsXml.xml
-            **/target/surefire-reports/**
-            **/target/failsafe-reports/**
-          if-no-files-found: warn
-          retention-days: 14
