@@ -72,6 +72,13 @@ public final class ScrapingInterceptor implements MethodInterceptor {
             .getLogger(ScrapingInterceptor.class);
 
     /**
+     * The injector that owns this interceptor. Guice injects this instance
+     * from the same injector that installs the AOP binding.
+     */
+    @com.google.inject.Inject
+    private Injector injector;
+
+    /**
      * {@inheritDoc}
      */
     @Override
@@ -80,8 +87,10 @@ public final class ScrapingInterceptor implements MethodInterceptor {
         if (!(subject instanceof Harvester)) {
             throw new IllegalStateException("Not an instance of Harvester");
         }
-        return invoke(InjectorHelper.getInjector(),
-                (Harvester) subject, new Callback() {
+        if (injector == null) {
+            throw new IllegalStateException("ScrapingInterceptor has no owning Guice injector");
+        }
+        return invoke(injector, (Harvester) subject, new Callback() {
 
                     @Override
                     public Object execute() throws Throwable {
