@@ -18,6 +18,50 @@ import static org.testng.Assert.*;
 /** Deterministic tests for the execution-bound resource facade. */
 public class LedgerExecutionResourceContextTest {
 
+
+    @Test(groups = {"unit", "runtime"})
+    public void requestTerminationDoesNotWaitForBlockedProviderAbort() throws Exception {
+        java.util.concurrent.ThreadPoolExecutor dispatcher = new java.util.concurrent.ThreadPoolExecutor(
+            1, 1, 0L, TimeUnit.MILLISECONDS, new java.util.concurrent.ArrayBlockingQueue<>(4),
+            runnable -> {
+                Thread thread = new Thread(runnable, "execution-context-abort-test");
+                thread.setDaemon(true);
+                return thread;
+            }, new java.util.concurrent.ThreadPoolExecutor.AbortPolicy());
+        CountDownLatch entered = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        try {
+            ResourceLedger ledger = new ResourceLedger("runtime-a", dispatcher);
+            ExecutionOwner owner = new ExecutionOwner("runtime-a", "session-a", 1);
+            LedgerExecutionResourceContext context = new LedgerExecutionResourceContext(ledger, owner);
+            AtomicInteger closes = new AtomicInteger();
+            ExecutionResourceAccess.ResourceHandle resource = context.registerSessionResource(
+                "blocked-provider", () -> {
+                    entered.countDown();
+                    release.await();
+                }, closes::incrementAndGet);
+
+            context.requestTermination();
+            assertTrue(entered.await(5, TimeUnit.SECONDS));
+            java.util.List<LedgerExecutionResourceContext.DrainReport> reports =
+                context.markOwnerQuiescentAndDrain(Duration.ZERO);
+            assertEquals(reports.get(0).getAbortState(), ResourceLedger.AbortState.RUNNING);
+            assertEquals(reports.get(0).getState(), ExecutionResourceAccess.ResourceState.QUARANTINED);
+            assertEquals(closes.get(), 0);
+
+            release.countDown();
+            dispatcher.shutdown();
+            assertTrue(dispatcher.awaitTermination(5, TimeUnit.SECONDS));
+            reports = context.markOwnerQuiescentAndDrain(Duration.ofSeconds(1));
+            assertEquals(reports.get(0).getAbortState(), ResourceLedger.AbortState.SUCCEEDED);
+            assertEquals(reports.get(0).getState(), ExecutionResourceAccess.ResourceState.CLOSED);
+            assertEquals(closes.get(), 1);
+        } finally {
+            release.countDown();
+            dispatcher.shutdownNow();
+        }
+    }
+
     @Test(groups = {"unit", "runtime"})
     public void sessionResourceRemainsQuarantinedUntilOwnerAndLeasesAreQuiescent() throws Exception {
         ResourceLedger ledger = new ResourceLedger("runtime-a");
