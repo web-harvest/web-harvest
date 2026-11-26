@@ -44,7 +44,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.testng.annotations.Test;
 import org.webharvest.Harvester;
 import org.webharvest.ScrapingAware;
-import org.webharvest.events.EventBus;
 import org.webharvest.runtime.service.WebHarvestService;
 
 import com.google.common.eventbus.Subscribe;
@@ -174,7 +173,7 @@ public class RuntimeRegistrationCoordinatorTest {
         coordinator.close();
         coordinator.close();
 
-        assertThrows(IllegalStateException.class,
+        expectThrows(IllegalStateException.class,
             () -> coordinator.registerSubscriber(new Subscriber()));
         assertEquals(coordinator.getSubscriberRegistrationCount(), 0);
     }
