@@ -228,11 +228,11 @@ public final class ScrapingInterceptor implements MethodInterceptor {
          */
         public void onBeforeScraping(final Harvester harvester) {
             LOG.debug("Entering scraper scope [{}]", harvester);
-            RuntimeException firstFailure = null;
+            Throwable firstFailure = null;
             for (ListenerRegistration registration : listeners) {
                 try {
                     registration.listener.onBeforeScraping(harvester);
-                } catch (RuntimeException failure) {
+                } catch (Throwable failure) {
                     if (firstFailure == null) {
                         firstFailure = failure;
                     } else if (firstFailure != failure) {
@@ -241,7 +241,7 @@ public final class ScrapingInterceptor implements MethodInterceptor {
                 }
             }
             if (firstFailure != null) {
-                throw firstFailure;
+                throwListenerFailure(firstFailure);
             }
         }
 
@@ -267,6 +267,16 @@ public final class ScrapingInterceptor implements MethodInterceptor {
             if (firstFailure != null) {
                 throw firstFailure;
             }
+        }
+
+        private static void throwListenerFailure(Throwable failure) {
+            if (failure instanceof Error) {
+                throw (Error) failure;
+            }
+            if (failure instanceof RuntimeException) {
+                throw (RuntimeException) failure;
+            }
+            throw new IllegalStateException("ScrapingAware listener failed", failure);
         }
 
         /**
