@@ -47,7 +47,6 @@ import org.webharvest.definition.CorePluginRegistry;
 import org.webharvest.definition.PluginConfigurationTree;
 
 import com.google.common.eventbus.EventBus;
-import com.google.common.eventbus.Subscribe;
 import com.google.inject.Inject;
 
 /**
@@ -129,11 +128,17 @@ public class Scraper implements WebScraper {
     }
 
     /**
-     * Logs information that Scraper's execution has been stopped.
+     * Legacy callback that logs when this Scraper's execution is stopped.
+     *
+     * <p>This method is intentionally not auto-registered with the runtime-wide
+     * EventBus: Scraper instances are execution-scoped, so global registration
+     * would deliver another Harvester's stop event to every active Scraper.
+     * Session-owned subscribers require an explicit owner-bound registration.</p>
      *
      * @param event an instance of {@link ScraperExecutionStoppedEvent}
+     * @deprecated use an owner-bound execution event registration
      */
-    @Subscribe
+    @Deprecated
     public void onExecutionStopped(final ScraperExecutionStoppedEvent event) {
         if (LOG.isInfoEnabled()) {
             LOG.info("Configuration stopped!");
