@@ -157,7 +157,7 @@ import org.webharvest.runtime.scripting.ScriptingLanguage;
  * <ul>
  *   <li><strong>url</strong> (required): The HTTP/HTTPS URL to request</li>
  *   <li><strong>method</strong> (optional): HTTP method (GET, POST, PUT, DELETE, etc.) - default: GET</li>
- *   <li><strong>timeout</strong> (optional): Response and connection-pool acquisition timeout in milliseconds - default: 30000</li>
+ *   <li><strong>timeout</strong> (optional): Response inactivity and connection-pool acquisition timeout in milliseconds - default: 30000</li>
  *   <li><strong>charset</strong> (optional): Character encoding - default: UTF-8</li>
  *   <li><strong>followRedirects</strong> (optional): Follow HTTP redirects - default: true</li>
  * </ul>
