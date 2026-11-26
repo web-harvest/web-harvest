@@ -153,9 +153,11 @@ public class WebHarvestServiceImpl implements WebHarvestService {
         String sessionId = UUID.randomUUID().toString();
         ExecutionOwner owner = new ExecutionOwner(runtimeId, sessionId, executionGeneration.incrementAndGet());
 
-        // Session construction publishes SessionCreatedEvent synchronously; never
-        // invoke that subscriber code while holding the admission lock.
-        ScraperSessionImpl session = new ScraperSessionImpl(sessionId, clientId, config, eventBus, owner);
+        // Construct without publishing. A creation event is observable only after
+        // successful admission and registration, and subscriber code stays outside
+        // the admission lock.
+        ScraperSessionImpl session = new ScraperSessionImpl(
+            sessionId, clientId, config, eventBus, owner, false);
         LedgerExecutionResourceCoordinator resourceCoordinator =
             new LedgerExecutionResourceCoordinator(resourceLedger, owner);
         SessionTask task = new SessionTask(session, opts, resourceCoordinator);
@@ -189,6 +191,10 @@ public class WebHarvestServiceImpl implements WebHarvestService {
         }
 
         try {
+            // Admission and registry ownership are now established. Publish exactly
+            // once before dispatch; a subscriber may cancel the accepted session.
+            session.publishCreatedEvent();
+
             // Reserve under admissionLock, but call arbitrary executor code outside it.
             // The wrapper resolves the reservation even for direct/CallerRuns executors.
             FutureTask<Void> submittedTask = new FutureTask<>(() -> {
