@@ -312,35 +312,46 @@ public class HttpPlugin extends AbstractPlugin {
                 throw new IllegalArgumentException("HTTP timeout must be a positive integer in milliseconds");
             }
 
-            HttpResponse response = httpService.request(
-                normalizedMethod,
-                urlWithParams,
-                body,
-                headers,
-                Duration.ofMillis(timeoutMillis),
-                context.getResourceAccess());
-            
-            // Bug #39 Fix: Check if response should be treated as binary
-            String contentType = response.getContentType();
-            boolean isBinary = isBinaryContentType(contentType);
-            
-            if (isBinary) {
-                // Binary content: images, PDFs, videos, etc.
-                byte[] binaryData = response.getBodyAsBinary();
-                LOGGER.debug("HttpPlugin: Binary response, {} bytes", binaryData.length);
-                return new NodeVariable(binaryData);
+            // Only a service-managed execution can lend the HTTP provider an
+            // owner-bound resource capability. Preserve the legacy service API
+            // for standalone/legacy contexts that do not have one.
+            HttpResponse response;
+            if (context.getResourceAccess() != null) {
+                response = httpService.request(
+                    normalizedMethod,
+                    urlWithParams,
+                    body,
+                    headers,
+                    Duration.ofMillis(timeoutMillis),
+                    context.getResourceAccess());
+            } else if ("GET".equals(normalizedMethod)) {
+                response = httpService.get(urlWithParams, headers);
+            } else if ("POST".equals(normalizedMethod)) {
+                response = httpService.post(urlWithParams, body, headers);
             } else {
-                // Text content: HTML, JSON, XML, etc.
-                String responseBody = response.getBody();
-                LOGGER.debug("HttpPlugin: Text response, {} chars", responseBody.length());
-                LOGGER.debug("HttpPlugin: First 200 chars = '{}'", 
-                    responseBody.substring(0, Math.min(responseBody.length(), 200)));
-                return new NodeVariable(responseBody);
+                response = httpService.request(normalizedMethod, urlWithParams, body, headers);
             }
-            
+
+            return toResponseVariable(response);
+
         } catch (Exception e) {
             throw new IllegalStateException("HTTP request failed: " + e.getMessage(), e);
         }
+    }
+
+    private Variable toResponseVariable(HttpResponse response) {
+        // Bug #39 Fix: Check if response should be treated as binary.
+        String contentType = response.getContentType();
+        if (isBinaryContentType(contentType)) {
+            byte[] binaryData = response.getBodyAsBinary();
+            LOGGER.debug("HttpPlugin: Binary response, {} bytes", binaryData.length);
+            return new NodeVariable(binaryData);
+        }
+        String responseBody = response.getBody();
+        LOGGER.debug("HttpPlugin: Text response, {} chars", responseBody.length());
+        LOGGER.debug("HttpPlugin: First 200 chars = '{}'",
+            responseBody.substring(0, Math.min(responseBody.length(), 200)));
+        return new NodeVariable(responseBody);
     }
 
     private Map<String, String> collectHeaders(PluginConfiguration configuration) {
