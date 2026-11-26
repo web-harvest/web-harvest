@@ -140,7 +140,9 @@ public class ScrapingAwareHelperTest {
         ScrapingInterceptor.ScrapingAwareHelper.ListenerRegistration first =
                 helper.registerListener(new ScrapingAware() {
                     @Override
-                    public void onBeforeScraping(Harvester value) { }
+                    public void onBeforeScraping(Harvester value) {
+                        // No-op.
+                    }
                     @Override
                     public void onAfterScraping(Harvester value) {
                         firstAfterCalls.incrementAndGet();
@@ -150,7 +152,9 @@ public class ScrapingAwareHelperTest {
         helper.onBeforeScraping(harvester);
         helper.registerListener(new ScrapingAware() {
             @Override
-            public void onBeforeScraping(Harvester value) { }
+            public void onBeforeScraping(Harvester value) {
+                        // No-op.
+                    }
             @Override
             public void onAfterScraping(Harvester value) {
                 secondAfterCalls.incrementAndGet();
