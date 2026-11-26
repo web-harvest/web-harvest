@@ -75,8 +75,14 @@ import org.slf4j.LoggerFactory;
  *           url="jdbc:h2:mem:test"
  *           username="sa"
  *           password=""
+ *           queryTimeout="30"
  *           sql="SELECT * FROM table"/&gt;
  * </pre>
+ *
+ * <p>{@code queryTimeout} is optional and expressed in seconds. Its default
+ * value is {@code 0}, preserving the JDBC driver's no-timeout default.
+ * Managed executions also register the active statement for best-effort
+ * {@link java.sql.Statement#cancel()} when the owning execution is aborted.</p>
  * 
  * @author WebHarvest Team
  * @since 2.1.0
