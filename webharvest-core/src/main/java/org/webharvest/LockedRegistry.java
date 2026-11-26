@@ -33,6 +33,8 @@
 
 package org.webharvest;
 
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -119,7 +121,7 @@ public final class LockedRegistry<K, V> implements Registry<K, V> {
     public Set<K> listBound() {
         lock.readLock().lock();
         try {
-            return delegate.listBound();
+            return Collections.unmodifiableSet(new HashSet<K>(delegate.listBound()));
         } finally {
             lock.readLock().unlock();
         }

@@ -36,6 +36,7 @@ package org.webharvest;
 import static org.testng.AssertJUnit.assertFalse;
 import static org.testng.AssertJUnit.assertNotNull;
 import static org.testng.AssertJUnit.assertSame;
+import static org.testng.AssertJUnit.assertTrue;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -88,6 +89,28 @@ public class LockedRegistryTest {
         assertFalse("Found previously unbound value", entries.contains(key));
     }
 
+    @Test
+    public void listBoundReturnsDetachedImmutableSnapshot() throws Exception {
+        RegistryMock liveDelegate = new RegistryMock();
+        LockedRegistry<String, String> locked = new LockedRegistry<String, String>(liveDelegate);
+        locked.bind("snapshot-key", VALUE);
+
+        Set<String> snapshot = locked.listBound();
+        locked.unbind("snapshot-key");
+        locked.bind("later-key", VALUE);
+
+        assertTrue("Snapshot must retain the value present at capture time", snapshot.contains("snapshot-key"));
+        assertFalse("Snapshot must not reflect later bindings", snapshot.contains("later-key"));
+        boolean immutable = false;
+        try {
+            snapshot.add("external-key");
+        } catch (UnsupportedOperationException expected) {
+            immutable = true;
+        }
+        assertTrue("Snapshot must not allow caller mutation", immutable);
+        assertFalse("Caller mutation must not affect the registry", locked.listBound().contains("external-key"));
+    }
+
     private final class RegistryMock implements Registry<String, String> {
 
         private final Map<String, String> storage =
@@ -111,7 +134,7 @@ public class LockedRegistryTest {
 
         @Override
         public Set<String> listBound() {
-            return new HashSet<String>(storage.keySet());
+            return storage.keySet();
         }
 
     }
