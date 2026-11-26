@@ -743,6 +743,8 @@ public class ResourceLedgerTest {
                 return thread;
             }, new java.util.concurrent.ThreadPoolExecutor.AbortPolicy());
         CountDownLatch release = new CountDownLatch(1);
+        CountDownLatch dispatchReturned = new CountDownLatch(1);
+        AtomicReference<Throwable> dispatchFailure = new AtomicReference<>();
         try {
             ResourceLedger ledger = new ResourceLedger("runtime-a", dispatcher);
             CountDownLatch entered = new CountDownLatch(1);
@@ -754,10 +756,19 @@ public class ResourceLedgerTest {
                 }, closes::incrementAndGet);
 
             registration.requestClose();
-            long started = System.nanoTime();
-            registration.abort();
-            assertTrue(TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started) < 500,
-                "Abort admission must not wait for provider callback completion");
+            Thread caller = new Thread(() -> {
+                try {
+                    registration.abort();
+                } catch (Throwable failure) {
+                    dispatchFailure.set(failure);
+                } finally {
+                    dispatchReturned.countDown();
+                }
+            }, "resource-ledger-abort-caller");
+            caller.start();
+            assertTrue(dispatchReturned.await(2, TimeUnit.SECONDS),
+                "Abort admission must return while provider callback remains blocked");
+            assertNull(dispatchFailure.get());
             assertTrue(entered.await(5, TimeUnit.SECONDS));
             assertEquals(registration.getAbortState(), ResourceLedger.AbortState.RUNNING);
 
@@ -768,6 +779,8 @@ public class ResourceLedgerTest {
             assertEquals(closes.get(), 0, "Close must not race a running abort callback");
 
             release.countDown();
+            caller.join(5000);
+            assertFalse(caller.isAlive());
             dispatcher.shutdown();
             assertTrue(dispatcher.awaitTermination(5, TimeUnit.SECONDS));
             assertEquals(registration.getAbortState(), ResourceLedger.AbortState.SUCCEEDED);
@@ -819,6 +832,42 @@ public class ResourceLedgerTest {
             assertTrue(dispatcher.awaitTermination(5, TimeUnit.SECONDS));
             assertEquals(queued.getAbortState(), ResourceLedger.AbortState.SUCCEEDED);
             assertEquals(rejected.getAbortState(), ResourceLedger.AbortState.REJECTED);
+        } finally {
+            release.countDown();
+            dispatcher.shutdownNow();
+        }
+    }
+
+
+    @Test(groups = {"unit", "runtime"})
+    public void asyncAbortCallbackFailureIsRecordedOnlyAfterCallbackCompletion() throws Exception {
+        java.util.concurrent.ThreadPoolExecutor dispatcher = new java.util.concurrent.ThreadPoolExecutor(
+            1, 1, 0L, TimeUnit.MILLISECONDS, new java.util.concurrent.ArrayBlockingQueue<>(1),
+            runnable -> {
+                Thread thread = new Thread(runnable, "resource-ledger-failure-test");
+                thread.setDaemon(true);
+                return thread;
+            }, new java.util.concurrent.ThreadPoolExecutor.AbortPolicy());
+        CountDownLatch entered = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        IllegalStateException expected = new IllegalStateException("provider abort failed");
+        try {
+            ResourceLedger ledger = new ResourceLedger("runtime-a", dispatcher);
+            ResourceLedger.Registration registration = ledger.registerRuntime("failed-abort", () -> {
+                entered.countDown();
+                release.await();
+                throw expected;
+            }, null);
+            registration.requestClose();
+            registration.abort();
+            assertTrue(entered.await(5, TimeUnit.SECONDS));
+            assertEquals(registration.getAbortState(), ResourceLedger.AbortState.RUNNING);
+            assertNull(registration.getAbortFailure());
+            release.countDown();
+            dispatcher.shutdown();
+            assertTrue(dispatcher.awaitTermination(5, TimeUnit.SECONDS));
+            assertEquals(registration.getAbortState(), ResourceLedger.AbortState.FAILED);
+            assertSame(registration.getAbortFailure(), expected);
         } finally {
             release.countDown();
             dispatcher.shutdownNow();
