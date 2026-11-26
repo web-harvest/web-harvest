@@ -35,7 +35,7 @@ public class EventBusTypeListenerTest {
     }
 
     static class BaseSubscriber {
-        private final AtomicInteger received = new AtomicInteger();
+        final AtomicInteger received = new AtomicInteger();
 
         @Subscribe
         public void onInheritedEvent(String event) {
