@@ -416,6 +416,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
         boolean submissionsSettled = false;
         boolean executorTerminated = false;
         boolean taskRunsCompleted = false;
+        boolean abortDispatcherTerminated = false;
         try {
             submissionsSettled = awaitPendingSubmissions(deadline);
             if (submissionsSettled) {
@@ -423,6 +424,9 @@ public class WebHarvestServiceImpl implements WebHarvestService {
                     remainingNanos(deadline), TimeUnit.NANOSECONDS);
                 if (executorTerminated) {
                     taskRunsCompleted = awaitTaskRunsComplete(tasks, deadline);
+                    if (taskRunsCompleted) {
+                        abortDispatcherTerminated = shutdownResourceAbortExecutor(deadline);
+                    }
                 }
             }
         } catch (InterruptedException interruption) {
@@ -433,7 +437,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             markTasksUnresponsive(tasks, true);
             logIncompleteShutdown(!submissionsSettled ? "submission dispatch"
                 : !executorTerminated ? "executor termination" : "worker exit or resource drain", tasks);
-        } else if (!shutdownResourceAbortExecutor(deadline)) {
+        } else if (!abortDispatcherTerminated) {
             logIncompleteShutdown("resource abort callbacks", tasks);
         } else {
             finalizeTimeoutSchedulerIfQuiescent();
@@ -535,14 +539,9 @@ public class WebHarvestServiceImpl implements WebHarvestService {
         }
     }
 
-    private boolean shutdownResourceAbortExecutor(long deadline) {
+    private boolean shutdownResourceAbortExecutor(long deadline) throws InterruptedException {
         resourceAbortExecutor.shutdown();
-        try {
-            return resourceAbortExecutor.awaitTermination(remainingNanos(deadline), TimeUnit.NANOSECONDS);
-        } catch (InterruptedException interrupted) {
-            Thread.currentThread().interrupt();
-            return false;
-        }
+        return resourceAbortExecutor.awaitTermination(remainingNanos(deadline), TimeUnit.NANOSECONDS);
     }
 
     private void finalizeTimeoutSchedulerIfQuiescent() {
