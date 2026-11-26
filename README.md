@@ -1,6 +1,6 @@
 # WebHarvest
 
-WebHarvest is an open-source Java framework for extracting and transforming web data with XML workflow configurations, a Core execution runtime, an extensible plugin architecture, a command-line runner and an optional IDE.
+WebHarvest is an open-source, Java-first **Adaptive Data Acquisition & Integration Platform**. It is designed to acquire, understand, validate, transform, enrich and integrate data from diverse sources through specialized, extensible plugins. Web scraping is one acquisition capability, not the product boundary; workflow composition is one execution mechanism, not the product category. XML remains a supported compatibility and configuration format while the platform evolves toward a format-independent semantic model.
 
 **Canonical repository:** https://github.com/web-harvest/web-harvest  
 **Website source:** https://github.com/web-harvest/website  
@@ -10,11 +10,13 @@ WebHarvest is an open-source Java framework for extracting and transforming web 
 
 ## What WebHarvest provides
 
-- XML-based workflow configuration and execution.
-- A Java Core runtime and plugin contracts/registry.
-- Optional integration modules for database, FTP, mail, browser automation and ZIP/archive operations.
-- A CLI for headless execution.
-- An optional IDE/editor and visual design surface.
+- A Java Core runtime and an existing plugin-based execution model, with XML compatibility.
+- Existing integration modules for databases, FTP, mail, browser automation and ZIP/archive operations.
+- A CLI and an IDE/editor as distinct clients of Core; neither is the semantic source of truth.
+- A target plugin ecosystem spanning acquisition, parsing, extraction, validation, transformation, enrichment and destination capabilities.
+- A target adaptive composition model in which deterministic logic and policy-constrained agents can propose reusable data operations.
+
+The broader source-neutral platform, complete semantic model, independently versioned plugin ecosystem and safe adaptive runtime are architectural targets—not claims that every capability is already implemented.
 
 Historical guides and generated plugin counts may describe earlier versions. For current behavior, prefer source, tests, CI and documentation explicitly marked current.
 
@@ -41,8 +43,8 @@ A focused test run is not equivalent to full reactor verification. See [CONTRIBU
 | Module | Responsibility |
 |---|---|
 | `webharvest-core` | Runtime, configuration model, plugin contracts/registry and semantic XML inspection |
-| `webharvest-cli` | Command-line client of Core |
-| `webharvest-ide` | Optional editor/client; not the semantic source of truth |
+| `webharvest-cli` | Headless execution and automation client of Core; Data Plane surface |
+| `webharvest-ide` | Human-facing editor/control client of Core; intended Control Plane, not the semantic source of truth |
 | `webharvest-database`, `webharvest-ftp`, `webharvest-mail`, `webharvest-webbrowser`, `webharvest-zip` | Optional integration modules |
 | `docs` | Documentation resources and Maven-coupled generators |
 
@@ -57,13 +59,15 @@ The current production Groovy runtime is Apache Groovy 5.1.3 through the JSR-223
 Core includes built-in processors and preserves documented legacy compatibility such as the `<set-var>` alias alongside `<def>`. Optional integrations currently exist as Maven modules in this repository.
 
 The project direction is to:
-1. finish and test a deliberately small, coherent Core plugin set;
-2. stabilize a versioned public Plugin SPI, descriptor and discovery/registration contract;
-3. prove an independently built plugin outside the WebHarvest source tree;
-4. move company-maintained optional plugins to a separate Git repository and Maven release train only after those gates pass;
-5. evolve toward semantic-context-driven capability resolution in the runtime.
+1. establish a format- and source-neutral Core semantic model and stable capability contracts;
+2. make specialized plugins independently identifiable and composable across acquisition, parsing, extraction, validation, transformation, enrichment and destination operations;
+3. define safe, bounded adaptive composition: deterministic execution remains first-class, while agents may propose changes that Core validates and applies only at safe lifecycle boundaries;
+4. persist validated, portable definitions (eventually through a DSL) so they can be inspected, reused, reloaded and adapted in later runs;
+5. keep MCP, CLI and IDE as optional adapters/clients—not Core dependencies or sources of semantic authority;
+6. define provenance, lineage, data-quality and policy boundaries as cross-cutting platform contracts;
+7. retain the monorepo until objective API, compatibility, ownership and release gates justify extraction.
 
-These are roadmap targets, not claims that the independent SPI, separate extensions repository or semantic runtime are already released. See [Project Direction and Architecture Roadmap](docs/PROJECT_DIRECTION.md) and [Plugin Author Guide](docs/PLUGIN_AUTHOR_GUIDE.md).
+These are roadmap targets, not claims that the independent SPI, separate extensions repository or semantic runtime are already released. See [Project Direction and Architecture Roadmap](docs/PROJECT_DIRECTION.md), [Monorepo policy](docs/MONOREPO.md) and [Plugin Author Guide](docs/PLUGIN_AUTHOR_GUIDE.md).
 
 ## Documentation
 
@@ -96,3 +100,15 @@ Read [CONTRIBUTING.md](CONTRIBUTING.md), search existing issues and open a focus
 ## License and attribution
 
 See [LICENSE](LICENSE), [NOTICE](NOTICE) and [licences/webharvest_licence.txt](licences/webharvest_licence.txt). Preserve third-party license and attribution notices when redistributing.
+
+
+## Product architecture
+
+The product category is **Adaptive Data Acquisition & Integration Platform**. The product roles are intentionally distinct:
+
+- **Core — portable semantic and execution foundation.** Core owns format-independent data-operation meaning, capability contracts, validation, policy enforcement and execution. XML is a compatibility/authoring adapter, not the semantic source of truth. Current Core still contains historical XML/workflow and Guice coupling; container-neutral, format-neutral Core is a target reached through explicit migration gates.
+- **IDE — optional human-facing Control Plane.** The IDE may provide design, inspection, configuration, supervision and observation. It is a client; it does not own workflow semantics, plugin identity or runtime lifecycle.
+- **CLI — optional headless adapter.** CLI is one way to invoke Core from scripts, pipelines and automation. The broader data plane is not limited to CLI and must also support direct Java/API and other host integrations.
+- **Specialized plugins and Packs/Kits.** Plugins provide discrete capabilities and retain independent identities. Curated Packs/Kits may group compatible plugins for convenient distribution; they do not make the underlying extensions one inseparable library.
+
+Agents are planners/proposers, not trusted runtime authorities. MCP is an optional interoperability adapter for capability discovery/invocation; it is not the semantic model, scheduler, authorization layer or a Core dependency. The runtime and policy boundary must validate all proposed changes, enforce resource/security budgets and preserve execution safety. See [Project Direction](docs/PROJECT_DIRECTION.md), [Monorepo policy](docs/MONOREPO.md), and [architecture decision #342](https://github.com/web-harvest/web-harvest/issues/342).
