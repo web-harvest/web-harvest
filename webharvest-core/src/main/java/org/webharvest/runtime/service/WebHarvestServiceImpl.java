@@ -34,6 +34,7 @@
 package org.webharvest.runtime.service;
 
 import com.google.common.eventbus.EventBus;
+import com.google.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.webharvest.definition.Config;
@@ -77,6 +78,17 @@ public class WebHarvestServiceImpl implements WebHarvestService {
     private final AtomicLong executionGeneration = new AtomicLong();
     private final Object admissionLock = new Object();
     private volatile boolean shutdown;
+
+    /**
+     * Creates a service using the EventBus owned by this Guice runtime.
+     *
+     * @param eventBus shared runtime EventBus
+     */
+    @Inject
+    public WebHarvestServiceImpl(EventBus eventBus) {
+        this(Executors.newCachedThreadPool(new SessionThreadFactory()),
+            new SessionRegistryImpl(), eventBus);
+    }
 
     /** Creates a service using the default cached session executor. */
     public WebHarvestServiceImpl() {
