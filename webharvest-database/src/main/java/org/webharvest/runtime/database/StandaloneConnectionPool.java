@@ -109,14 +109,28 @@ public final class StandaloneConnectionPool implements ConnectionFactory {
     }
 
     /**
-     * Unsafe legacy registration without an owner identity is deliberately
-     * rejected: a shared EventBus must never close another session's pool.
+     * Retains the historical ownerless EventBus registration for source and
+     * behavioral compatibility. This listener reacts to any terminal session
+     * event on the supplied bus and is therefore unsafe when that bus is shared.
+     * New managed code must use {@link #registerForSession(EventBus, String)}.
      *
+     * @param eventBus the legacy EventBus
      * @deprecated supply the exact owning session ID
      */
     @Deprecated
-    public void registerForSession(final EventBus eventBus) {
-        throw new IllegalArgumentException("Session ID is required for EventBus resource ownership");
+    public synchronized void registerForSession(final EventBus eventBus) {
+        if (eventBus == null) {
+            throw new IllegalArgumentException("EventBus cannot be null");
+        }
+        if (registeredEventBus == eventBus && registeredSessionId == null) {
+            return;
+        }
+        if (registeredEventBus != null) {
+            throw new IllegalStateException("Connection pool is already registered for another session");
+        }
+        eventBus.register(this);
+        registeredEventBus = eventBus;
+        registeredSessionId = null;
     }
 
     /**
@@ -214,8 +228,8 @@ public final class StandaloneConnectionPool implements ConnectionFactory {
     }
 
     private synchronized boolean isOwningSession(String sessionId) {
-        return registeredEventBus != null && registeredSessionId != null
-            && registeredSessionId.equals(sessionId);
+        return registeredEventBus != null
+            && (registeredSessionId == null || registeredSessionId.equals(sessionId));
     }
 
     private Connection createNewConnection(final String driver,
