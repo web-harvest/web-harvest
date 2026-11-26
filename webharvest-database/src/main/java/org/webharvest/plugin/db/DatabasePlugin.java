@@ -236,6 +236,16 @@ public class DatabasePlugin extends AbstractPlugin {
                     String username = configuration.getProperty(USERNAME_ATT_NAME, "").trim();
                     String password = configuration.getProperty(PASSWORD_ATT_NAME, "").trim();
 
+                    String queryTimeout = configuration.getProperty(QUERY_TIMEOUT_ATT_NAME, "0");
+                    try {
+                        if (Integer.parseInt(queryTimeout.trim()) < 0) {
+                            throw new NumberFormatException("negative timeout");
+                        }
+                    } catch (NumberFormatException invalidTimeout) {
+                        throw new PluginValidationException(
+                            "Database queryTimeout must be a non-negative integer number of seconds");
+                    }
+
                     if (!connection.isEmpty()) {
                         if (!driver.isEmpty() || !url.isEmpty() || !username.isEmpty() || !password.isEmpty()) {
                             throw new PluginValidationException(
