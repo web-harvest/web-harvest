@@ -77,6 +77,10 @@ The intended semantic context describes workflow meaning independently of a spec
 
 The runtime should resolve these requirements against descriptors of installed plugins, validate that the chosen implementation satisfies the contract, and bind typed values explicitly. Resolution must not depend on display names, accidental classpath order or silent local-name guessing.
 
+### 3.5 Runtime integration and deployment boundaries
+
+Core's Java API is the primary integration surface. CLI and IDE are clients/adapters of Core, not product-level semantic authorities. A headless launcher may be retained as an optional one-shot/batch process boundary for process isolation, non-Java invocation or host-managed jobs. It must remain thin and must not grow into a daemon, REST server, scheduler, persistent job manager or control plane. Docker is optional packaging only when a concrete consumer and operational contract justify it; it is not a product requirement. See [CLI and headless execution decision](CLI_AND_HEADLESS_EXECUTION.md) for current evidence, compatibility gates and rationale.
+
 ## 4. Module and repository strategy
 
 The current repository remains a monorepo while Core APIs and plugin boundaries are being stabilized. Current modules and dependency rules are documented in [MONOREPO.md](MONOREPO.md).

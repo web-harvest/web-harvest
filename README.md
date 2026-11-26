@@ -13,7 +13,7 @@ WebHarvest is an open-source Java framework for extracting and transforming web 
 - XML-based workflow configuration and execution.
 - A Java Core runtime and plugin contracts/registry.
 - Optional integration modules for database, FTP, mail, browser automation and ZIP/archive operations.
-- A CLI for headless execution.
+- An optional headless launcher for process-based execution; Core's Java API is the primary integration surface. The launcher's scope and compatibility are under assessment in [CLI and headless execution decision](docs/CLI_AND_HEADLESS_EXECUTION.md).
 - An optional IDE/editor and visual design surface.
 
 Historical guides and generated plugin counts may describe earlier versions. For current behavior, prefer source, tests, CI and documentation explicitly marked current.
@@ -68,6 +68,7 @@ These are roadmap targets, not claims that the independent SPI, separate extensi
 ## Documentation
 
 - [Project direction and architecture roadmap](docs/PROJECT_DIRECTION.md) — product goals, architecture, phases and decision gates.
+- [CLI and headless execution decision](docs/CLI_AND_HEADLESS_EXECUTION.md) — why Core/Java API is primary, when a launcher is justified, and why Docker is optional.
 - [Plugin Author Guide](docs/PLUGIN_AUTHOR_GUIDE.md) — target third-party plugin contract and current limitations.
 - [Monorepo and module boundaries](docs/MONOREPO.md) — current modules, dependency direction and repository extraction gates.
 - [Contributing](CONTRIBUTING.md) — workflow, branches, CI and review expectations.
