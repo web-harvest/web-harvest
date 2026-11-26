@@ -224,15 +224,21 @@ public class WebBrowserPlugin extends AbstractPlugin {
         ExecutionResourceAccess resourceAccess = context.getResourceAccess();
         String sessionId = session != null ? session.getSessionId()
             : resourceAccess != null ? resourceAccess.getOwner().getSessionId() : null;
+        if (resourceAccess != null && session != null
+                && !sessionId.equals(resourceAccess.getOwner().getSessionId())) {
+            throw new IllegalStateException("Browser session does not match its execution resource owner");
+        }
         if (sessionId == null || sessionId.trim().isEmpty()) {
             synchronized (CONTEXT_PAGES) {
                 return CONTEXT_PAGES.computeIfAbsent(
-                    context, ignored -> new BrowserSessionState(null, null, null));
+                    context, ignored -> new BrowserSessionState(null, null, null, null));
             }
         }
 
+        String stateKey = resourceAccess != null ? resourceAccess.getOwner().toString() : sessionId;
         BrowserSessionState state = SESSION_PAGES.computeIfAbsent(
-            sessionId, ignored -> new BrowserSessionState(sessionId, context.getEventBus(), resourceAccess));
+            stateKey, ignored -> new BrowserSessionState(
+                stateKey, sessionId, context.getEventBus(), resourceAccess));
         if (resourceAccess != null && !resourceAccess.getOwner().equals(state.getOwner())) {
             throw new IllegalStateException("Browser state belongs to another execution owner");
         }
@@ -240,13 +246,14 @@ public class WebBrowserPlugin extends AbstractPlugin {
         // mapping is published. A closed state must never be reused.
         if (state.isClosed() || session != null && session.getStatus().isTerminal()) {
             state.close();
-            SESSION_PAGES.remove(sessionId, state);
+            SESSION_PAGES.remove(stateKey, state);
             throw new IllegalStateException("Browser session is no longer active");
         }
         return state;
     }
 
     private static final class BrowserSessionState {
+        private final String stateKey;
         private final String sessionId;
         private final EventBus eventBus;
         private final ExecutionOwner owner;
@@ -255,8 +262,9 @@ public class WebBrowserPlugin extends AbstractPlugin {
         private WebClient defaultPage;
         private boolean closed;
 
-        private BrowserSessionState(String sessionId, EventBus eventBus,
+        private BrowserSessionState(String stateKey, String sessionId, EventBus eventBus,
                                      ExecutionResourceAccess resourceAccess) {
+            this.stateKey = stateKey;
             this.sessionId = sessionId;
             this.owner = resourceAccess != null ? resourceAccess.getOwner() : null;
             if (resourceAccess != null) {
