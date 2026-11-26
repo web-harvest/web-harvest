@@ -365,6 +365,7 @@ public final class ResourceLedger {
         private boolean registrationRetired;
         private Throwable abortFailure;
         private Throwable closeFailure;
+        private Runnable abortCompletionListener;
 
         private Entry(RegistrationKey key, String resourceId, Scope scope, ExecutionOwner owner,
                       RegistryGenerationId generationId, AbortAction abortAction, CloseAction closeAction) {
@@ -549,10 +550,44 @@ public final class ResourceLedger {
          * Requests best-effort interruption of active I/O. Abort is independent
          * from close and is invoked at most once; its failure remains observable.
          */
+        public void setAbortCompletionListener(Runnable listener) {
+            Objects.requireNonNull(listener, "Abort completion listener cannot be null");
+            boolean alreadyComplete;
+            synchronized (entry) {
+                if (entry.abortCompletionListener != null) {
+                    throw new IllegalStateException("Abort completion listener is already registered");
+                }
+                entry.abortCompletionListener = listener;
+                alreadyComplete = isAbortTerminal(entry.abortState) && !entry.abortInProgress;
+            }
+            if (alreadyComplete) {
+                listener.run();
+            }
+        }
+
+        private boolean isAbortTerminal(AbortState state) {
+            return state == AbortState.SUCCEEDED || state == AbortState.FAILED
+                || state == AbortState.REJECTED;
+        }
+
+        private void notifyAbortCompletion() {
+            Runnable listener;
+            synchronized (entry) {
+                if (!isAbortTerminal(entry.abortState) || entry.abortInProgress) {
+                    return;
+                }
+                listener = entry.abortCompletionListener;
+            }
+            if (listener != null) {
+                listener.run();
+            }
+        }
+
         public void abort() {
             AbortAction action;
             boolean generationRetiring = entry.scope == Scope.GENERATION
                 && ledger.isGenerationRetiring(entry.generationId);
+            boolean noAction = false;
             synchronized (entry) {
                 if (entry.state == State.OPEN && !generationRetiring) {
                     throw new IllegalStateException(
@@ -566,10 +601,15 @@ public final class ResourceLedger {
                 if (action == null) {
                     entry.abortState = AbortState.SUCCEEDED;
                     entry.notifyAll();
-                    return;
+                    noAction = true;
+                } else {
+                    entry.abortState = AbortState.QUEUED;
+                    entry.abortInProgress = true;
                 }
-                entry.abortState = AbortState.QUEUED;
-                entry.abortInProgress = true;
+            }
+            if (noAction) {
+                notifyAbortCompletion();
+                return;
             }
             try {
                 ledger.abortExecutor.execute(() -> runAbort(action));
@@ -582,6 +622,7 @@ public final class ResourceLedger {
                         entry.notifyAll();
                     }
                 }
+                notifyAbortCompletion();
             } catch (RuntimeException dispatchFailure) {
                 synchronized (entry) {
                     if (entry.abortState == AbortState.QUEUED) {
@@ -591,6 +632,7 @@ public final class ResourceLedger {
                         entry.notifyAll();
                     }
                 }
+                notifyAbortCompletion();
                 throw dispatchFailure;
             } catch (Error dispatchFailure) {
                 synchronized (entry) {
@@ -601,6 +643,7 @@ public final class ResourceLedger {
                         entry.notifyAll();
                     }
                 }
+                notifyAbortCompletion();
                 throw dispatchFailure;
             }
         }
@@ -627,6 +670,7 @@ public final class ResourceLedger {
                     entry.abortInProgress = false;
                     entry.notifyAll();
                 }
+                notifyAbortCompletion();
             }
             if (failure instanceof Error) {
                 throw (Error) failure;
