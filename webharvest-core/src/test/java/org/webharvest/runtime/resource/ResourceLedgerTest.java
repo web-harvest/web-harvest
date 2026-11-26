@@ -880,7 +880,7 @@ public class ResourceLedgerTest {
 
 
     @Test(groups = {"unit", "runtime"})
-    public void abortDispatcherRuntimeFailureIsRetainedAsRejected() {
+    public void abortDispatcherRuntimeFailureIsRetainedAsRejected() throws InterruptedException {
         IllegalStateException dispatchFailure = new IllegalStateException("dispatcher unavailable");
         ResourceLedger ledger = new ResourceLedger("runtime-a", command -> {
             throw dispatchFailure;
@@ -919,7 +919,7 @@ public class ResourceLedgerTest {
 
 
     @Test(groups = {"unit", "runtime"})
-    public void fatalAbortDispatcherFailureIsRetainedAndDoesNotLeavePhantomInProgress() {
+    public void fatalAbortDispatcherFailureIsRetainedAndDoesNotLeavePhantomInProgress() throws InterruptedException {
         AssertionError dispatchFailure = new AssertionError("fatal dispatcher failure");
         ResourceLedger ledger = new ResourceLedger("runtime-a", command -> {
             throw dispatchFailure;
