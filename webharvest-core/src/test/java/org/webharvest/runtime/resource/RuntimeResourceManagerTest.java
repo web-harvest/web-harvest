@@ -13,12 +13,12 @@ import static org.testng.Assert.assertTrue;
 
 public class RuntimeResourceManagerTest {
 
-    private static void assertThrows(Class<? extends Throwable> expected, Runnable action) {
+    private static <T extends Throwable> T assertThrows(Class<T> expected, Runnable action) {
         try {
             action.run();
         } catch (Throwable actual) {
             if (expected.isInstance(actual)) {
-                return;
+                return expected.cast(actual);
             }
             throw new AssertionError("Unexpected exception type: " + actual.getClass().getName(), actual);
         }
