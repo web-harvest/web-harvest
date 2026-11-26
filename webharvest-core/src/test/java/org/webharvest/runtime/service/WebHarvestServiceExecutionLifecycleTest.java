@@ -642,6 +642,41 @@ public class WebHarvestServiceExecutionLifecycleTest {
     }
 
     @Test(groups = {"unit", "service"})
+    public void shutdownNowSignalsExecutorWhileProviderAbortRemainsBlocked() throws Exception {
+        EventBus eventBus = new EventBus();
+        BlockingAbortResourceListener listener = new BlockingAbortResourceListener();
+        eventBus.register(listener);
+        CountDownLatch executorShutdownSignal = new CountDownLatch(1);
+        ShutdownSignalExecutorService executor = new ShutdownSignalExecutorService(
+            java.util.concurrent.Executors.newSingleThreadExecutor(), executorShutdownSignal);
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            executor, new SessionRegistryImpl(), eventBus);
+        ScraperSession session = service.executeAsync(Mockito.mock(Config.class), null, null);
+        ExecutionTrackedSession tracked = (ExecutionTrackedSession) session;
+        Thread shutdownCaller = new Thread(service::shutdownNow, "blocked-provider-abort-shutdown");
+        try {
+            assertTrue(listener.started.await(5, TimeUnit.SECONDS));
+            shutdownCaller.start();
+            assertTrue(listener.abortEntered.await(5, TimeUnit.SECONDS));
+            assertTrue(executorShutdownSignal.await(2, TimeUnit.SECONDS),
+                "A blocked provider abort must not prevent the session executor shutdown signal");
+            shutdownCaller.join(3000);
+            assertFalse(shutdownCaller.isAlive(),
+                "shutdownNow must return within its bounded wait while the provider callback remains blocked");
+            assertEquals(listener.resource.getState(), ExecutionResourceAccess.ResourceState.QUARANTINED);
+            assertEquals(listener.closeCount.get(), 0);
+            assertEquals(listener.workerInterrupted.getCount(), 0L);
+        } finally {
+            listener.releaseAbort.countDown();
+            listener.releaseWorker.countDown();
+            shutdownCaller.join(5000);
+        }
+        assertTrue(tracked.awaitExecutionCompletion(5000));
+        assertTrue(listener.closed.await(5, TimeUnit.SECONDS));
+        service.shutdownNow();
+    }
+
+    @Test(groups = {"unit", "service"})
     public void testShutdownNowCancelsActiveTaskWhileAnotherSubmissionIsBlocked() throws InterruptedException {
         EventBus eventBus = new EventBus();
         BlockingStartedListener listener = new BlockingStartedListener();
@@ -1141,6 +1176,54 @@ public class WebHarvestServiceExecutionLifecycleTest {
             } catch (InterruptedException interrupted) {
                 Thread.currentThread().interrupt();
             }
+        }
+    }
+
+    private static class BlockingAbortResourceListener {
+        private final CountDownLatch started = new CountDownLatch(1);
+        private final CountDownLatch abortEntered = new CountDownLatch(1);
+        private final CountDownLatch releaseAbort = new CountDownLatch(1);
+        private final CountDownLatch releaseWorker = new CountDownLatch(1);
+        private final CountDownLatch workerInterrupted = new CountDownLatch(1);
+        private final CountDownLatch closed = new CountDownLatch(1);
+        private final AtomicInteger closeCount = new AtomicInteger();
+        private volatile ExecutionResourceAccess.ResourceHandle resource;
+        private volatile ExecutionResourceAccess.Lease lease;
+        @Subscribe
+        public void onSessionStarted(SessionStartedEvent event) {
+            resource = event.getSession().getContext().getResourceAccess().registerSessionResource(
+                "test/blocked-provider-abort", () -> {
+                    abortEntered.countDown();
+                    releaseAbort.await();
+                }, () -> {
+                    closeCount.incrementAndGet();
+                    closed.countDown();
+                });
+            lease = resource.acquire();
+            started.countDown();
+            boolean waiting = true;
+            while (waiting) {
+                try {
+                    releaseWorker.await();
+                    waiting = false;
+                } catch (InterruptedException expected) {
+                    workerInterrupted.countDown();
+                }
+            }
+            lease.close();
+        }
+    }
+
+    private static class ShutdownSignalExecutorService extends DelegatingExecutorService {
+        private final CountDownLatch shutdownSignal;
+        private ShutdownSignalExecutorService(ExecutorService delegate, CountDownLatch shutdownSignal) {
+            super(delegate);
+            this.shutdownSignal = shutdownSignal;
+        }
+        @Override
+        public List<Runnable> shutdownNow() {
+            shutdownSignal.countDown();
+            return super.shutdownNow();
         }
     }
 
