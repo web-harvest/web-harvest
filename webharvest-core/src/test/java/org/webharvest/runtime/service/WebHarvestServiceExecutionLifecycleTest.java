@@ -41,6 +41,7 @@ import org.webharvest.definition.Config;
 import org.webharvest.runtime.session.ExecutionState;
 import org.webharvest.runtime.session.ExecutionTrackedSession;
 import org.webharvest.runtime.session.ScraperSession;
+import org.webharvest.runtime.session.SessionRegistry;
 import org.webharvest.runtime.session.SessionRegistryImpl;
 import org.webharvest.runtime.session.SessionStatus;
 import org.webharvest.runtime.session.TerminationDisposition;
@@ -367,6 +368,83 @@ public class WebHarvestServiceExecutionLifecycleTest {
             listener.release.countDown();
             submitter.join(5000);
             service.shutdownNow();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
+    public void testShutdownRejectionDoesNotPublishSessionCreatedEvent() throws InterruptedException {
+        EventBus eventBus = new EventBus();
+        CreatedEventCounter listener = new CreatedEventCounter();
+        eventBus.register(listener);
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            new InlineExecutorService(), new SessionRegistryImpl(), eventBus);
+
+        try {
+            service.shutdown();
+            try {
+                service.executeAsync(Mockito.mock(Config.class), null, null);
+                fail("A shut down service must reject new sessions");
+            } catch (IllegalStateException expected) {
+                // Expected: rejected before admission, so no creation event is observable.
+            }
+            assertEquals(listener.count.get(), 0,
+                "Rejected post-shutdown submissions must not publish SessionCreatedEvent");
+        } finally {
+            service.shutdown();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
+    public void testRegistryAdmissionFailureDoesNotPublishSessionCreatedEvent() throws InterruptedException {
+        EventBus eventBus = new EventBus();
+        CreatedEventCounter listener = new CreatedEventCounter();
+        eventBus.register(listener);
+        SessionRegistry registry = Mockito.mock(SessionRegistry.class);
+        Mockito.doThrow(new IllegalStateException("registry unavailable"))
+            .when(registry).register(Mockito.any(ScraperSession.class));
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            new InlineExecutorService(), registry, eventBus);
+
+        try {
+            try {
+                service.executeAsync(Mockito.mock(Config.class), null, null);
+                fail("A registry failure must reject admission");
+            } catch (IllegalStateException expected) {
+                assertEquals(expected.getMessage(), "registry unavailable");
+            }
+            assertEquals(listener.count.get(), 0,
+                "A failed registry admission must not publish SessionCreatedEvent");
+        } finally {
+            service.shutdown();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
+    public void testAcceptedSessionPublishesCreatedEventExactlyOnceOutsideAdmissionLock()
+            throws InterruptedException, ReflectiveOperationException {
+        EventBus eventBus = new EventBus();
+        CreatedEventAdmissionProbe listener = new CreatedEventAdmissionProbe();
+        eventBus.register(listener);
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            new InlineExecutorService(), new SessionRegistryImpl(), eventBus);
+        Field lockField = WebHarvestServiceImpl.class.getDeclaredField("admissionLock");
+        lockField.setAccessible(true);
+        listener.admissionLock = lockField.get(service);
+
+        try {
+            ScraperSession session = service.executeAsync(Mockito.mock(Config.class), null, null);
+            assertTrue(listener.probeCompleted.await(5, TimeUnit.SECONDS),
+                "The creation subscriber must be able to acquire admissionLock from another thread");
+            assertTrue(listener.lockAcquired.get(),
+                "SessionCreatedEvent subscribers must not run under admissionLock");
+            assertEquals(listener.count.get(), 1,
+                "An accepted session must publish exactly one creation event");
+
+            ((org.webharvest.runtime.session.ScraperSessionImpl) session).publishCreatedEvent();
+            assertEquals(listener.count.get(), 1,
+                "Repeated publication attempts must remain exactly-once");
+        } finally {
+            service.shutdown();
         }
     }
 
@@ -1293,6 +1371,43 @@ public class WebHarvestServiceExecutionLifecycleTest {
         public void onSessionStarted(SessionStartedEvent event) {
             resource = event.getSession().getContext().getResourceAccess().registerSessionResource(
                 "test/session-resource", abortCount::incrementAndGet, closeCount::incrementAndGet);
+        }
+    }
+
+    private static class CreatedEventCounter {
+        private final AtomicInteger count = new AtomicInteger();
+
+        @Subscribe
+        public void onCreated(SessionCreatedEvent event) {
+            count.incrementAndGet();
+        }
+    }
+
+    private static class CreatedEventAdmissionProbe {
+        private final AtomicInteger count = new AtomicInteger();
+        private final AtomicBoolean lockAcquired = new AtomicBoolean();
+        private final CountDownLatch probeCompleted = new CountDownLatch(1);
+        private volatile Object admissionLock;
+
+        @Subscribe
+        public void onCreated(SessionCreatedEvent event) {
+            count.incrementAndGet();
+            Thread probe = new Thread(() -> {
+                synchronized (admissionLock) {
+                    lockAcquired.set(true);
+                    probeCompleted.countDown();
+                }
+            }, "session-created-admission-lock-probe");
+            probe.start();
+            try {
+                if (!probeCompleted.await(5, TimeUnit.SECONDS)) {
+                    throw new AssertionError("SessionCreatedEvent subscriber ran while admissionLock was held");
+                }
+                probe.join(5000);
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+                throw new AssertionError("Interrupted while probing admissionLock", interrupted);
+            }
         }
     }
 
