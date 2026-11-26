@@ -259,6 +259,28 @@ public class ResourceLedgerTest {
     }
 
     @Test(groups = {"unit", "runtime"})
+    public void abortIsNotInvokedAfterCloseFailure() throws InterruptedException {
+        ResourceLedger ledger = new ResourceLedger("runtime-a");
+        AtomicInteger aborts = new AtomicInteger();
+        IllegalStateException closeFailure = new IllegalStateException("close failed");
+        ResourceLedger.Registration registration = ledger.registerRuntime(
+            "close-failed-resource", aborts::incrementAndGet, () -> {
+                throw closeFailure;
+            });
+
+        registration.requestClose();
+        registration.markOwnerQuiescent();
+        ResourceLedger.DrainResult result = registration.drainAndClose(Duration.ofSeconds(1));
+        assertEquals(result.getState(), ResourceLedger.State.CLOSE_FAILED);
+        assertSame(result.getCloseFailure(), closeFailure);
+
+        registration.abort();
+        assertEquals(registration.getAbortState(), ResourceLedger.AbortState.NOT_REQUESTED);
+        assertEquals(aborts.get(), 0);
+        assertEquals(ledger.size(), 1);
+    }
+
+    @Test(groups = {"unit", "runtime"})
     public void testDuplicateIdentityAndCrossRuntimeOwnerFailClosed() {
         ResourceLedger ledger = new ResourceLedger("runtime-a");
         ResourceLedger.Registration first = ledger.registerRuntime("shared-client", null, null);
@@ -460,6 +482,9 @@ public class ResourceLedgerTest {
         AtomicInteger closes = new AtomicInteger();
         ResourceLedger.Registration registration = ledger.registerGeneration(
             "generation-resource", generation, aborts::incrementAndGet, closes::incrementAndGet);
+
+        expectThrows(IllegalStateException.class, registration::abort);
+        assertEquals(registration.getAbortState(), ResourceLedger.AbortState.NOT_REQUESTED);
 
         ledger.beginGenerationRetirement(generation);
         registration.abort();
