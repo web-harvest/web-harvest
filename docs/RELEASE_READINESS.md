@@ -171,3 +171,62 @@ The CLI's extracted `META-INF/NOTICE.md` is Jakarta Mail's notice; the IDE's is 
 - [#323](https://github.com/web-harvest/web-harvest/issues/323) owns distribution-specific CLI/IDE component manifests or CycloneDX SBOMs, class-to-origin correlation, aggregate SBOM delta classification, license/NOTICE reconciliation and deterministic CI assertions.
 - [#88](https://github.com/web-harvest/web-harvest/issues/88) remains the release gate.
 - No release tag, GitHub Release, Maven publication, signing-key/credential change or website deployment has been performed or authorized.
+
+## 2026-11-23 checkpoint — combined shaded distribution gates and release engineering
+
+**Canonical source baseline:** `main` at `1729bdf4620a66686d02605083e27e27d1ab3944`.  
+**Combined technical candidate:** [PR #340](https://github.com/web-harvest/web-harvest/pull/340), exact head `788309118af09a4198f35044b0dc3ccc4a60b7e0`.  
+**Recommendation remains: NO-GO** for GitHub Release, Maven Central publication or website deployment.
+
+### Combined exact-head CI and artifact inspection
+
+All three workflows completed successfully on the same PR #340 head:
+- Java 17 full reactor, static analysis, Javadoc, packaged CLI/IDE smoke, shaded provenance, CycloneDX and distribution OSV — [run 45121496312](https://github.com/web-harvest/web-harvest/actions/runs/45121496312).
+- Workflow lint and pinned action smoke — [run 45121496291](https://github.com/web-harvest/web-harvest/actions/runs/45121496291).
+- Aggregate production/test SBOM and base/head OSV comparison — [run 45121496426](https://github.com/web-harvest/web-harvest/actions/runs/45121496426).
+
+Inspected artifacts:
+- `java17-reactor-diagnostics`, ID `14794145976`, SHA-256 `2dc996b40c7566979da67c8cb1e6dcd40bb759758f0a1696461ccb1acb0c63f8`.
+- `osv-cyclonedx-evidence`, ID `14794275559`, SHA-256 `d6803f899ee8ddf1fc8fb70dec870fa4a12b1f927cb2429177e90a584bfd9522`.
+
+| Gate | Exact candidate evidence | Result |
+|---|---|---|
+| CLI distribution CycloneDX | 72 components, 72 unique PURLs; no missing license entries | PASS |
+| IDE distribution CycloneDX | 54 components, 54 unique PURLs; no missing license entries | PASS |
+| CLI OSV | 72 scanned packages; exact PURL set equality with BOM; zero vulnerability findings | PASS |
+| IDE OSV | 54 scanned packages; exact PURL set equality with BOM; zero vulnerability findings | PASS |
+| Aggregate OSV | Base/head production 85 packages each; base/head test 26 each; all four scanner exit codes 0; zero vulnerabilities and zero newly introduced findings | PASS |
+| Class-byte origin | CLI 20,307 exact matches + 1,280 separately mapped relocated Jetty + 4 first-party; IDE 17,512 exact matches + 23 first-party; zero unmatched/ambiguous | PASS |
+| Jetty NOTICE | Same upstream payload in CLI and IDE, SHA-256 `ce642d8c8861ef05cf94c010a2d707425ed086d56641c127d0636fd0ac031e77` | PASS |
+| Javadoc JAR audit | All eight generated Javadoc JARs contain `index.html` | PASS |
+
+CLI archive SHA-256: `04cdae0fe3a21e1279ad908757ff10b7f85c8d472f613acac2fa46f086502aa3`.  
+IDE archive SHA-256: `6b0275c508ed64f2f38257da0138a34fb1a08e1731270794a886d8c879a8904c`.
+
+Guice 5.1.0 license evidence is linked to the resolved `guice-parent:5.1.0` POM chain with source and parent hashes. IDE `jetty-jakarta-servlet-api:5.0.2` retains both upstream-declared Apache-2.0 and EPL-1.0 choices with its `jetty-toolchain:1.6` parent chain. This is technical evidence only, not a legal choice or sign-off.
+
+Aggregate-vs-distribution comparison is PURL membership only; it is not proof of package-content equivalence. The exact candidate is a draft PR and has not been merged.
+
+### Release engineering findings on current main
+
+The root POM still contains legacy publication wiring:
+- `distributionManagement` targets `oss.sonatype.org/content/repositories/snapshots/` and `oss.sonatype.org/service/local/staging/deploy/maven2/`.
+- The `release` profile binds `maven-gpg-plugin:1.4` signing to `verify`.
+- `maven-source-plugin:2.0.4` is pinned in plugin management; `maven-javadoc-plugin:3.12.0` is pinned.
+- The official `org.sonatype.central:central-publishing-maven-plugin` is not configured.
+- The inspected PR #340 diagnostics artifact retained all eight Javadoc JARs but did not retain source JARs, detached `.asc` signatures or a Central bundle. This is missing retained evidence, not proof those files were not generated during Maven execution.
+- The exact PR #340 Java 17 runner log reports Apache Maven **3.9.15**. The official Central Publishing plugin 0.12.0 tagged README identifies a tested Maven range beginning at 3.9.16; #341 therefore requires an explicit supported Maven pin and retained version evidence for the bundle workflow. Existing general CI remains unchanged pending separate evidence.
+
+Sonatype's current documentation describes the official Central Publishing Maven plugin, manual publishing as the default (`autoPublish=false`), and bundle-only generation using `skipUpload=true`. The plugin does not generate all source/Javadoc/signature prerequisites by itself. References: [Central Publishing Maven plugin](https://central.sonatype.org/publish/publish-portal-maven/), [OSSRH sunset](https://central.sonatype.org/publish/publish-maven/), and [Apache Maven Central requirements](https://maven.apache.org/repository/guide-central-repository-upload.html).
+
+Follow-up [#341](https://github.com/web-harvest/web-harvest/issues/341) owns the bounded migration: reactor GAV/publication inventory, modern pinned plugins, safe non-upload bundle generation, complete artifact manifest and CI proof that no upload/publish action runs. No Portal credentials or upload endpoint were used during this inspection.
+
+### Remaining release blockers and decision
+
+1. Complete #341 and inspect the non-upload Central bundle on one exact candidate SHA.
+2. Obtain independent legal/maintainer review of the third-party license choices and notice obligations; technical metadata is not legal approval.
+3. Reconcile CHANGELOG, Java 17 compatibility/installation documentation, release matrix and Maven coordinates against the exact candidate.
+4. Recheck current GitHub tags/releases and authoritative Maven Central availability for intended `org.webharvest` GAVs at candidate freeze; historical `net.sourceforge.web-harvest` coordinates are not proof of current publication.
+5. Obtain explicit maintainer approval for the exact release action.
+
+**RELEASE = NO-GO.** No merge of #340, tag, GitHub Release, Maven Central upload/publication, signing with maintainer keys, credential change or website deployment has been performed or authorized.
