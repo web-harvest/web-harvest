@@ -46,6 +46,7 @@ import com.google.common.eventbus.EventBus;
 import org.webharvest.definition.Config;
 // REMOVED in v2.2.x - these classes no longer exist
 import org.webharvest.runtime.scripting.ScriptingLanguage;
+import org.webharvest.runtime.scripting.ScriptEngineFactory;
 import org.webharvest.runtime.session.ScraperSession;
 import org.webharvest.runtime.session.ExecutionOwner;
 import org.webharvest.runtime.resource.ExecutionResourceAccess;
@@ -100,6 +101,15 @@ public interface DynamicScopeContext extends Iterable<KeyValuePair<Variable>> {
      *            new default configuration's charset
      */
     void setCharset(String charset);
+
+    /**
+     * Returns the script-engine factory owned by the runtime that created this context.
+     * Legacy context implementations may return {@code null}; callers may then use
+     * the deprecated process-wide compatibility fallback.
+     */
+    default ScriptEngineFactory getScriptEngineFactory() {
+        return null;
+    }
 
     Config getConfig();
 

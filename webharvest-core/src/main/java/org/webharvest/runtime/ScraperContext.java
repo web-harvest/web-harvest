@@ -52,6 +52,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.webharvest.definition.Config;
 import org.webharvest.runtime.scripting.ScriptingLanguage;
+import org.webharvest.runtime.scripting.ScriptEngineFactory;
 import org.webharvest.runtime.session.ScraperSession;
 import org.webharvest.runtime.session.ExecutionOwner;
 import org.webharvest.runtime.session.ExecutionTrackedSession;
@@ -95,6 +96,9 @@ public class ScraperContext implements DynamicScopeContext {
 
     @Deprecated
     private String charset;
+
+    @Inject
+    private ScriptEngineFactory scriptEngineFactory;
 
     private Config config;
     
@@ -273,8 +277,13 @@ public class ScraperContext implements DynamicScopeContext {
     }
 
     /**
-     * {@inheritDoc}
+     * Returns the script engine factory injected by this context's runtime.
      */
+    @Override
+    public ScriptEngineFactory getScriptEngineFactory() {
+        return scriptEngineFactory;
+    }
+
     @Override
     public Config getConfig() {
         return config;
