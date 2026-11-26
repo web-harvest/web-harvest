@@ -54,6 +54,8 @@ import org.webharvest.definition.Config;
 import org.webharvest.runtime.scripting.ScriptingLanguage;
 import org.webharvest.runtime.session.ScraperSession;
 import org.webharvest.runtime.session.ExecutionOwner;
+import org.webharvest.runtime.session.ExecutionTrackedSession;
+import org.webharvest.runtime.resource.ExecutionResourceAccess;
 import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.ScriptingVariable;
 import org.webharvest.runtime.variables.Variable;
@@ -101,6 +103,7 @@ public class ScraperContext implements DynamicScopeContext {
     private EventBus eventBus;
     private ScraperSession session;
     private volatile ExecutionOwner executionOwner;
+    private volatile ExecutionResourceAccess resourceAccess;
 
     public ScraperContext() {
         scopeStack.push(new ScopeFrame());
@@ -325,7 +328,32 @@ public class ScraperContext implements DynamicScopeContext {
         if (session != null && !session.getSessionId().equals(owner.getSessionId())) {
             throw new IllegalArgumentException("Execution owner session does not match context session");
         }
+        if (session instanceof ExecutionTrackedSession
+            && !owner.equals(((ExecutionTrackedSession) session).getExecutionOwner())) {
+            throw new IllegalArgumentException("Execution owner does not match tracked session identity");
+        }
         executionOwner = owner;
+    }
+
+    /** Returns the host-owned resource facade bound to this execution. */
+    @Override
+    public ExecutionResourceAccess getResourceAccess() {
+        return resourceAccess;
+    }
+
+    /** Binds one resource facade whose immutable owner must match this context. */
+    @Override
+    public synchronized void setResourceAccess(ExecutionResourceAccess resourceAccess) {
+        if (resourceAccess == null) {
+            throw new IllegalArgumentException("Execution resource access cannot be null");
+        }
+        if (this.resourceAccess != null) {
+            throw new IllegalStateException("Execution resource access is already bound to this context");
+        }
+        if (executionOwner == null || !executionOwner.equals(resourceAccess.getOwner())) {
+            throw new IllegalArgumentException("Resource access owner does not match context execution owner");
+        }
+        this.resourceAccess = resourceAccess;
     }
     
     /**
@@ -336,6 +364,10 @@ public class ScraperContext implements DynamicScopeContext {
         if (executionOwner != null && session != null
             && !session.getSessionId().equals(executionOwner.getSessionId())) {
             throw new IllegalArgumentException("Context session does not match its execution owner");
+        }
+        if (executionOwner != null && session instanceof ExecutionTrackedSession
+            && !executionOwner.equals(((ExecutionTrackedSession) session).getExecutionOwner())) {
+            throw new IllegalArgumentException("Context session identity does not match its execution owner");
         }
         this.session = session;
     }
