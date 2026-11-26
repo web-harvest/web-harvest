@@ -30,6 +30,8 @@
 package org.webharvest.runtime.resource;
 
 import java.util.ArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -50,6 +52,7 @@ public final class RuntimeResourceManager implements AutoCloseable {
     private final Map<String, AutoCloseable> resources = new LinkedHashMap<>();
     private final IdentityHashMap<AutoCloseable, String> resourceIds = new IdentityHashMap<>();
     private boolean closed;
+    private final CountDownLatch closeCompleted = new CountDownLatch(1);
     private RuntimeException closeFailure;
 
     /**
@@ -107,37 +110,66 @@ public final class RuntimeResourceManager implements AutoCloseable {
      */
     @Override
     public void close() {
-        List<Map.Entry<String, AutoCloseable>> snapshot;
+        List<Map.Entry<String, AutoCloseable>> snapshot = null;
         synchronized (this) {
             if (closed) {
-                if (closeFailure != null) {
-                    throw closeFailure;
-                }
-                return;
+                // A concurrent caller must observe completed retirement, not only
+                // the admission barrier being closed.
+            } else {
+                closed = true;
+                snapshot = new ArrayList<>(resources.entrySet());
+                resources.clear();
+                resourceIds.clear();
             }
-            closed = true;
-            snapshot = new ArrayList<>(resources.entrySet());
-            resources.clear();
-            resourceIds.clear();
+        }
+
+        if (snapshot == null) {
+            awaitCloseCompletion();
+            RuntimeException failure;
+            synchronized (this) {
+                failure = closeFailure;
+            }
+            if (failure != null) {
+                throw failure;
+            }
+            return;
         }
 
         RuntimeException failure = null;
-        for (int i = snapshot.size() - 1; i >= 0; i--) {
-            Map.Entry<String, AutoCloseable> entry = snapshot.get(i);
-            RuntimeException closeError = closeOne(entry.getKey(), entry.getValue());
-            if (closeError != null) {
-                if (failure == null) {
-                    failure = new IllegalStateException("One or more runtime resources failed to close");
+        try {
+            for (int i = snapshot.size() - 1; i >= 0; i--) {
+                Map.Entry<String, AutoCloseable> entry = snapshot.get(i);
+                RuntimeException closeError = closeOne(entry.getKey(), entry.getValue());
+                if (closeError != null) {
+                    if (failure == null) {
+                        failure = new IllegalStateException("One or more runtime resources failed to close");
+                    }
+                    failure.addSuppressed(closeError);
                 }
-                failure.addSuppressed(closeError);
             }
-        }
-
-        synchronized (this) {
-            closeFailure = failure;
+        } finally {
+            synchronized (this) {
+                closeFailure = failure;
+            }
+            closeCompleted.countDown();
         }
         if (failure != null) {
             throw failure;
+        }
+    }
+
+    private void awaitCloseCompletion() {
+        boolean interrupted = false;
+        while (true) {
+            try {
+                closeCompleted.await();
+                break;
+            } catch (InterruptedException interruption) {
+                interrupted = true;
+            }
+        }
+        if (interrupted) {
+            Thread.currentThread().interrupt();
         }
     }
 
