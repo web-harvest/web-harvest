@@ -277,9 +277,8 @@ public class ScraperContext implements DynamicScopeContext {
     }
 
     /**
-     * {@inheritDoc}
+     * Returns the script engine factory injected by this context's runtime.
      */
-    /** Returns the script engine factory injected by this context's runtime. */
     @Override
     public ScriptEngineFactory getScriptEngineFactory() {
         return scriptEngineFactory;
