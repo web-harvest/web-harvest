@@ -176,7 +176,8 @@ public final class ScraperModule extends AbstractModule {
                 new ScrapingAwareTypeListener());
         bindListener(Matchers.any(), new EventBusTypeListener());
         
-        bind(EventBus.class).in(ScrapingScope.class);
+        // One shared event bus per injector/runtime, not one bus per scraping session.
+        bind(EventBus.class).in(Singleton.class);
         bind(EventSink.class).to(HarvesterEventSink.class).in(Singleton.class);
     }
     
