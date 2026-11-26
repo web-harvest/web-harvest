@@ -154,6 +154,7 @@ public final class ScraperModule extends AbstractModule {
         //         ));
 
         bind(ScrapingAwareHelper.class).toInstance(new ScrapingAwareHelper());
+        bind(RuntimeRegistrationCoordinator.class).in(Singleton.class);
         bindListener(Matchers.any(), new PostConstructListener());
         bind(ElementsRegistry.class).to(ElementsRegistryImpl.class);
         
