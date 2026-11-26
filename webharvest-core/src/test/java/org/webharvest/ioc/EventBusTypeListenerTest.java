@@ -34,6 +34,19 @@ public class EventBusTypeListenerTest {
         }
     }
 
+    static class BaseSubscriber {
+        private final AtomicInteger received = new AtomicInteger();
+
+        @Subscribe
+        public void onInheritedEvent(String event) {
+            received.incrementAndGet();
+        }
+    }
+
+    static class InheritedSubscriber extends BaseSubscriber {
+        // Inherits the @Subscribe method from BaseSubscriber.
+    }
+
     @Test
     public void subscriberUsesProviderCapturedFromItsTypeEncounter() {
         EventBusTypeListener listener = new EventBusTypeListener();
@@ -68,6 +81,18 @@ public class EventBusTypeListenerTest {
 
         verify(encounter, never()).getProvider(EventBus.class);
         verify(encounter, never()).register(any(InjectionListener.class));
+    }
+
+    @Test
+    public void inheritedSubscriberMethodsAreRegistered() {
+        Injector injector = Guice.createInjector(new ScraperModule("target"));
+        EventBus eventBus = injector.getInstance(EventBus.class);
+        InheritedSubscriber subscriber = injector.getInstance(InheritedSubscriber.class);
+
+        eventBus.post("inherited");
+
+        assertEquals(subscriber.received.get(), 1,
+            "Subscriber methods declared by a superclass must be discovered");
     }
 
     @Test
