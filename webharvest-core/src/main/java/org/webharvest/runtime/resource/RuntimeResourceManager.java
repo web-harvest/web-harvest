@@ -143,7 +143,7 @@ public final class RuntimeResourceManager implements AutoCloseable {
         try {
             resource.close();
             return null;
-        } catch (Throwable failure) {
+        } catch (Exception failure) {
             return new IllegalStateException("Failed to close runtime resource: " + resourceId, failure);
         }
     }
