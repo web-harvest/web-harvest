@@ -612,7 +612,11 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             try {
                 registrationCoordinator.close();
             } finally {
-                runtimeResourceManager.close();
+                try {
+                    runtimeResourceManager.close();
+                } finally {
+                    finalizeTimeoutSchedulerIfQuiescent();
+                }
             }
         }
         return terminated;
@@ -676,9 +680,12 @@ public class WebHarvestServiceImpl implements WebHarvestService {
                 try {
                     registrationCoordinator.close();
                 } finally {
-                    runtimeResourceManager.close();
+                    try {
+                        runtimeResourceManager.close();
+                    } finally {
+                        finalizeTimeoutSchedulerIfQuiescent();
+                    }
                 }
-                finalizeTimeoutSchedulerIfQuiescent();
                 LOG.info("Deferred WebHarvestService runtime finalization completed after worker-initiated shutdown");
             } catch (RuntimeException failure) {
                 LOG.error("Deferred runtime finalization failed; runtime registrations remain tracked", failure);
