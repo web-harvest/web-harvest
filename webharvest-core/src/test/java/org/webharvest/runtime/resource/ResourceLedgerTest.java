@@ -732,6 +732,99 @@ public class ResourceLedgerTest {
         void run() throws Exception;
     }
 
+
+    @Test(groups = {"unit", "runtime"})
+    public void asyncAbortDoesNotBlockCallerAndRetainsResourceUntilCallbackActuallyReturns() throws Exception {
+        java.util.concurrent.ThreadPoolExecutor dispatcher = new java.util.concurrent.ThreadPoolExecutor(
+            1, 1, 0L, TimeUnit.MILLISECONDS, new java.util.concurrent.ArrayBlockingQueue<>(2),
+            runnable -> {
+                Thread thread = new Thread(runnable, "resource-ledger-abort-test");
+                thread.setDaemon(true);
+                return thread;
+            }, new java.util.concurrent.ThreadPoolExecutor.AbortPolicy());
+        CountDownLatch release = new CountDownLatch(1);
+        try {
+            ResourceLedger ledger = new ResourceLedger("runtime-a", dispatcher);
+            CountDownLatch entered = new CountDownLatch(1);
+            AtomicInteger closes = new AtomicInteger();
+            ResourceLedger.Registration registration = ledger.registerRuntime(
+                "blocked-abort", () -> {
+                    entered.countDown();
+                    release.await();
+                }, closes::incrementAndGet);
+
+            registration.requestClose();
+            long started = System.nanoTime();
+            registration.abort();
+            assertTrue(TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started) < 500,
+                "Abort admission must not wait for provider callback completion");
+            assertTrue(entered.await(5, TimeUnit.SECONDS));
+            assertEquals(registration.getAbortState(), ResourceLedger.AbortState.RUNNING);
+
+            registration.markOwnerQuiescent();
+            ResourceLedger.DrainResult blocked = registration.drainAndClose(Duration.ZERO);
+            assertTrue(blocked.isAbortInProgress());
+            assertEquals(blocked.getAbortState(), ResourceLedger.AbortState.RUNNING);
+            assertEquals(closes.get(), 0, "Close must not race a running abort callback");
+
+            release.countDown();
+            dispatcher.shutdown();
+            assertTrue(dispatcher.awaitTermination(5, TimeUnit.SECONDS));
+            assertEquals(registration.getAbortState(), ResourceLedger.AbortState.SUCCEEDED);
+            assertTrue(registration.drainAndClose(Duration.ofSeconds(1)).isClosed());
+            assertEquals(closes.get(), 1);
+            registration.close();
+        } finally {
+            release.countDown();
+            dispatcher.shutdownNow();
+        }
+    }
+
+    @Test(groups = {"unit", "runtime"})
+    public void asyncAbortDispatcherRejectionIsDistinctAndDoesNotPretendCallbackRan() throws Exception {
+        java.util.concurrent.ThreadPoolExecutor dispatcher = new java.util.concurrent.ThreadPoolExecutor(
+            1, 1, 0L, TimeUnit.MILLISECONDS, new java.util.concurrent.ArrayBlockingQueue<>(1),
+            runnable -> {
+                Thread thread = new Thread(runnable, "resource-ledger-rejection-test");
+                thread.setDaemon(true);
+                return thread;
+            }, new java.util.concurrent.ThreadPoolExecutor.AbortPolicy());
+        CountDownLatch entered = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        try {
+            ResourceLedger ledger = new ResourceLedger("runtime-a", dispatcher);
+            ResourceLedger.Registration running = ledger.registerRuntime("running", () -> {
+                entered.countDown();
+                release.await();
+            }, null);
+            ResourceLedger.Registration queued = ledger.registerRuntime("queued", () -> { }, null);
+            AtomicInteger rejectedCallbackRuns = new AtomicInteger();
+            ResourceLedger.Registration rejected = ledger.registerRuntime("rejected",
+                rejectedCallbackRuns::incrementAndGet, null);
+
+            running.requestClose();
+            queued.requestClose();
+            rejected.requestClose();
+            running.abort();
+            assertTrue(entered.await(5, TimeUnit.SECONDS));
+            queued.abort();
+            rejected.abort();
+
+            assertEquals(rejected.getAbortState(), ResourceLedger.AbortState.REJECTED);
+            assertTrue(rejected.getAbortFailure() instanceof java.util.concurrent.RejectedExecutionException);
+            assertEquals(rejectedCallbackRuns.get(), 0);
+            assertEquals(running.getAbortState(), ResourceLedger.AbortState.RUNNING);
+            release.countDown();
+            dispatcher.shutdown();
+            assertTrue(dispatcher.awaitTermination(5, TimeUnit.SECONDS));
+            assertEquals(queued.getAbortState(), ResourceLedger.AbortState.SUCCEEDED);
+            assertEquals(rejected.getAbortState(), ResourceLedger.AbortState.REJECTED);
+        } finally {
+            release.countDown();
+            dispatcher.shutdownNow();
+        }
+    }
+
     @Test(groups = {"unit", "runtime"})
     public void testStaleRegistrationTokenCannotRetireReplacement() throws InterruptedException {
         ResourceLedger ledger = new ResourceLedger("runtime-a");
