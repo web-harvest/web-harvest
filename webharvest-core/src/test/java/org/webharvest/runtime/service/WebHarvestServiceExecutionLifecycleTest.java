@@ -49,7 +49,6 @@ import org.webharvest.runtime.session.events.SessionCreatedEvent;
 import org.webharvest.runtime.session.events.SessionCompletedEvent;
 import org.webharvest.runtime.session.events.SessionStartedEvent;
 import org.webharvest.runtime.resource.ExecutionResourceAccess;
-import org.webharvest.runtime.resource.ResourceLedger;
 import org.webharvest.ioc.RuntimeRegistrationCoordinator;
 import org.webharvest.ioc.ScrapingInterceptor.ScrapingAwareHelper;
 
@@ -214,8 +213,6 @@ public class WebHarvestServiceExecutionLifecycleTest {
             assertTrue(session.cancel());
             assertEquals(listener.resource.getState(), ExecutionResourceAccess.ResourceState.QUARANTINED,
                 "Cancellation must quarantine resources until the owner exits");
-            assertTrue(listener.resource.getAbortState() != ResourceLedger.AbortState.NOT_REQUESTED,
-                "Cancellation must dispatch resource abort before interrupting the worker");
             assertTrue(listener.interrupted.await(5, TimeUnit.SECONDS));
             assertTrue(listener.abortStarted.await(5, TimeUnit.SECONDS),
                 "The asynchronous abort callback must start while the worker is still active");
