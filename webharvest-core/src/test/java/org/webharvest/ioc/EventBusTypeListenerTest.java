@@ -7,6 +7,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.testng.annotations.Test;
 
+import org.webharvest.definition.Config;
+import org.webharvest.runtime.service.WebHarvestService;
+import org.webharvest.runtime.session.events.SessionCreatedEvent;
+
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 import com.google.inject.Guice;
@@ -70,6 +74,29 @@ public class EventBusTypeListenerTest {
         verify(encounter, never()).register(any(InjectionListener.class));
     }
 
+    static class SessionCreatedCollector {
+        private final AtomicInteger received = new AtomicInteger();
+
+        @Subscribe
+        public void onSessionCreated(SessionCreatedEvent event) {
+            received.incrementAndGet();
+        }
+    }
+
+    @Test
+    public void injectedSessionServicePublishesOnTheRuntimeOwnedEventBus() {
+        Injector injector = Guice.createInjector(new ScraperModule("target"));
+        SessionCreatedCollector collector = injector.getInstance(SessionCreatedCollector.class);
+        WebHarvestService service = injector.getInstance(WebHarvestService.class);
+        try {
+            service.executeAsync(mock(Config.class), null, null);
+            assertEquals(collector.received.get(), 1,
+                "SessionCreatedEvent must be published on the same injector-owned bus");
+        } finally {
+            service.shutdownNow();
+        }
+    }
+
     @Test
     public void independentInjectorsOwnIndependentBusesAndSubscribers() {
         Injector first = Guice.createInjector(new ScraperModule("target"));
@@ -79,6 +106,8 @@ public class EventBusTypeListenerTest {
         EventBus secondBus = second.getInstance(EventBus.class);
         assertNotSame(firstBus, secondBus,
             "Each injector/runtime must own a distinct EventBus instance");
+        assertNotSame(first.getInstance(ScraperScope.class), second.getInstance(ScraperScope.class),
+            "Each injector/runtime must own a distinct scraping scope instance");
 
         Subscriber firstSubscriber = first.getInstance(Subscriber.class);
         Subscriber secondSubscriber = second.getInstance(Subscriber.class);
