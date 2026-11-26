@@ -535,9 +535,14 @@ public class WebHarvestServiceImpl implements WebHarvestService {
         }
     }
 
-    private boolean shutdownResourceAbortExecutor(long deadline) throws InterruptedException {
+    private boolean shutdownResourceAbortExecutor(long deadline) {
         resourceAbortExecutor.shutdown();
-        return resourceAbortExecutor.awaitTermination(remainingNanos(deadline), TimeUnit.NANOSECONDS);
+        try {
+            return resourceAbortExecutor.awaitTermination(remainingNanos(deadline), TimeUnit.NANOSECONDS);
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            return false;
+        }
     }
 
     private void finalizeTimeoutSchedulerIfQuiescent() {
