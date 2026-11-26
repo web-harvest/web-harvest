@@ -77,7 +77,7 @@ public class BaseTemplater {
 
     public static String evaluateToString(String source, ScriptingLanguage language, DynamicScopeContext context) {
         LOGGER.debug("evaluateToString: source='{}', language={}", source, language);
-        LOGGER.trace("evaluateToString: scriptEngineFactory={}", resolveScriptEngineFactory(context));
+        LOGGER.trace("evaluateToString: evaluating template");
         final Variable result = evaluateToVariable(source, language, context);
         String resultStr = result.isEmpty() ? null : result.toString(context.getCharset());
         LOGGER.debug("evaluateToString: result='{}'", resultStr);
