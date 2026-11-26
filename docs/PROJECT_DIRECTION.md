@@ -1,35 +1,84 @@
 # WebHarvest project direction and architecture roadmap
 
-**Status:** Maintainer-approved direction, 2026-11-15. Current implementation facts are explicitly distinguished from target architecture.
+**Status:** Maintainer-approved strategic direction, updated 2026-11-26. Current implementation facts are explicitly distinguished from target architecture.
 **Audience:** Users evaluating WebHarvest, prospective contributors, plugin authors, integrators and maintainers.
 **Canonical planning record:** [GitHub roadmap issue #1](https://github.com/web-harvest/web-harvest/issues/1).
 **Architecture boundary:** [Monorepo and module policy](MONOREPO.md).
 
 ## 1. Project direction
 
-WebHarvest is an open-source Java framework for describing and executing data-extraction workflows. XML remains the supported workflow interchange/configuration format while the Core runtime and semantic contracts are being stabilized.
+WebHarvest is an open-source, Java-first **Adaptive Data Acquisition & Integration Platform**. Its purpose is to acquire, understand, validate, process, transform, enrich and integrate data from diverse sources for diverse objectives through specialized, extensible capabilities.
 
-The project is being developed around four complementary goals:
+WebHarvest is not defined as a workflow engine, workflow-automation product or web scraper. Web scraping is one acquisition capability among many; workflow composition and execution are enabling mechanisms used to coordinate data operations. The product boundary is the full data-acquisition and integration lifecycle, not one source type, execution notation or user interface.
 
-1. A dependable, independently usable Core runtime.
-2. A coherent built-in plugin set that provides the essential workflow execution capabilities.
-3. An extensible plugin platform that allows optional integrations and third-party plugins to be built and distributed independently.
-4. A longer-term semantic runtime that can resolve workflow capabilities and plugin implementations from explicit semantic context rather than relying on hard-coded assumptions.
+The target platform spans:
 
-The project is intentionally evolutionary. Compatibility with existing XML configurations and the current Java ecosystem matters. New architecture must be introduced behind tested contracts and migration gates, not by replacing working behavior in one large rewrite.
+1. **Diverse sources:** websites, APIs, databases, files and documents, streams, local applications, enterprise systems and capabilities exposed by external tools/services.
+2. **Specialized plugins:** acquisition/connectors, parsing, extraction, validation, transformation, enrichment, entity/resolution, delivery and destination capabilities.
+3. **A semantic Core:** format-neutral definitions of data operations, capability requirements, typed inputs/outputs, constraints and execution meaning.
+4. **Adaptive composition:** deterministic composition plus policy-constrained agent proposals that can adapt a definition to observations and conditions.
+5. **Portable definitions:** validated definitions that can be inspected, persisted, reloaded, reused and eventually represented through a portable DSL.
+6. **Interoperability:** Java/API, CLI, IDE and optional MCP or other adapters over the same Core contracts.
+7. **Trust and evidence:** provenance, lineage, data quality, policy decisions, resource budgets and auditable execution outcomes.
+
+The target objectives include research, monitoring, synchronization, enrichment, migration, compliance, analytics preparation, knowledge construction and agent tool use. This list is illustrative, not a closed product scope.
+
+The project is intentionally evolutionary. Existing XML configurations and Java consumers matter. New architecture must be introduced behind tested contracts and migration gates, not by replacing working behavior in one large rewrite.
+
+## Strategic architecture principles — 2026-11-26
+
+### Product boundary: data acquisition and integration
+
+The platform must not be shaped around one workflow notation, scraper, transport, vendor, agent framework, database or destination. Its stable center is the meaning and lifecycle of data operations and the capabilities required to perform them. Acquisition, interpretation, transformation and integration are first-class concerns; workflow orchestration is a means of composing them.
+
+### Capability-oriented plugin model
+
+Plugins should declare explicit identities, compatibility, capabilities, typed inputs/outputs, configuration/validation contracts, dependencies, security requirements and lifecycle behavior. Capability categories are expected to include:
+
+- **Acquire:** web, API, database, file/document, stream and system connectors.
+- **Understand:** parse, decode, classify, extract and resolve entities/structures.
+- **Process:** validate, normalize, transform, enrich, correlate and deduplicate.
+- **Integrate:** write, publish, synchronize or hand off to destinations and downstream systems.
+- **Observe:** expose provenance, quality, diagnostics and execution evidence.
+
+These are architectural categories, not a claim that a complete plugin catalog or stable public SPI is already available. Discovery is not authorization: the host/runtime policy must decide which capabilities may be used, with which resources and constraints.
+
+### Adaptive composition and runtime safety
+
+A workflow/operation definition is a reusable description, not an immutable mandate for every execution. A deterministic planner or an LLM-based agent may propose a bounded change after observing data, capability results or execution conditions. The Core/runtime must validate the proposal against semantic contracts, policy, permissions, resource budgets and lifecycle safety before accepting it.
+
+Accepted changes create a new immutable/versioned definition generation and are applied only at a safe execution boundary. Active steps and their resource ownership must not be mutated underneath execution. Rejected and accepted proposals, observations, policy decisions, plugin/provider versions and resulting definition versions should be auditable. Agent output is untrusted input; the agent does not authorize itself.
+
+### Portable definitions and DSL
+
+The semantic definition is independent of its serialization or authoring surface. XML remains a compatibility adapter. Java APIs, a future DSL, IDE tooling and agent-generated definitions must converge on the same semantic validation and runtime contracts. A saved definition should be portable, inspectable, versioned and reloadable; later runs may use it as a starting point and adapt it again under policy. Do not select or implement a textual DSL syntax before the semantic and runtime contracts are stable.
+
+### Runtime, host and IoC neutrality
+
+Separate framework/runtime lifecycle, individual execution lifecycle and composition/bootstrap adapters. Core semantics must not depend on Guice or any other IoC container. Support explicit/manual construction and host-provided containers through adapters. Container shutdown is not proof that executions, workers or resources have quiesced. Ownership, activation, stop, asynchronous quiescence, resource disposal and failure reporting must be explicit. The current Guice dependency is a migration fact, not the desired architecture.
+
+### MCP and agent interoperability
+
+MCP is an optional adapter for exposing or consuming capabilities. It is not the workflow model, scheduler, authorization authority or a Core dependency. Direct Java/API use, CLI, IDE, deterministic planners and other protocols must remain viable without MCP or an LLM.
+
+### Security, provenance and quality
+
+Treat source content, plugin output, remote tools and model output as untrusted. Enforce least privilege, secret isolation, network/filesystem boundaries, data-handling constraints, rate/concurrency/resource budgets and human approval where policy requires it. Record source identity, timestamps, transformations, plugin/provider versions, validation results and destination outcomes where applicable. Avoid claiming universal lineage, quality or exactly-once delivery until contracts and tests establish them.
 
 ## 2. Current state versus target
 
-| Area | Current state | Target |
+| Area | Current state (evidence-backed) | Target |
 |---|---|---|
-| Workflow format | XML configuration and execution are established | XML remains a supported adapter/interchange format; semantic model is not tied to IDE presentation |
-| Core runtime | Maven module `webharvest-core` owns runtime and plugin contracts | Small, self-sufficient execution engine with stable public API |
-| Plugin metadata | Existing plugin metadata, registration and Stage 1 semantic inspection are present | One versioned descriptor/semantic contract used consistently by validation, discovery, tooling and runtime |
-| Plugin discovery | Existing scanning/registration mechanisms are present | Deterministic discovery, compatibility validation, registration diagnostics and controlled lifecycle |
-| Optional integrations | Separate Maven modules exist in this monorepo | Company-maintained optional extensions in a separate Git repository after extraction gates pass |
-| External plugins | The current API is not yet declared a stable independent public SPI | Third parties can build and test plugins outside the WebHarvest source tree against published Core artifacts |
-| Semantic runtime | Stage 1 inspection is not a complete format-independent semantic runtime | Runtime resolves compatible capabilities and typed bindings from workflow semantic context |
-| Distribution | Root Maven version is project metadata; do not infer a published release from it | Reproducible, versioned Core and extension artifacts with documented compatibility |
+| Product category | Historical implementation is centered on XML-configured extraction workflows and web-oriented integrations | General-purpose adaptive data acquisition and integration across heterogeneous sources and objectives |
+| Sources | Existing modules include database, FTP, mail, browser and ZIP/archive integrations; current coverage is not a universal connector catalog | Pluggable acquisition from web, APIs, databases, files/documents, streams, local and enterprise systems |
+| Core model | Stage 1 semantic package provides read-only XML load/inspect/structural validation; it is not the final canonical model | Format-neutral semantic definitions for data operations, capability requirements, typed contracts and constraints |
+| Runtime | Existing Java runtime executes established plugin/configuration behavior; Core still has historical XML and Guice coupling | Container-neutral runtime lifecycle, execution lifecycle and host/bootstrap adapters with explicit ownership and quiescence |
+| Plugins | Existing descriptors, registration and module integrations exist; a fully stable independent public SPI is not yet proven | Versioned capability/plugin contracts for acquisition, parsing, extraction, validation, transformation, enrichment and destinations |
+| Composition | XML-configured workflow composition is established; arbitrary safe live definition mutation is not | Deterministic and adaptive composition; validated versioned definition generations applied only at safe points |
+| Agents and MCP | IDE agent actions are not a headless Core agent API; no Core-owned MCP adapter is established as current functionality | Optional agent/planner and MCP adapters over stable Core contracts; neither is a semantic or policy authority |
+| Definitions and DSL | XML is the established configuration/compatibility format; no complete portable DSL is claimed | Persistable, portable definitions and a DSL that compiles to the same semantic contracts as other authoring paths |
+| Data trust | Existing extraction behavior must not be mistaken for a universal lineage/quality system | Cross-cutting provenance, lineage, quality, integrity, audit and policy contracts |
+| Product surfaces | Java Core, CLI, IDE and optional modules exist with current implementation limitations | Multiple interchangeable clients/adapters over the same Core and plugin capabilities |
 
 A feature described in the target column must not be advertised as already available. In particular, classpath scanning alone is not semantic capability resolution, and Stage 1 XML inspection is not the finished canonical semantic model.
 
@@ -135,6 +184,31 @@ The public Plugin Author Guide describes the target contract and current limitat
 - Use GitHub automatic head-branch deletion for merged short-lived branches where possible.
 - Do not delete historical, active, or diverged branches until unique commits and reports are reconciled.
 - No branch cleanup should rewrite history or force-move protected lines.
+
+## Strategic delivery priorities — 2026-11-26
+
+The following order distinguishes release obligations from the longer-term platform transformation. It does not authorize speculative implementation or waive the existing issue acceptance criteria.
+
+| Priority | Workstream | Required outcome / gate | Canonical tracking |
+|---|---|---|---|
+| **P0 — release gate** | Stabilize and verify the current supported release candidate | Close exact-main security, artifact, legal/NOTICE, distribution, compatibility and release-engineering evidence. Keep release NO-GO until every required gate passes. | [#88](https://github.com/web-harvest/web-harvest/issues/88), [#323](https://github.com/web-harvest/web-harvest/issues/323), [#342](https://github.com/web-harvest/web-harvest/issues/342) |
+| **P1 — architecture contracts** | Define the platform-neutral semantic and runtime boundaries | Specify format-neutral data-operation definitions, capability contracts, policy/authorization boundary, runtime vs execution lifecycle, host/IoC neutrality and versioned safe adaptation. Inspect current Guice and XML coupling before changing implementation. | [#342](https://github.com/web-harvest/web-harvest/issues/342), [#1 roadmap](https://github.com/web-harvest/web-harvest/issues/1) |
+| **P1 — plugin foundation** | Stabilize the capability/plugin platform | Complete evidence-backed plugin inventory; version identity, descriptors, SPI, compatibility, discovery, validation, permissions, lifecycle and diagnostics; prove an out-of-tree plugin. | [#93](https://github.com/web-harvest/web-harvest/issues/93), [#346–#350](https://github.com/web-harvest/web-harvest/issues/346) |
+| **P1 — runtime correctness** | Complete lifecycle/resource safety on the neutral boundary | Resolve EventBus/listener ownership, worker exit, resource leases, quiescence, failure reporting and JDBC cancellation gaps. Do not equate service or container close with runtime quiescence. | [#354–#357](https://github.com/web-harvest/web-harvest/issues/354), [#403](https://github.com/web-harvest/web-harvest/pull/403), [#381](https://github.com/web-harvest/web-harvest/pull/381) |
+| **P2 — semantic execution proof** | Demonstrate one end-to-end adaptive data operation | Load a saved definition; acquire from at least two materially different source categories; parse/validate/transform; deliver to a destination; encounter a condition; propose and validate a bounded route change; finish, evaluate, save and reload. First prove with a deterministic planner and without LLM/MCP/IDE/Guice dependencies. | [#342](https://github.com/web-harvest/web-harvest/issues/342) |
+| **P2 — agent adaptation** | Add policy-constrained runtime-time adaptation | Add agent/planner adapters only after the deterministic proposal/validation/apply path is stable. Preserve immutable generations, safe points, audit/replay and resource ownership. | [#342](https://github.com/web-harvest/web-harvest/issues/342) |
+| **P3 — portable DSL and adapters** | Persist and reuse semantic definitions | Define DSL only after semantic contracts; prove XML and DSL converge on the same model. Add optional MCP, CLI and IDE adapters without making any one of them mandatory. | [#342](https://github.com/web-harvest/web-harvest/issues/342) |
+| **P3 — ecosystem and distribution** | Curate optional capability sets | Establish compatibility metadata and optional Packs/Kits after SPI and out-of-tree proof. Keep individual plugin identities and avoid premature repository splits. | [#342](https://github.com/web-harvest/web-harvest/issues/342), [MONOREPO.md](MONOREPO.md) |
+
+### Immediate next sequence
+
+1. Finish the current-main evidence inventory for XML and Guice coupling, plugin registration, initialization, resource ownership and teardown; record facts and unknowns before implementation.
+2. Reconcile open lifecycle PRs—especially #403—against the neutral runtime/execution/host boundary. Do not merge a historical service- or injector-owned design merely because its tests pass.
+3. Freeze the smallest format-neutral semantic definition and capability contract; keep the Stage 1 XML inspection graph explicitly separate until a reviewed migration proves otherwise.
+4. Complete plugin inventory and independent SPI acceptance gates before expanding the plugin ecosystem.
+5. Build a deterministic end-to-end acquisition/integration proof before introducing agent-driven mutation, DSL syntax or MCP.
+
+**Non-goals for the current phase:** a mandatory workflow engine, a scraper-only product, an LLM dependency, an MCP dependency, a specific IoC container, a SaaS control plane, a premature marketplace, or a repository split for its own sake.
 
 ## 7. Roadmap and decision gates
 
