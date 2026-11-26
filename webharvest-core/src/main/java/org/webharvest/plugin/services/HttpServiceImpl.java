@@ -80,7 +80,7 @@ import org.webharvest.runtime.resource.ExecutionResourceAccess;
  * @since 2.2.0
  * @version 2.2.0
  */
-public class HttpServiceImpl implements HttpService, AutoCloseable {
+public class HttpServiceImpl implements ExecutionAwareHttpService, AutoCloseable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(HttpServiceImpl.class);
 
