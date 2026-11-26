@@ -550,6 +550,13 @@ public final class ResourceLedger {
          * Requests best-effort interruption of active I/O. Abort is independent
          * from close and is invoked at most once; its failure remains observable.
          */
+        /**
+         * Registers the owner continuation invoked after an asynchronous abort
+         * reaches a terminal state. The callback runs outside the entry monitor.
+         * If abort already completed, the callback is invoked immediately.
+         *
+         * @param listener owner continuation to invoke after abort completion
+         */
         public void setAbortCompletionListener(Runnable listener) {
             Objects.requireNonNull(listener, "Abort completion listener cannot be null");
             boolean alreadyComplete;
