@@ -34,22 +34,29 @@
 package org.webharvest.plugin.services;
 
 import java.io.IOException;
+import java.net.URI;
+import java.time.Duration;
+import java.util.Objects;
+import java.util.UUID;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.hc.client5.http.classic.methods.HttpGet;
-import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.client5.http.classic.methods.HttpUriRequestBase;
 import org.apache.hc.client5.http.config.RequestConfig;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
 import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder;
+import org.apache.hc.client5.http.config.ConnectionConfig;
 import org.apache.hc.core5.http.ClassicHttpRequest;
 import org.apache.hc.core5.http.Header;
 import org.apache.hc.core5.http.HttpEntity;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.http.io.entity.StringEntity;
+import org.apache.hc.core5.util.Timeout;
+import org.webharvest.runtime.resource.ExecutionResourceAccess;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -78,6 +85,9 @@ public class HttpServiceImpl implements HttpService, AutoCloseable {
     
     private static final Logger LOGGER = LoggerFactory.getLogger(HttpServiceImpl.class);
     
+    private static final Duration DEFAULT_REQUEST_TIMEOUT = Duration.ofSeconds(30);
+    private static final Timeout DEFAULT_CONNECT_TIMEOUT = Timeout.ofSeconds(30);
+
     private final CloseableHttpClient httpClient;
     
     /**
@@ -90,7 +100,7 @@ public class HttpServiceImpl implements HttpService, AutoCloseable {
      * </ul>
      */
     public HttpServiceImpl() {
-        this.httpClient = HttpClients.createDefault();
+        this.httpClient = createHttpClientBuilder().build();
     }
     
     /**
@@ -99,7 +109,7 @@ public class HttpServiceImpl implements HttpService, AutoCloseable {
      * @param httpClient the HTTP client to use
      */
     public HttpServiceImpl(CloseableHttpClient httpClient) {
-        this.httpClient = httpClient;
+        this.httpClient = Objects.requireNonNull(httpClient, "HTTP client cannot be null");
     }
     
     /**
@@ -138,7 +148,7 @@ public class HttpServiceImpl implements HttpService, AutoCloseable {
         LOGGER.debug("Creating HttpServiceImpl: followRedirects={}, defaultHeaders={}", 
             followRedirects, defaultHeaders != null ? defaultHeaders.size() : 0);
         
-        HttpClientBuilder builder = HttpClients.custom();
+        HttpClientBuilder builder = createHttpClientBuilder();
         
         // Configure redirect behavior
         RequestConfig requestConfig = RequestConfig.custom()
@@ -160,41 +170,78 @@ public class HttpServiceImpl implements HttpService, AutoCloseable {
     
     @Override
     public HttpResponse get(String url, Map<String, String> headers) throws HttpServiceException {
-        LOGGER.debug("Executing GET request to: {}", url);
-        HttpGet httpGet = new HttpGet(url);
-        addHeaders(httpGet, headers);
-        return executeRequest(httpGet);
+        return request("GET", url, null, headers, DEFAULT_REQUEST_TIMEOUT, null);
     }
-    
+
     @Override
     public HttpResponse post(String url, String body, Map<String, String> headers) throws HttpServiceException {
-        LOGGER.debug("Executing POST request to: {}", url);
-        HttpPost httpPost = new HttpPost(url);
-        addHeaders(httpPost, headers);
-        
-        if (body != null && !body.isEmpty()) {
-            try {
-                StringEntity entity = new StringEntity(body);
-                httpPost.setEntity(entity);
-            } catch (Exception e) {
-                throw new HttpServiceException("Failed to set request body: " + e.getMessage(), e);
-            }
-        }
-        
-        return executeRequest(httpPost);
+        return request("POST", url, body, headers, DEFAULT_REQUEST_TIMEOUT, null);
     }
-    
+
     @Override
-    public HttpResponse request(String method, String url, String body, Map<String, String> headers) throws HttpServiceException {
-        LOGGER.debug("Executing {} request to: {}", method, url);
-        
-        if ("GET".equalsIgnoreCase(method)) {
-            return get(url, headers);
-        } else if ("POST".equalsIgnoreCase(method)) {
-            return post(url, body, headers);
-        } else {
-            throw new HttpServiceException("Unsupported HTTP method: " + method);
+    public HttpResponse request(String method, String url, String body, Map<String, String> headers)
+            throws HttpServiceException {
+        return request(method, url, body, headers, DEFAULT_REQUEST_TIMEOUT, null);
+    }
+
+    @Override
+    public HttpResponse request(String method, String url, String body, Map<String, String> headers,
+                                Duration timeout, ExecutionResourceAccess resourceAccess)
+            throws HttpServiceException {
+        if (method == null || method.isBlank()) {
+            throw new HttpServiceException("HTTP method is required");
         }
+        if (timeout == null || timeout.isZero() || timeout.isNegative()) {
+            throw new HttpServiceException("HTTP request timeout must be positive");
+        }
+
+        final long timeoutMillis;
+        try {
+            timeoutMillis = timeout.toMillis();
+        } catch (ArithmeticException overflow) {
+            throw new HttpServiceException("HTTP request timeout is too large", overflow);
+        }
+        if (timeoutMillis <= 0) {
+            throw new HttpServiceException("HTTP request timeout must be at least one millisecond");
+        }
+
+        String normalizedMethod = method.trim().toUpperCase(java.util.Locale.ROOT);
+        LOGGER.debug("Executing {} request to: {}", normalizedMethod, url);
+        HttpUriRequestBase request = new HttpUriRequestBase(normalizedMethod, URI.create(url));
+        addHeaders(request, headers);
+        if (body != null && !body.isEmpty()
+                && !"GET".equals(normalizedMethod) && !"HEAD".equals(normalizedMethod)) {
+            request.setEntity(new StringEntity(body));
+        }
+
+        RequestConfig requestConfig = RequestConfig.custom()
+            .setResponseTimeout(Timeout.ofMilliseconds(timeoutMillis))
+            .setConnectionRequestTimeout(Timeout.ofMilliseconds(timeoutMillis))
+            .setHardCancellationEnabled(true)
+            .build();
+        request.setConfig(requestConfig);
+
+        if (resourceAccess == null) {
+            return executeRequest(request);
+        }
+
+        // The operation handle owns only this request. It must never close the
+        // runtime-wide pooled client, which may be serving other executions.
+        try (ExecutionResourceAccess.OperationResource operation =
+                 resourceAccess.registerOperationResource(
+                     "http-request-" + UUID.randomUUID(), request::cancel, () -> { });
+             ExecutionResourceAccess.Lease lease = operation.acquire()) {
+            return executeRequest(request);
+        }
+    }
+
+    private static HttpClientBuilder createHttpClientBuilder() {
+        return HttpClients.custom().setConnectionManager(
+            PoolingHttpClientConnectionManagerBuilder.create()
+                .setDefaultConnectionConfig(ConnectionConfig.custom()
+                    .setConnectTimeout(DEFAULT_CONNECT_TIMEOUT)
+                    .build())
+                .build());
     }
     
     /**
