@@ -40,6 +40,7 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.services.HttpResponse;
+import org.webharvest.plugin.services.ExecutionAwareHttpService;
 import org.webharvest.plugin.services.HttpService;
 import org.webharvest.plugin.services.HttpServiceException;
 import org.webharvest.runtime.DynamicScopeContext;
@@ -72,7 +73,7 @@ public class HttpPluginTest {
     private DynamicScopeContext context;
     
     @Mock
-    private HttpService httpService;
+    private ExecutionAwareHttpService httpService;
 
     @Mock
     private ExecutionResourceAccess resourceAccess;
@@ -158,6 +159,28 @@ public class HttpPluginTest {
             eq(Duration.ofMillis(750)),
             same(resourceAccess));
         verify(httpService, never()).get(anyString(), anyMap());
+    }
+
+    @Test
+    public void managedExecutionRejectsLegacyHttpProviderWithoutCancellationCapability() throws Exception {
+        HttpPlugin plugin = createHttpPluginWithInjection();
+        HttpService legacyProvider = mock(HttpService.class);
+        Field httpServiceField = HttpPlugin.class.getDeclaredField("httpService");
+        httpServiceField.setAccessible(true);
+        httpServiceField.set(plugin, legacyProvider);
+
+        when(context.getResourceAccess()).thenReturn(resourceAccess);
+        when(configuration.getProperty("url")).thenReturn("https://example.com/data");
+        when(configuration.getProperty("method", "GET")).thenReturn("GET");
+        plugin.initialize(configuration);
+
+        try {
+            plugin.execute(context);
+            fail("Managed execution must reject a provider without execution-aware cancellation");
+        } catch (RuntimeException expected) {
+            assertTrue(expected.getCause().getMessage().contains("does not support execution-owned"));
+        }
+        verifyNoInteractions(legacyProvider);
     }
 
     @Test
