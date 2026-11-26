@@ -10,6 +10,8 @@ on:
   push:
     branches:
       - main
+      - "maintenance/**"
+      - "runtime/**"
     paths:
       - "pom.xml"
       - "webharvest-core/**"
