@@ -59,6 +59,16 @@ import com.google.inject.Singleton;
  * committed before close and included in retirement, or rejected after close.
  * Identity-based tracking ensures retirement affects only the exact instances
  * registered by this runtime.</p>
+ *
+ * <p><strong>EventBus ownership contract:</strong> Guava
+ * {@code EventBus.unregister(Object)} removes every subscription belonging to
+ * the supplied object; it does not provide per-registration tokens. Therefore
+ * an object automatically discovered by this runtime's
+ * {@link EventBusTypeListener} must not also be manually registered on this
+ * same EventBus. All subscriptions for that object are owned by this
+ * coordinator and are retired together. Code that needs an independently
+ * managed subscription must use a distinct adapter instance and own that
+ * adapter's lifecycle explicitly.</p>
  */
 @Singleton
 public final class RuntimeRegistrationCoordinator implements AutoCloseable {
