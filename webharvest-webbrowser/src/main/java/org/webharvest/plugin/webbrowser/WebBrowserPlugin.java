@@ -344,40 +344,59 @@ public class WebBrowserPlugin extends AbstractPlugin {
         }
 
         private void close() {
+            RuntimeException failure = null;
             synchronized (this) {
                 if (closed) {
                     return;
                 }
                 closed = true;
                 aborted = true;
-                closeClients();
+                try {
+                    closeClients();
+                } catch (RuntimeException closeFailure) {
+                    failure = closeFailure;
+                }
             }
-            if (eventBus != null && sessionId != null) {
-                eventBus.unregister(this);
+            try {
+                if (eventBus != null && sessionId != null) {
+                    eventBus.unregister(this);
+                }
+            } catch (RuntimeException unregisterFailure) {
+                if (failure == null) {
+                    failure = unregisterFailure;
+                } else {
+                    failure.addSuppressed(unregisterFailure);
+                }
+            } finally {
+                if (stateKey != null) {
+                    SESSION_PAGES.remove(stateKey, this);
+                }
             }
-            if (stateKey != null) {
-                SESSION_PAGES.remove(stateKey, this);
+            if (failure != null) {
+                throw failure;
             }
         }
 
         private void closeClients() {
-            Map<String, WebClient> pagesToClose = new HashMap<>(namedPages);
-            namedPages.clear();
             WebClient defaultPageToClose = defaultPage;
             defaultPage = null;
+            Map<String, WebClient> pagesToClose = new HashMap<>(namedPages);
+            namedPages.clear();
 
             RuntimeException failure = null;
             if (defaultPageToClose != null) {
                 try {
                     defaultPageToClose.close();
                 } catch (RuntimeException closeFailure) {
+                    defaultPage = defaultPageToClose;
                     failure = closeFailure;
                 }
             }
-            for (WebClient client : pagesToClose.values()) {
+            for (Map.Entry<String, WebClient> entry : pagesToClose.entrySet()) {
                 try {
-                    client.close();
+                    entry.getValue().close();
                 } catch (RuntimeException closeFailure) {
+                    namedPages.putIfAbsent(entry.getKey(), entry.getValue());
                     if (failure == null) {
                         failure = closeFailure;
                     } else {
