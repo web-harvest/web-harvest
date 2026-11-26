@@ -77,6 +77,7 @@ public class EventBusTypeListenerTest {
 
         verify(eventBus).unregister(subscriber);
         assertEquals(coordinator.getSubscriberRegistrationCount(), 0);
+        assertTrue(coordinator.isCloseRequested());
     }
 
     @Test
