@@ -560,8 +560,8 @@ public class WebHarvestServiceImpl implements WebHarvestService {
 
     private ThreadPoolExecutor createResourceAbortExecutor() {
         AtomicInteger sequence = new AtomicInteger();
-        return new ThreadPoolExecutor(2, 2, 0L, TimeUnit.MILLISECONDS,
-            new ArrayBlockingQueue<>(128), runnable -> {
+        return new ThreadPoolExecutor(RESOURCE_ABORT_WORKERS, RESOURCE_ABORT_WORKERS,
+            0L, TimeUnit.MILLISECONDS, new ArrayBlockingQueue<>(RESOURCE_ABORT_QUEUE_CAPACITY), runnable -> {
                 Thread thread = new Thread(runnable,
                     "webharvest-resource-abort-" + sequence.incrementAndGet());
                 thread.setDaemon(true);
