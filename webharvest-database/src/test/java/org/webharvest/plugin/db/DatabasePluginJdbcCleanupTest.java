@@ -40,16 +40,29 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.testng.annotations.Test;
+import org.webharvest.runtime.resource.ExecutionResourceAccess;
 import org.webharvest.runtime.variables.Variable;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertSame;
+import static org.testng.Assert.assertTrue;
 
 /**
  * Focused tests for JDBC statement/result-set cleanup and failure precedence.
@@ -153,6 +166,100 @@ public class DatabasePluginJdbcCleanupTest {
     }
 
     @Test
+    public void configuredQueryTimeoutIsAppliedBeforeExecution() throws Throwable {
+        Connection connection = mock(Connection.class);
+        PreparedStatement statement = mock(PreparedStatement.class);
+        when(connection.prepareStatement(anyString())).thenReturn(statement);
+        when(statement.executeUpdate()).thenReturn(1);
+
+        invokeExecuteSql(connection, "UPDATE sample SET value = 1", null, 17);
+
+        verify(statement).setQueryTimeout(17);
+    }
+
+    @Test
+    public void zeroQueryTimeoutPreservesDriverDefault() throws Throwable {
+        Connection connection = mock(Connection.class);
+        PreparedStatement statement = mock(PreparedStatement.class);
+        when(connection.prepareStatement(anyString())).thenReturn(statement);
+        when(statement.executeUpdate()).thenReturn(1);
+
+        invokeExecuteSql(connection, "UPDATE sample SET value = 1", null, 0);
+
+        org.mockito.Mockito.verify(statement,
+            org.mockito.Mockito.never()).setQueryTimeout(org.mockito.ArgumentMatchers.anyInt());
+    }
+
+    @Test
+    public void ownerAbortCancelsBlockedStatementAndFinalCloseWaitsForLeaseRelease() throws Exception {
+        Connection connection = mock(Connection.class);
+        PreparedStatement statement = mock(PreparedStatement.class);
+        ResultSet resultSet = mock(ResultSet.class);
+        ExecutionResourceAccess resourceAccess = mock(ExecutionResourceAccess.class);
+        ExecutionResourceAccess.OperationResource operation =
+            mock(ExecutionResourceAccess.OperationResource.class);
+        CountDownLatch queryStarted = new CountDownLatch(1);
+        CountDownLatch releaseQuery = new CountDownLatch(1);
+        AtomicBoolean leaseReleased = new AtomicBoolean();
+        AtomicReference<ExecutionResourceAccess.AbortAction> abortAction = new AtomicReference<>();
+        AtomicReference<ExecutionResourceAccess.CloseAction> closeAction = new AtomicReference<>();
+        AtomicReference<ExecutionResourceAccess.ResourceState> resourceState =
+            new AtomicReference<>(ExecutionResourceAccess.ResourceState.OPEN);
+
+        ExecutionResourceAccess.Lease lease = () -> leaseReleased.set(true);
+        when(connection.prepareStatement(anyString())).thenReturn(statement);
+        when(statement.executeQuery()).thenAnswer(invocation -> {
+            queryStarted.countDown();
+            if (!releaseQuery.await(3, TimeUnit.SECONDS)) {
+                throw new SQLException("Timed out waiting for query release");
+            }
+            return resultSet;
+        });
+        when(resultSet.next()).thenReturn(false);
+        when(operation.acquire()).thenReturn(lease);
+        when(operation.getState()).thenAnswer(invocation -> resourceState.get());
+        when(operation.getCloseFailure()).thenReturn(null);
+        when(operation.getResourceId()).thenReturn("jdbc/statement/test");
+        when(resourceAccess.registerOperationResource(
+            anyString(),
+            any(ExecutionResourceAccess.AbortAction.class),
+            any(ExecutionResourceAccess.CloseAction.class))).thenAnswer(invocation -> {
+                abortAction.set(invocation.getArgument(1));
+                closeAction.set(invocation.getArgument(2));
+                return operation;
+            });
+        doAnswer(invocation -> {
+            assertTrue(leaseReleased.get(), "Final statement close must follow lease release");
+            closeAction.get().close();
+            resourceState.set(ExecutionResourceAccess.ResourceState.CLOSED);
+            return null;
+        }).when(operation).close();
+
+        ExecutorService worker = Executors.newSingleThreadExecutor();
+        try {
+            Future<Object> execution = worker.submit(
+                () -> invokeExecuteSql(connection, "SELECT 1", resourceAccess, 0));
+            assertTrue(queryStarted.await(2, TimeUnit.SECONDS),
+                "The statement must enter its blocking query before owner abort");
+            abortAction.get().abort();
+            verify(statement).cancel();
+
+            releaseQuery.countDown();
+            execution.get(2, TimeUnit.SECONDS);
+
+            assertTrue(leaseReleased.get());
+            verify(operation).close();
+            verify(statement).close();
+        } catch (ExecutionException failure) {
+            throw new AssertionError("Managed JDBC query should exit after statement cancellation", failure.getCause());
+        } finally {
+            releaseQuery.countDown();
+            worker.shutdownNow();
+            worker.awaitTermination(2, TimeUnit.SECONDS);
+        }
+    }
+
+    @Test
     public void combineFailuresPreservesIdentityAndAvoidsSelfSuppression() throws Throwable {
         DatabasePlugin plugin = new DatabasePlugin();
         Method method = DatabasePlugin.class.getDeclaredMethod(
@@ -180,11 +287,17 @@ public class DatabasePluginJdbcCleanupTest {
     }
 
     private static Object invokeExecuteSql(Connection connection, String sql) throws Throwable {
+        return invokeExecuteSql(connection, sql, null, 0);
+    }
+
+    private static Object invokeExecuteSql(
+            Connection connection, String sql, ExecutionResourceAccess resourceAccess,
+            int queryTimeoutSeconds) throws Throwable {
         Method method = DatabasePlugin.class.getDeclaredMethod(
-            "executeSql", Connection.class, String.class);
+            "executeSql", Connection.class, String.class, ExecutionResourceAccess.class, int.class);
         method.setAccessible(true);
         try {
-            return method.invoke(new DatabasePlugin(), connection, sql);
+            return method.invoke(new DatabasePlugin(), connection, sql, resourceAccess, queryTimeoutSeconds);
         } catch (InvocationTargetException failure) {
             throw failure.getCause();
         }
