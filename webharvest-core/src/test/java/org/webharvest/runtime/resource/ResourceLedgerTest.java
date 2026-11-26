@@ -878,6 +878,45 @@ public class ResourceLedgerTest {
         }
     }
 
+
+    @Test(groups = {"unit", "runtime"})
+    public void abortDispatcherRuntimeFailureIsRetainedAsRejected() {
+        IllegalStateException dispatchFailure = new IllegalStateException("dispatcher unavailable");
+        ResourceLedger ledger = new ResourceLedger("runtime-a", command -> {
+            throw dispatchFailure;
+        });
+        ResourceLedger.Registration registration = ledger.registerRuntime("dispatch-failure", () -> {
+            fail("Rejected dispatch must not invoke the abort callback");
+        }, null);
+        registration.requestClose();
+
+        expectThrows(IllegalStateException.class, registration::abort);
+        assertEquals(registration.getAbortState(), ResourceLedger.AbortState.REJECTED);
+        assertSame(registration.getAbortFailure(), dispatchFailure);
+        assertFalse(registration.drainAndClose(Duration.ZERO).isAbortInProgress());
+    }
+
+    @Test(groups = {"unit", "runtime"})
+    public void abortDispatcherRunsOnlyClaimedTaskAndDuplicateRunnableIsIgnored() {
+        AtomicReference<Runnable> submitted = new AtomicReference<>();
+        AtomicInteger aborts = new AtomicInteger();
+        ResourceLedger ledger = new ResourceLedger("runtime-a", submitted::set);
+        ResourceLedger.Registration registration = ledger.registerRuntime(
+            "manual-dispatch", aborts::incrementAndGet, null);
+        registration.requestClose();
+
+        registration.abort();
+        registration.abort();
+        assertEquals(registration.getAbortState(), ResourceLedger.AbortState.QUEUED);
+        assertEquals(aborts.get(), 0);
+        assertNotNull(submitted.get());
+
+        submitted.get().run();
+        submitted.get().run();
+        assertEquals(aborts.get(), 1);
+        assertEquals(registration.getAbortState(), ResourceLedger.AbortState.SUCCEEDED);
+    }
+
     @Test(groups = {"unit", "runtime"})
     public void testStaleRegistrationTokenCannotRetireReplacement() throws InterruptedException {
         ResourceLedger ledger = new ResourceLedger("runtime-a");
