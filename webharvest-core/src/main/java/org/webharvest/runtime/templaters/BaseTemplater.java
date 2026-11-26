@@ -77,7 +77,7 @@ public class BaseTemplater {
 
     public static String evaluateToString(String source, ScriptingLanguage language, DynamicScopeContext context) {
         LOGGER.debug("evaluateToString: source='{}', language={}", source, language);
-        LOGGER.trace("evaluateToString: contextScriptEngineFactory={}", context.getScriptEngineFactory());
+        LOGGER.trace("evaluateToString: scriptEngineFactory={}", resolveScriptEngineFactory(context));
         final Variable result = evaluateToVariable(source, language, context);
         String resultStr = result.isEmpty() ? null : result.toString(context.getCharset());
         LOGGER.debug("evaluateToString: result='{}'", resultStr);
@@ -96,6 +96,17 @@ public class BaseTemplater {
         return evaluateToVariableInternal(source, scriptingLanguage, context);
     }
 
+    private static ScriptEngineFactory resolveScriptEngineFactory(final DynamicScopeContext context) {
+        ScriptEngineFactory factory = context.getScriptEngineFactory();
+        if (factory == null) {
+            factory = scriptEngineFactory;
+        }
+        if (factory == null) {
+            throw new IllegalStateException("No ScriptEngineFactory is available for this context");
+        }
+        return factory;
+    }
+
     private static Variable evaluateToVariableInternal(final String source,
             final ScriptingLanguage language,
             final DynamicScopeContext context) {
@@ -110,11 +121,7 @@ public class BaseTemplater {
               return new NodeVariable(source);
           }
 
-          final ScriptEngineFactory contextFactory = context.getScriptEngineFactory();
-          final ScriptEngineFactory factory = contextFactory != null ? contextFactory : scriptEngineFactory;
-          if (factory == null) {
-              throw new IllegalStateException("No ScriptEngineFactory is available for this context");
-          }
+          final ScriptEngineFactory factory = resolveScriptEngineFactory(context);
 
           final List<Object> result = new ArrayList<Object>();
           int endIndex = -1;
