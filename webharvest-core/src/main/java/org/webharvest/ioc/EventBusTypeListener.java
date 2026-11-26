@@ -61,14 +61,7 @@ public final class EventBusTypeListener implements TypeListener {
     @Override
     public <I> void hear(final TypeLiteral<I> typeLiteral,
                         final TypeEncounter<I> typeEncounter) {
-        boolean qualifies = false;
-        for (final Method method : typeLiteral.getRawType().getDeclaredMethods()) {
-            if (method.isAnnotationPresent(Subscribe.class)) {
-                qualifies = true;
-                break;
-            }
-        }
-        if (!qualifies) {
+        if (!hasSubscriberMethod(typeLiteral.getRawType())) {
             return;
         }
 
@@ -80,5 +73,22 @@ public final class EventBusTypeListener implements TypeListener {
                 LOG.info("Subscribed to events {}", instance);
             }
         });
+    }
+
+    private static boolean hasSubscriberMethod(Class<?> type) {
+        if (type == null) {
+            return false;
+        }
+        for (Method method : type.getDeclaredMethods()) {
+            if (method.isAnnotationPresent(Subscribe.class)) {
+                return true;
+            }
+        }
+        for (Class<?> interfaceType : type.getInterfaces()) {
+            if (hasSubscriberMethod(interfaceType)) {
+                return true;
+            }
+        }
+        return hasSubscriberMethod(type.getSuperclass());
     }
 }
