@@ -85,7 +85,7 @@ public interface HttpService {
     HttpResponse request(String method, String url, String body, Map<String, String> headers) throws HttpServiceException;
 
     /**
-     * Executes one request with a bounded response/pool-acquisition timeout and
+     * Executes one request with a response-inactivity and connection-pool acquisition timeouts and
      * optional execution-owned cancellation.
      *
      * <p>The default preserves source and binary compatibility for existing
@@ -96,7 +96,7 @@ public interface HttpService {
      * @param url request URL
      * @param body optional request body
      * @param headers optional request headers
-     * @param timeout maximum response and connection-pool acquisition wait
+     * @param timeout response inactivity and connection-pool acquisition timeout
      * @param resourceAccess execution-owned resource access, or {@code null}
      * @return the HTTP response
      * @throws HttpServiceException if the request fails
