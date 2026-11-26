@@ -41,7 +41,9 @@ import java.util.Objects;
  *
  * <p>The owning {@code WebHarvestService} closes this registry only after all
  * accepted workers, execution-resource drains and asynchronous abort callbacks
- * have quiesced. Resources are closed in reverse registration order.</p>
+ * have quiesced. Resources are closed in reverse registration order. Close actions
+ * must be bounded and must not wait for work owned by the runtime; shutdown
+ * invokes them synchronously after execution and abort quiescence.</p>
  */
 public final class RuntimeResourceManager implements AutoCloseable {
 
