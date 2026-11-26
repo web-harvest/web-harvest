@@ -260,6 +260,7 @@ public class WebBrowserPlugin extends AbstractPlugin {
         private final ExecutionResourceAccess.ResourceHandle resourceHandle;
         private final Map<String, WebClient> namedPages = new ConcurrentHashMap<>();
         private WebClient defaultPage;
+        private boolean aborted;
         private boolean closed;
 
         private BrowserSessionState(String stateKey, String sessionId, EventBus eventBus,
@@ -271,7 +272,7 @@ public class WebBrowserPlugin extends AbstractPlugin {
                 this.eventBus = null;
                 String ownerSessionId = owner.getSessionId();
                 this.resourceHandle = resourceAccess.registerSessionResource(
-                    "web-browser-session-" + ownerSessionId, this::close, this::close);
+                    "web-browser-session-" + owner.toString(), this::abort, this::close);
             } else {
                 this.eventBus = eventBus;
                 this.resourceHandle = null;
@@ -290,23 +291,23 @@ public class WebBrowserPlugin extends AbstractPlugin {
         }
 
         private synchronized ExecutionResourceAccess.Lease acquire() {
-            if (closed) {
-                throw new IllegalStateException("Browser session is closed");
+            if (aborted || closed) {
+                throw new IllegalStateException("Browser session is no longer active");
             }
             return resourceHandle != null ? resourceHandle.acquire() : () -> { };
         }
 
         private synchronized WebClient get(String pageName) {
-            if (closed) {
+            if (aborted || closed) {
                 return null;
             }
             return pageName != null && !pageName.isEmpty() ? namedPages.get(pageName) : defaultPage;
         }
 
         private synchronized void put(String pageName, WebClient client) {
-            if (closed) {
+            if (aborted || closed) {
                 client.close();
-                throw new IllegalStateException("Browser session is closed");
+                throw new IllegalStateException("Browser session is no longer active");
             }
             WebClient previous;
             if (pageName != null && !pageName.isEmpty()) {
@@ -321,7 +322,7 @@ public class WebBrowserPlugin extends AbstractPlugin {
         }
 
         private synchronized WebClient remove(String pageName) {
-            if (closed) {
+            if (aborted || closed) {
                 return null;
             }
             if (pageName != null && !pageName.isEmpty()) {
@@ -332,27 +333,42 @@ public class WebBrowserPlugin extends AbstractPlugin {
             return previous;
         }
 
+        private void abort() {
+            synchronized (this) {
+                if (aborted || closed) {
+                    return;
+                }
+                aborted = true;
+                closeClients();
+            }
+        }
+
         private void close() {
             synchronized (this) {
                 if (closed) {
                     return;
                 }
                 closed = true;
-                if (defaultPage != null) {
-                    defaultPage.close();
-                    defaultPage = null;
-                }
-                for (WebClient client : namedPages.values()) {
-                    client.close();
-                }
-                namedPages.clear();
+                aborted = true;
+                closeClients();
             }
             if (eventBus != null && sessionId != null) {
                 eventBus.unregister(this);
             }
-            if (sessionId != null) {
+            if (stateKey != null) {
                 SESSION_PAGES.remove(stateKey, this);
             }
+        }
+
+        private void closeClients() {
+            if (defaultPage != null) {
+                defaultPage.close();
+                defaultPage = null;
+            }
+            for (WebClient client : namedPages.values()) {
+                client.close();
+            }
+            namedPages.clear();
         }
 
         @Subscribe
@@ -552,6 +568,8 @@ public class WebBrowserPlugin extends AbstractPlugin {
                 }
                 return result;
             }
+        } catch (InterruptedException e) {
+            throw e;
         } catch (Exception e) {
             LOGGER.error("Error in webbrowser plugin", e);
             throw new RuntimeException("Error in webbrowser plugin: " + e.getMessage(), e);
@@ -678,6 +696,9 @@ public class WebBrowserPlugin extends AbstractPlugin {
             
             return new NodeVariable(resultStr);
             
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw e;
         } catch (Exception e) {
             throw new PluginException("Failed to execute JavaScript: " + e.getMessage(), e);
         }
