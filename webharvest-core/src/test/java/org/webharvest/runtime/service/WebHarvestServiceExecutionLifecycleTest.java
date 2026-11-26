@@ -744,13 +744,23 @@ public class WebHarvestServiceExecutionLifecycleTest {
             assertEquals(listener.resource.getState(), ExecutionResourceAccess.ResourceState.QUARANTINED);
             assertEquals(listener.closeCount.get(), 0);
             assertEquals(listener.workerInterrupted.getCount(), 0L);
+            // Let the execution owner exit first while the provider abort remains blocked.
+            // The first drain must quarantine and return; late abort completion must
+            // independently trigger the retained drain without a second service call.
+            listener.releaseWorker.countDown();
+            assertTrue(tracked.awaitExecutionCompletion(5000));
+            assertEquals(listener.resource.getState(), ExecutionResourceAccess.ResourceState.QUARANTINED);
+            assertEquals(listener.closeCount.get(), 0);
+
+            listener.releaseAbort.countDown();
+            assertTrue(listener.closed.await(5, TimeUnit.SECONDS));
+            assertEquals(listener.resource.getState(), ExecutionResourceAccess.ResourceState.CLOSED);
+            assertEquals(listener.closeCount.get(), 1);
         } finally {
             listener.releaseAbort.countDown();
             listener.releaseWorker.countDown();
             shutdownCaller.join(5000);
         }
-        assertTrue(tracked.awaitExecutionCompletion(5000));
-        assertTrue(listener.closed.await(5, TimeUnit.SECONDS));
         service.shutdownNow();
     }
 
