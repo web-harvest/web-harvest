@@ -138,6 +138,35 @@ public class HttpServiceOperationLifecycleTest {
         }
     }
 
+    @Test
+    public void legacyProviderFailsClosedWhenManagedCancellationIsRequired() throws Exception {
+        HttpService legacyProvider = new HttpService() {
+            @Override
+            public HttpResponse get(String url, Map<String, String> headers) {
+                return null;
+            }
+
+            @Override
+            public HttpResponse post(String url, String body, Map<String, String> headers) {
+                return null;
+            }
+
+            @Override
+            public HttpResponse request(String method, String url, String body,
+                                        Map<String, String> headers) {
+                return null;
+            }
+        };
+
+        try {
+            legacyProvider.request("GET", "http://127.0.0.1/", null, Map.of(),
+                Duration.ofSeconds(1), new TrackingResourceAccess());
+            fail("A legacy provider must not silently discard managed cancellation");
+        } catch (HttpServiceException expected) {
+            assertTrue(expected.getMessage().contains("does not support execution-owned"));
+        }
+    }
+
     private static final class TrackingResourceAccess implements ExecutionResourceAccess {
         private final AtomicReference<AbortAction> abortAction = new AtomicReference<>();
         private final AtomicBoolean abortInvoked = new AtomicBoolean();
