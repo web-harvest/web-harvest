@@ -11,11 +11,17 @@ import org.webharvest.definition.Config;
 import org.webharvest.definition.CorePluginsRegistrar;
 import org.webharvest.plugin.DefaultPluginConfiguration;
 import org.webharvest.runtime.DynamicScopeContext;
+import org.webharvest.runtime.resource.LedgerExecutionResourceCoordinator;
+import org.webharvest.runtime.resource.ResourceLedger;
+import org.webharvest.runtime.resource.LedgerExecutionResourceContext;
+import org.webharvest.runtime.resource.ExecutionResourceAccess;
+import org.webharvest.runtime.session.ExecutionOwner;
 import org.webharvest.runtime.ScraperContext;
 import org.webharvest.runtime.session.ScraperSessionImpl;
 import org.webharvest.runtime.variables.Variable;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
@@ -221,6 +227,44 @@ public class WebBrowserPluginLifecycleTest {
             if (!sessionB.getStatus().isTerminal()) {
                 sessionB.markFailed(new RuntimeException("Test cleanup"));
             }
+        }
+    }
+
+    @Test
+    public void managedBrowserStateIsRetiredByExecutionResourceLifecycle() throws Exception {
+        String runtimeId = "webbrowser-managed-runtime";
+        String sessionId = "webbrowser-managed-session";
+        ExecutionOwner owner = new ExecutionOwner(runtimeId, sessionId, 1);
+        EventBus eventBus = new EventBus();
+        ScraperSessionImpl session = new ScraperSessionImpl(
+            sessionId, null, mock(Config.class), eventBus, owner);
+        LedgerExecutionResourceCoordinator resources = new LedgerExecutionResourceCoordinator(
+            new ResourceLedger(runtimeId), owner);
+        DynamicScopeContext managedContext = new ScraperContext();
+        managedContext.setEventBus(eventBus);
+        managedContext.setSession(session);
+        managedContext.setExecutionOwner(owner);
+        managedContext.setResourceAccess(resources.getAccess());
+        session.markRunning(managedContext);
+
+        try {
+            execute(managedContext, "load", "managed", baseUrl + "/session-a", false, 0, null);
+            assertTrue(execute(managedContext, "get-content", "managed", null, false, 0, null)
+                .toString().contains("<title>session-a</title>"));
+
+            resources.requestTermination();
+            java.util.List<LedgerExecutionResourceContext.DrainReport> reports =
+                resources.markOwnerQuiescentAndDrain(Duration.ofSeconds(2));
+            assertEquals(reports.size(), 1);
+            assertEquals(reports.get(0).getState(), ExecutionResourceAccess.ResourceState.CLOSED);
+
+            expectRuntimeException(
+                () -> execute(managedContext, "get-content", "managed", null, false, 0, null));
+        } finally {
+            if (!session.getStatus().isTerminal()) {
+                session.markFailed(new RuntimeException("Managed browser test cleanup"));
+            }
+            WebBrowserPlugin.closeAllPages();
         }
     }
 
