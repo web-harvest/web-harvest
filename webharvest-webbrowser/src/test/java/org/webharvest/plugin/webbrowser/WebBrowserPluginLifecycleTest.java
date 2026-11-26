@@ -268,6 +268,63 @@ public class WebBrowserPluginLifecycleTest {
         }
     }
 
+    @Test
+    public void terminatingOneManagedBrowserSessionDoesNotCloseAnother() throws Exception {
+        String runtimeId = "webbrowser-multi-session-runtime";
+        EventBus eventBus = new EventBus();
+        ResourceLedger ledger = new ResourceLedger(runtimeId);
+        ExecutionOwner ownerA = new ExecutionOwner(runtimeId, "webbrowser-managed-a", 1);
+        ExecutionOwner ownerB = new ExecutionOwner(runtimeId, "webbrowser-managed-b", 2);
+        ScraperSessionImpl sessionA = new ScraperSessionImpl(
+            ownerA.getSessionId(), null, mock(Config.class), eventBus, ownerA);
+        ScraperSessionImpl sessionB = new ScraperSessionImpl(
+            ownerB.getSessionId(), null, mock(Config.class), eventBus, ownerB);
+        LedgerExecutionResourceCoordinator resourcesA =
+            new LedgerExecutionResourceCoordinator(ledger, ownerA);
+        LedgerExecutionResourceCoordinator resourcesB =
+            new LedgerExecutionResourceCoordinator(ledger, ownerB);
+        DynamicScopeContext contextA = new ScraperContext();
+        DynamicScopeContext contextB = new ScraperContext();
+        contextA.setEventBus(eventBus);
+        contextA.setSession(sessionA);
+        contextA.setExecutionOwner(ownerA);
+        contextA.setResourceAccess(resourcesA.getAccess());
+        contextB.setEventBus(eventBus);
+        contextB.setSession(sessionB);
+        contextB.setExecutionOwner(ownerB);
+        contextB.setResourceAccess(resourcesB.getAccess());
+        sessionA.markRunning(contextA);
+        sessionB.markRunning(contextB);
+
+        try {
+            execute(contextA, "load", "main", baseUrl + "/session-a", false, 0, null);
+            execute(contextB, "load", "main", baseUrl + "/session-b", false, 0, null);
+
+            resourcesA.requestTermination();
+            java.util.List<LedgerExecutionResourceContext.DrainReport> reportsA =
+                resourcesA.markOwnerQuiescentAndDrain(Duration.ofSeconds(2));
+            assertEquals(reportsA.size(), 1);
+            assertEquals(reportsA.get(0).getState(), ExecutionResourceAccess.ResourceState.CLOSED);
+
+            expectRuntimeException(
+                () -> execute(contextA, "get-content", "main", null, false, 0, null));
+            assertTrue(execute(contextB, "get-content", "main", null, false, 0, null)
+                .toString().contains("<title>session-b</title>"));
+        } finally {
+            if (!sessionA.getStatus().isTerminal()) {
+                resourcesA.requestTermination();
+                resourcesA.markOwnerQuiescentAndDrain(Duration.ofSeconds(2));
+                sessionA.markFailed(new RuntimeException("Managed browser session A cleanup"));
+            }
+            if (!sessionB.getStatus().isTerminal()) {
+                resourcesB.requestTermination();
+                resourcesB.markOwnerQuiescentAndDrain(Duration.ofSeconds(2));
+                sessionB.markFailed(new RuntimeException("Managed browser session B cleanup"));
+            }
+            WebBrowserPlugin.closeAllPages();
+        }
+    }
+
     private RuntimeException expectRuntimeException(ThrowingRunnable action) {
         try {
             action.run();
