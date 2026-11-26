@@ -39,6 +39,7 @@ import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.session.events.*;
 
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
@@ -104,6 +105,7 @@ public class ScraperSessionImpl implements ExecutionTrackedSession {
     private final Config config;
     private final SessionMetrics metrics;
     private final EventBus eventBus;
+    private final AtomicBoolean createdEventPublished = new AtomicBoolean();
     private final ExecutionOwner executionOwner;
     
     private volatile SessionStatus status;
@@ -155,6 +157,17 @@ public class ScraperSessionImpl implements ExecutionTrackedSession {
      */
     public ScraperSessionImpl(String sessionId, String clientId, Config config,
                               EventBus eventBus, ExecutionOwner executionOwner) {
+        this(sessionId, clientId, config, eventBus, executionOwner, true);
+    }
+
+    /**
+     * Creates a session with explicit control over creation-event publication.
+     * Service admission uses the non-publishing form and publishes only after
+     * the session has been accepted and registered.
+     */
+    public ScraperSessionImpl(String sessionId, String clientId, Config config,
+                              EventBus eventBus, ExecutionOwner executionOwner,
+                              boolean publishCreatedEvent) {
         if (sessionId == null || sessionId.trim().isEmpty()) {
             throw new IllegalArgumentException("Session ID cannot be null or empty");
         }
@@ -181,10 +194,21 @@ public class ScraperSessionImpl implements ExecutionTrackedSession {
         this.completionLock = new ReentrantLock();
         this.completionCondition = completionLock.newCondition();
         
-        // Publish creation event
-        eventBus.post(new SessionCreatedEvent(this));
+        if (publishCreatedEvent) {
+            publishCreatedEvent();
+        }
     }
-    
+
+    /**
+     * Publishes the creation event once. Runtime services call this only after
+     * admission succeeds; legacy direct constructors retain eager publication.
+     */
+    public void publishCreatedEvent() {
+        if (createdEventPublished.compareAndSet(false, true)) {
+            eventBus.post(new SessionCreatedEvent(this));
+        }
+    }
+
     @Override
     public ExecutionOwner getExecutionOwner() {
         return executionOwner;
