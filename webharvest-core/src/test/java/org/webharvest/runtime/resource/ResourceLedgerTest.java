@@ -748,9 +748,11 @@ public class ResourceLedgerTest {
         try {
             ResourceLedger ledger = new ResourceLedger("runtime-a", dispatcher);
             CountDownLatch entered = new CountDownLatch(1);
+            AtomicInteger aborts = new AtomicInteger();
             AtomicInteger closes = new AtomicInteger();
             ResourceLedger.Registration registration = ledger.registerRuntime(
                 "blocked-abort", () -> {
+                    aborts.incrementAndGet();
                     entered.countDown();
                     release.await();
                 }, closes::incrementAndGet);
@@ -769,7 +771,9 @@ public class ResourceLedgerTest {
             assertTrue(dispatchReturned.await(2, TimeUnit.SECONDS),
                 "Abort admission must return while provider callback remains blocked");
             assertNull(dispatchFailure.get());
+            registration.abort();
             assertTrue(entered.await(5, TimeUnit.SECONDS));
+            assertEquals(aborts.get(), 1, "Duplicate termination must claim the callback only once");
             assertEquals(registration.getAbortState(), ResourceLedger.AbortState.RUNNING);
 
             registration.markOwnerQuiescent();
