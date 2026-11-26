@@ -12,6 +12,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import com.sun.net.httpserver.HttpServer;
@@ -90,6 +91,8 @@ public class HttpServiceOperationLifecycleTest {
             assertEquals(response.getBody(), "ok");
             assertTrue(access.leaseReleased.get(), "Request lease must be released");
             assertTrue(access.operationClosed.get(), "Operation resource must be closed");
+            assertTrue(access.leaseCloseOrder.get() < access.operationCloseOrder.get(),
+                "The operation must close only after its lease is released");
         }
     }
 
@@ -103,6 +106,13 @@ public class HttpServiceOperationLifecycleTest {
 
             assertTrue(blockedRequestStarted.await(3, TimeUnit.SECONDS),
                 "Loopback server must receive the request before cancellation");
+
+            TrackingResourceAccess unaffectedAccess = new TrackingResourceAccess();
+            Future<HttpResponse> unaffectedRequest = executor.submit(() -> service.request(
+                "GET", baseUrl + "/ok", null, Map.of(), Duration.ofSeconds(2), unaffectedAccess));
+            assertEquals(unaffectedRequest.get(3, TimeUnit.SECONDS).getBody(), "ok",
+                "A separate request on the shared client must remain usable");
+
             access.abortActiveRequest();
 
             try {
@@ -117,6 +127,10 @@ public class HttpServiceOperationLifecycleTest {
             assertTrue(access.abortInvoked.get(), "Resource abort callback must be invoked");
             assertTrue(access.leaseReleased.get(), "Cancelled request lease must be released");
             assertTrue(access.operationClosed.get(), "Cancelled operation must be closed");
+            assertTrue(access.leaseCloseOrder.get() < access.operationCloseOrder.get(),
+                "Cancelled operation must close only after its lease is released");
+            assertTrue(unaffectedAccess.leaseReleased.get());
+            assertTrue(unaffectedAccess.operationClosed.get());
         } finally {
             releaseBlockedRequest.countDown();
             executor.shutdownNow();
@@ -143,6 +157,9 @@ public class HttpServiceOperationLifecycleTest {
         private final AtomicBoolean abortInvoked = new AtomicBoolean();
         private final AtomicBoolean leaseReleased = new AtomicBoolean();
         private final AtomicBoolean operationClosed = new AtomicBoolean();
+        private final AtomicInteger closeSequence = new AtomicInteger();
+        private final AtomicInteger leaseCloseOrder = new AtomicInteger();
+        private final AtomicInteger operationCloseOrder = new AtomicInteger();
 
         @Override
         public org.webharvest.runtime.session.ExecutionOwner getOwner() {
@@ -167,7 +184,10 @@ public class HttpServiceOperationLifecycleTest {
             return new OperationResource() {
                 @Override public String getResourceId() { return resourceId; }
                 @Override public Lease acquire() {
-                    return () -> leaseReleased.set(true);
+                    return () -> {
+                        leaseReleased.set(true);
+                        leaseCloseOrder.set(closeSequence.incrementAndGet());
+                    };
                 }
                 @Override public ResourceState getState() { return ResourceState.OPEN; }
                 @Override public int getActiveLeaseCount() { return leaseReleased.get() ? 0 : 1; }
@@ -175,6 +195,7 @@ public class HttpServiceOperationLifecycleTest {
                 @Override public Throwable getCloseFailure() { return null; }
                 @Override public void close() {
                     operationClosed.set(true);
+                    operationCloseOrder.set(closeSequence.incrementAndGet());
                 }
             };
         }
