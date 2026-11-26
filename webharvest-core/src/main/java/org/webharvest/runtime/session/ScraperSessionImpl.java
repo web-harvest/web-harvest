@@ -164,6 +164,13 @@ public class ScraperSessionImpl implements ExecutionTrackedSession {
      * Creates a session with explicit control over creation-event publication.
      * Service admission uses the non-publishing form and publishes only after
      * the session has been accepted and registered.
+     *
+     * @param sessionId unique identifier for this session
+     * @param clientId optional client identifier
+     * @param config configuration to execute
+     * @param eventBus shared runtime EventBus
+     * @param executionOwner immutable runtime/session/generation identity
+     * @param publishCreatedEvent whether to publish the creation event during construction
      */
     public ScraperSessionImpl(String sessionId, String clientId, Config config,
                               EventBus eventBus, ExecutionOwner executionOwner,
