@@ -47,6 +47,7 @@ import org.webharvest.definition.Config;
 // REMOVED in v2.2.x - these classes no longer exist
 import org.webharvest.runtime.scripting.ScriptingLanguage;
 import org.webharvest.runtime.session.ScraperSession;
+import org.webharvest.runtime.session.ExecutionOwner;
 import org.webharvest.runtime.variables.Variable;
 import org.webharvest.utils.KeyValuePair;
 
@@ -135,6 +136,24 @@ public interface DynamicScopeContext extends Iterable<KeyValuePair<Variable>> {
      * @see org.webharvest.runtime.session.ScraperSession
      */
     ScraperSession getSession();
+
+    /**
+     * Returns the immutable owner of this service-managed execution, when bound.
+     * Legacy and externally supplied contexts may return null.
+     */
+    default ExecutionOwner getExecutionOwner() {
+        return null;
+    }
+
+    /**
+     * Binds this context to one immutable execution owner before publication.
+     * Implementations that support service-managed execution must reject rebinding.
+     */
+    default void setExecutionOwner(ExecutionOwner owner) {
+        if (owner != null) {
+            throw new UnsupportedOperationException("This context does not support execution ownership");
+        }
+    }
     
     /**
      * Sets the EventBus for this context.
