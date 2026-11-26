@@ -61,6 +61,14 @@ public class BaseTemplater {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BaseTemplater.class);
 
+    /**
+     * Legacy fallback for DynamicScopeContext implementations that do not expose
+     * a runtime-owned ScriptEngineFactory. Internal ScraperContext instances use
+     * their own injected factory and never select an engine through this field.
+     *
+     * @deprecated Prefer the ScriptEngineFactory bound to the supplied context.
+     */
+    @Deprecated
     @Inject
     public static ScriptEngineFactory scriptEngineFactory;
 
@@ -102,6 +110,12 @@ public class BaseTemplater {
               return new NodeVariable(source);
           }
 
+          final ScriptEngineFactory contextFactory = context.getScriptEngineFactory();
+          final ScriptEngineFactory factory = contextFactory != null ? contextFactory : scriptEngineFactory;
+          if (factory == null) {
+              throw new IllegalStateException("No ScriptEngineFactory is available for this context");
+          }
+
           final List<Object> result = new ArrayList<Object>();
           int endIndex = -1;
 
@@ -115,7 +129,7 @@ public class BaseTemplater {
                   final ScriptSource scriptSource = new ScriptSource(
                           source.substring(startIndex + VAR_START.length(),
                                   endIndex), language);
-                  final Object resultObj = scriptEngineFactory.
+                  final Object resultObj = factory.
                           getEngine(scriptSource).
                           evaluate(context, scriptSource);
 
