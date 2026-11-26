@@ -56,6 +56,7 @@ import org.webharvest.plugin.LinkedServiceMetadata;
 import org.webharvest.plugin.ParentChildRelationship;
 import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.plugin.services.HttpResponse;
+import org.webharvest.plugin.services.ExecutionAwareHttpService;
 import com.google.inject.Inject;
 import org.webharvest.plugin.services.HttpService;
 import org.webharvest.plugin.services.HttpServiceException;
@@ -320,7 +321,11 @@ public class HttpPlugin extends AbstractPlugin {
             // for standalone/legacy contexts that do not have one.
             HttpResponse response;
             if (context.getResourceAccess() != null) {
-                response = httpService.request(
+                if (!(httpService instanceof ExecutionAwareHttpService)) {
+                    throw new IllegalStateException(
+                        "HTTP provider does not support execution-owned request cancellation");
+                }
+                response = ((ExecutionAwareHttpService) httpService).request(
                     normalizedMethod,
                     urlWithParams,
                     body,
