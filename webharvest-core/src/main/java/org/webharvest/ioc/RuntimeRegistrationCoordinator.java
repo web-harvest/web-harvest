@@ -132,7 +132,7 @@ public final class RuntimeRegistrationCoordinator implements AutoCloseable {
             try {
                 entry.getValue().close();
                 listeners.remove(entry.getKey());
-            } catch (Throwable failure) {
+            } catch (RuntimeException failure) {
                 firstFailure = appendFailure(firstFailure, failure);
             }
         }
