@@ -113,12 +113,6 @@ public class HttpServiceOperationLifecycleTest {
             assertTrue(blockedRequestStarted.await(3, TimeUnit.SECONDS),
                 "Loopback server must receive the request before cancellation");
 
-            TrackingResourceAccess unaffectedAccess = new TrackingResourceAccess();
-            Future<HttpResponse> unaffectedRequest = executor.submit(() -> service.request(
-                "GET", baseUrl + "/ok", null, Map.of(), Duration.ofSeconds(5), unaffectedAccess));
-            assertEquals(unaffectedRequest.get(5, TimeUnit.SECONDS).getBody(), "ok",
-                "A separate request on the shared client must remain usable");
-
             access.abortActiveRequest();
 
             try {
@@ -129,6 +123,12 @@ public class HttpServiceOperationLifecycleTest {
                         || expected.getCause() instanceof RuntimeException,
                     "Cancellation must surface as a request failure");
             }
+
+            TrackingResourceAccess unaffectedAccess = new TrackingResourceAccess();
+            Future<HttpResponse> unaffectedRequest = executor.submit(() -> service.request(
+                "GET", baseUrl + "/ok", null, Map.of(), Duration.ofSeconds(5), unaffectedAccess));
+            assertEquals(unaffectedRequest.get(5, TimeUnit.SECONDS).getBody(), "ok",
+                "The shared client must remain usable after one request is cancelled");
 
             assertTrue(access.abortInvoked.get(), "Resource abort callback must be invoked");
             assertTrue(access.leaseReleased.get(), "Cancelled request lease must be released");
