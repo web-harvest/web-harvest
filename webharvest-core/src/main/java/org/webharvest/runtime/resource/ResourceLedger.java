@@ -366,6 +366,7 @@ public final class ResourceLedger {
         private Throwable abortFailure;
         private Throwable closeFailure;
         private Runnable abortCompletionListener;
+        private boolean abortCompletionNotified;
 
         private Entry(RegistrationKey key, String resourceId, Scope scope, ExecutionOwner owner,
                       RegistryGenerationId generationId, AbortAction abortAction, CloseAction closeAction) {
@@ -559,15 +560,19 @@ public final class ResourceLedger {
          */
         public void setAbortCompletionListener(Runnable listener) {
             Objects.requireNonNull(listener, "Abort completion listener cannot be null");
-            boolean alreadyComplete;
+            boolean notifyImmediately;
             synchronized (entry) {
                 if (entry.abortCompletionListener != null) {
                     throw new IllegalStateException("Abort completion listener is already registered");
                 }
                 entry.abortCompletionListener = listener;
-                alreadyComplete = isAbortTerminal(entry.abortState) && !entry.abortInProgress;
+                notifyImmediately = isAbortTerminal(entry.abortState) && !entry.abortInProgress
+                    && !entry.abortCompletionNotified;
+                if (notifyImmediately) {
+                    entry.abortCompletionNotified = true;
+                }
             }
-            if (alreadyComplete) {
+            if (notifyImmediately) {
                 listener.run();
             }
         }
@@ -580,14 +585,14 @@ public final class ResourceLedger {
         private void notifyAbortCompletion() {
             Runnable listener;
             synchronized (entry) {
-                if (!isAbortTerminal(entry.abortState) || entry.abortInProgress) {
+                if (!isAbortTerminal(entry.abortState) || entry.abortInProgress
+                    || entry.abortCompletionNotified || entry.abortCompletionListener == null) {
                     return;
                 }
+                entry.abortCompletionNotified = true;
                 listener = entry.abortCompletionListener;
             }
-            if (listener != null) {
-                listener.run();
-            }
+            listener.run();
         }
 
         public void abort() {
