@@ -125,9 +125,19 @@ public class StandaloneConnectionPoolTest {
         new StandaloneConnectionPool().registerForSession(null);
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class)
-    public void rejectsOwnerlessEventBusRegistration() {
-        new StandaloneConnectionPool().registerForSession(new EventBus());
+    @Test
+    public void legacyOwnerlessEventBusRegistrationRetainsHistoricalBehavior() throws Exception {
+        StandaloneConnectionPool pool = new StandaloneConnectionPool();
+        EventBus eventBus = new EventBus();
+        Connection connection = pool.getConnection(DRIVER,
+            "jdbc:h2:mem:pool_legacy_ownerless;DB_CLOSE_DELAY=-1", "sa", "");
+        Connection physical = ((ConnectionProxy) connection).getTargetConnection();
+
+        pool.registerForSession(eventBus);
+        eventBus.post(new SessionCompletedEvent(mock(ScraperSession.class)));
+
+        assertTrue(physical.isClosed(),
+            "Legacy ownerless registration continues to respond to any terminal session event");
     }
 
     @Test
