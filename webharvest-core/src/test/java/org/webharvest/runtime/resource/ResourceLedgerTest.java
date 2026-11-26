@@ -1096,4 +1096,23 @@ public class ResourceLedgerTest {
         assertEquals(ledger.size(), 0);
     }
 
+    @Test(groups = {"unit", "runtime"})
+    public void abortCompletionListenerRegisteredBeforeAbortRunsExactlyOnce() throws InterruptedException {
+        ResourceLedger ledger = new ResourceLedger("runtime-a");
+        AtomicInteger completions = new AtomicInteger();
+        ResourceLedger.Registration registration = ledger.registerRuntime(
+            "early-completion-listener", null, null);
+        registration.setAbortCompletionListener(completions::incrementAndGet);
+
+        registration.requestClose();
+        registration.abort();
+        registration.abort();
+
+        assertEquals(completions.get(), 1);
+        registration.markOwnerQuiescent();
+        assertTrue(registration.drainAndClose(Duration.ZERO).isClosed());
+        registration.close();
+        assertEquals(ledger.size(), 0);
+    }
+
 }
