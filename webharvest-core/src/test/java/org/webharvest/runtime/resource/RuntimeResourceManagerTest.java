@@ -9,10 +9,21 @@ import org.testng.annotations.Test;
 
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertSame;
-import static org.testng.Assert.assertThrows;
 import static org.testng.Assert.assertTrue;
 
 public class RuntimeResourceManagerTest {
+
+    private static void assertThrows(Class<? extends Throwable> expected, Runnable action) {
+        try {
+            action.run();
+        } catch (Throwable actual) {
+            if (expected.isInstance(actual)) {
+                return;
+            }
+            throw new AssertionError("Unexpected exception type: " + actual.getClass().getName(), actual);
+        }
+        throw new AssertionError("Expected exception type: " + expected.getName());
+    }
 
     @Test
     public void closesResourcesInReverseRegistrationOrderExactlyOnce() {
