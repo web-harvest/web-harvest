@@ -94,7 +94,7 @@ public class WebHarvestServiceExecutionLifecycleTest {
 
     @Test(groups = {"unit", "service"})
     public void guiceRuntimeClosesSharedHttpClientAfterSessionRuntimeShutdown() throws Exception {
-        Injector injector = Guice.createInjector(new ScraperModule());
+        Injector injector = Guice.createInjector(new ScraperModule(System.getProperty("user.dir")));
         RuntimeResourceManager resources = injector.getInstance(RuntimeResourceManager.class);
         injector.getInstance(HttpService.class);
         assertEquals(resources.getRegisteredCount(), 1,
