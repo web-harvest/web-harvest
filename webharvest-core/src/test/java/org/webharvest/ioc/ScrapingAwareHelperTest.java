@@ -246,4 +246,46 @@ public class ScrapingAwareHelperTest {
         }
         assertEquals(laterListenerCalls.get(), 2);
     }
+    @Test
+    public void fatalAfterListenerFailureDoesNotPreventRemainingCleanupListeners() {
+        ScrapingInterceptor.ScrapingAwareHelper helper =
+                new ScrapingInterceptor.ScrapingAwareHelper();
+        Harvester harvester = mock(Harvester.class);
+        AssertionError fatalFailure = new AssertionError("fatal cleanup failure");
+        AtomicInteger laterListenerCalls = new AtomicInteger();
+
+        helper.addListener(new ScrapingAware() {
+            @Override
+            public void onBeforeScraping(Harvester value) {
+                // No-op.
+            }
+
+            @Override
+            public void onAfterScraping(Harvester value) {
+                throw fatalFailure;
+            }
+        });
+        helper.addListener(new ScrapingAware() {
+            @Override
+            public void onBeforeScraping(Harvester value) {
+                // No-op.
+            }
+
+            @Override
+            public void onAfterScraping(Harvester value) {
+                laterListenerCalls.incrementAndGet();
+            }
+        });
+
+        try {
+            helper.onAfterScraping(harvester);
+            fail("Expected the first listener's fatal failure");
+        } catch (AssertionError actual) {
+            assertSame(actual, fatalFailure);
+        }
+
+        assertEquals(laterListenerCalls.get(), 1,
+                "A fatal listener failure must not skip remaining teardown listeners");
+    }
+
 }
