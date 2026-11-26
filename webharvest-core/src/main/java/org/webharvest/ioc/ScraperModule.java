@@ -193,8 +193,12 @@ public final class ScraperModule extends AbstractModule {
     }
     
     private void bindInterceptors() {
+        // The interceptor must resolve scoped services from this injector,
+        // never from the process-global InjectorHelper.
+        ScrapingInterceptor interceptor = new ScrapingInterceptor();
+        requestInjection(interceptor);
         bindInterceptor(Matchers.any(), Matchers.annotatedWith(Scraping.class),
-                new ScrapingInterceptor());
+                interceptor);
     }
     
     private void bindAdvancedFeatures() {
