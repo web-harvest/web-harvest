@@ -47,6 +47,8 @@ import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
 import org.webharvest.runtime.DynamicScopeContext;
+import org.webharvest.runtime.resource.ExecutionResourceAccess;
+import org.webharvest.runtime.session.ExecutionOwner;
 import org.webharvest.runtime.session.ScraperSession;
 import org.webharvest.runtime.session.events.SessionCancelledEvent;
 import org.webharvest.runtime.session.events.SessionCompletedEvent;
@@ -219,20 +221,27 @@ public class WebBrowserPlugin extends AbstractPlugin {
         }
 
         ScraperSession session = context.getSession();
-        if (session == null || session.getSessionId() == null || session.getSessionId().trim().isEmpty()) {
+        ExecutionResourceAccess resourceAccess = context.getResourceAccess();
+        String sessionId = session != null ? session.getSessionId()
+            : resourceAccess != null ? resourceAccess.getOwner().getSessionId() : null;
+        if (sessionId == null || sessionId.trim().isEmpty()) {
             synchronized (CONTEXT_PAGES) {
-                return CONTEXT_PAGES.computeIfAbsent(context, ignored -> new BrowserSessionState(null, null));
+                return CONTEXT_PAGES.computeIfAbsent(
+                    context, ignored -> new BrowserSessionState(null, null, null));
             }
         }
 
-        String sessionId = session.getSessionId();
         BrowserSessionState state = SESSION_PAGES.computeIfAbsent(
-                sessionId, ignored -> new BrowserSessionState(sessionId, context.getEventBus()));
-        // Covers a terminal transition racing with state registration.
-        if (session.getStatus().isTerminal()) {
+            sessionId, ignored -> new BrowserSessionState(sessionId, context.getEventBus(), resourceAccess));
+        if (resourceAccess != null && !resourceAccess.getOwner().equals(state.getOwner())) {
+            throw new IllegalStateException("Browser state belongs to another execution owner");
+        }
+        // Covers terminal/termination races with computeIfAbsent before the
+        // mapping is published. A closed state must never be reused.
+        if (state.isClosed() || session != null && session.getStatus().isTerminal()) {
             state.close();
-            // The terminal event may race with computeIfAbsent before its mapping is published.
             SESSION_PAGES.remove(sessionId, state);
+            throw new IllegalStateException("Browser session is no longer active");
         }
         return state;
     }
@@ -240,16 +249,43 @@ public class WebBrowserPlugin extends AbstractPlugin {
     private static final class BrowserSessionState {
         private final String sessionId;
         private final EventBus eventBus;
+        private final ExecutionOwner owner;
+        private final ExecutionResourceAccess.ResourceHandle resourceHandle;
         private final Map<String, WebClient> namedPages = new ConcurrentHashMap<>();
         private WebClient defaultPage;
         private boolean closed;
 
-        private BrowserSessionState(String sessionId, EventBus eventBus) {
+        private BrowserSessionState(String sessionId, EventBus eventBus,
+                                     ExecutionResourceAccess resourceAccess) {
             this.sessionId = sessionId;
-            this.eventBus = eventBus;
-            if (eventBus != null && sessionId != null) {
-                eventBus.register(this);
+            this.owner = resourceAccess != null ? resourceAccess.getOwner() : null;
+            if (resourceAccess != null) {
+                this.eventBus = null;
+                String ownerSessionId = owner.getSessionId();
+                this.resourceHandle = resourceAccess.registerSessionResource(
+                    "web-browser-session-" + ownerSessionId, this::close, this::close);
+            } else {
+                this.eventBus = eventBus;
+                this.resourceHandle = null;
+                if (eventBus != null && sessionId != null) {
+                    eventBus.register(this);
+                }
             }
+        }
+
+        private ExecutionOwner getOwner() {
+            return owner;
+        }
+
+        private synchronized boolean isClosed() {
+            return closed;
+        }
+
+        private synchronized ExecutionResourceAccess.Lease acquire() {
+            if (closed) {
+                throw new IllegalStateException("Browser session is closed");
+            }
+            return resourceHandle != null ? resourceHandle.acquire() : () -> { };
         }
 
         private synchronized WebClient get(String pageName) {
@@ -262,7 +298,7 @@ public class WebBrowserPlugin extends AbstractPlugin {
         private synchronized void put(String pageName, WebClient client) {
             if (closed) {
                 client.close();
-                return;
+                throw new IllegalStateException("Browser session is closed");
             }
             WebClient previous;
             if (pageName != null && !pageName.isEmpty()) {
@@ -305,6 +341,8 @@ public class WebBrowserPlugin extends AbstractPlugin {
             }
             if (eventBus != null && sessionId != null) {
                 eventBus.unregister(this);
+            }
+            if (sessionId != null) {
                 SESSION_PAGES.remove(sessionId, this);
             }
         }
@@ -498,7 +536,10 @@ public class WebBrowserPlugin extends AbstractPlugin {
             ", Page: " + pageName + ", Wait: " + waitTime + "ms");
         
         try {
-            return executeAction(action, url, pageName, waitTime, javascriptEnabled, context);
+            BrowserSessionState state = getBrowserSessionState(context);
+            try (ExecutionResourceAccess.Lease lease = state.acquire()) {
+                return executeAction(action, url, pageName, waitTime, javascriptEnabled, context);
+            }
         } catch (Exception e) {
             LOGGER.error("Error in webbrowser plugin", e);
             throw new RuntimeException("Error in webbrowser plugin: " + e.getMessage(), e);
@@ -543,36 +584,40 @@ public class WebBrowserPlugin extends AbstractPlugin {
             throw new PluginException("Invalid URL format: " + url);
         }
         
+        BrowserSessionState state = getBrowserSessionState(context);
+        WebClient webClient = createWebClient(javascriptEnabled);
+        // Publish the client into its owner state before navigation starts. The
+        // session abort callback can now close it even while getPage() is blocked.
+        state.put(pageName, webClient);
+        boolean loaded = false;
         try {
-            // Create WebClient with JavaScript support
-            WebClient webClient = createWebClient(javascriptEnabled);
-            
-            // Load page
             LOGGER.debug("Loading page: {}", url);
             HtmlPage page = webClient.getPage(url);
-            
-            // Wait for JavaScript/AJAX to complete
+
             if (javascriptEnabled && waitTime > 0) {
                 LOGGER.debug("Waiting {}ms for JavaScript/AJAX", waitTime);
                 webClient.waitForBackgroundJavaScript(waitTime);
-                Thread.sleep(waitTime); // Additional wait for async operations
+                Thread.sleep(waitTime);
             }
-            
-            // Store page in the owning scraper session only.
-            getBrowserSessionState(context).put(pageName, webClient);
-            LOGGER.debug("Stored browser page in the current scraper session: {}",
-                    pageName != null && !pageName.isEmpty() ? pageName : "default");
-            
+
             String content = page.asXml();
             LOGGER.debug("Page loaded successfully, content length: {} chars", content.length());
-            
+            loaded = true;
             return new NodeVariable(content);
-            
         } catch (IOException e) {
             throw new PluginException("Failed to load page: " + e.getMessage(), e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new PluginException("Interrupted while waiting for page load", e);
+        } finally {
+            if (!loaded) {
+                WebClient removed = state.remove(pageName);
+                if (removed != null) {
+                    removed.close();
+                } else {
+                    webClient.close();
+                }
+            }
         }
     }
 
