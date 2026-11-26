@@ -8,6 +8,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.testng.annotations.Test;
 
 import org.webharvest.definition.Config;
+import org.webharvest.runtime.Scraper;
 import org.webharvest.runtime.service.WebHarvestService;
 import org.webharvest.runtime.session.events.SessionCreatedEvent;
 
@@ -60,6 +61,18 @@ public class EventBusTypeListenerTest {
 
         verify(provider).get();
         verify(eventBus).register(subscriber);
+    }
+
+    @Test
+    public void executionScopedScraperIsNotRegisteredAsRuntimeSubscriber() {
+        EventBusTypeListener listener = new EventBusTypeListener();
+        @SuppressWarnings("unchecked")
+        TypeEncounter<Scraper> encounter = mock(TypeEncounter.class);
+
+        listener.hear(TypeLiteral.get(Scraper.class), encounter);
+
+        verify(encounter, never()).getProvider(EventBus.class);
+        verify(encounter, never()).register(any(InjectionListener.class));
     }
 
     @Test
