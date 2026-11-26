@@ -1078,4 +1078,22 @@ public class ResourceLedgerTest {
         assertEquals(ledger.size(), 0);
     }
 
+    @Test(groups = {"unit", "runtime"})
+    public void abortCompletionListenerRegisteredAfterTerminalAbortRunsImmediately() {
+        ResourceLedger ledger = new ResourceLedger("runtime-a");
+        AtomicInteger completions = new AtomicInteger();
+        ResourceLedger.Registration registration = ledger.registerRuntime(
+            "late-completion-listener", null, null);
+        registration.requestClose();
+        registration.abort();
+
+        registration.setAbortCompletionListener(completions::incrementAndGet);
+
+        assertEquals(completions.get(), 1);
+        registration.markOwnerQuiescent();
+        assertTrue(registration.drainAndClose(Duration.ZERO).isClosed());
+        registration.close();
+        assertEquals(ledger.size(), 0);
+    }
+
 }
