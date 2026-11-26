@@ -354,7 +354,7 @@ public class DatabasePluginTest {
         assertEquals(schema.getAttributeDefinitions().length, 0);
         assertEquals(schema.getRequiredAttributes().length, 0);
         assertEquals(schema.getOptionalAttributes(),
-                new String[]{"connection", "url", "driver", "username", "password", "sql"});
+                new String[]{"connection", "url", "driver", "username", "password", "sql", "queryTimeout"});
         assertEquals(schema.getVersion(), "2.1.0");
         assertTrue(schema.allowsBody());
         assertEquals(schema.getRequiredSubElements().length, 0);
@@ -392,6 +392,28 @@ public class DatabasePluginTest {
         }
 
         schema.validate(inlineConfig("jdbc:h2:mem:schema_valid"));
+
+        DefaultPluginConfiguration timedInline = inlineConfig("jdbc:h2:mem:schema_timeout");
+        timedInline.setProperty("queryTimeout", "12");
+        schema.validate(timedInline);
+
+        DefaultPluginConfiguration negativeTimeout = inlineConfig("jdbc:h2:mem:schema_negative_timeout");
+        negativeTimeout.setProperty("queryTimeout", "-1");
+        try {
+            schema.validate(negativeTimeout);
+            fail("Expected negative query timeout to be rejected");
+        } catch (org.webharvest.plugin.exceptions.PluginValidationException expected) {
+            assertTrue(expected.getMessage().contains("queryTimeout"));
+        }
+
+        DefaultPluginConfiguration invalidTimeout = inlineConfig("jdbc:h2:mem:schema_invalid_timeout");
+        invalidTimeout.setProperty("queryTimeout", "forever");
+        try {
+            schema.validate(invalidTimeout);
+            fail("Expected non-numeric query timeout to be rejected");
+        } catch (org.webharvest.plugin.exceptions.PluginValidationException expected) {
+            assertTrue(expected.getMessage().contains("queryTimeout"));
+        }
     }
 
     @Test
