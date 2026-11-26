@@ -31,6 +31,7 @@ import static org.testng.Assert.fail;
 public class HttpServiceOperationLifecycleTest {
 
     private HttpServer server;
+    private ExecutorService serverExecutor;
     private String baseUrl;
     private final CountDownLatch blockedRequestStarted = new CountDownLatch(1);
     private final CountDownLatch releaseBlockedRequest = new CountDownLatch(1);
@@ -38,6 +39,8 @@ public class HttpServiceOperationLifecycleTest {
     @BeforeClass(alwaysRun = true)
     public void startServer() throws Exception {
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        serverExecutor = Executors.newCachedThreadPool();
+        server.setExecutor(serverExecutor);
         server.createContext("/ok", exchange -> {
             byte[] body = "ok".getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().set("Content-Type", "text/plain; charset=UTF-8");
@@ -80,6 +83,9 @@ public class HttpServiceOperationLifecycleTest {
         if (server != null) {
             server.stop(0);
         }
+        if (serverExecutor != null) {
+            serverExecutor.shutdownNow();
+        }
     }
 
     @Test
@@ -99,7 +105,7 @@ public class HttpServiceOperationLifecycleTest {
     @Test
     public void ownerAbortCancelsOnlyTheActiveRequestAndReleasesItsLease() throws Exception {
         TrackingResourceAccess access = new TrackingResourceAccess();
-        ExecutorService executor = Executors.newSingleThreadExecutor();
+        ExecutorService executor = Executors.newFixedThreadPool(2);
         try (HttpServiceImpl service = new HttpServiceImpl()) {
             Future<HttpResponse> request = executor.submit(() -> service.request(
                 "GET", baseUrl + "/blocked", null, Map.of(), Duration.ofSeconds(5), access));
@@ -109,8 +115,8 @@ public class HttpServiceOperationLifecycleTest {
 
             TrackingResourceAccess unaffectedAccess = new TrackingResourceAccess();
             Future<HttpResponse> unaffectedRequest = executor.submit(() -> service.request(
-                "GET", baseUrl + "/ok", null, Map.of(), Duration.ofSeconds(2), unaffectedAccess));
-            assertEquals(unaffectedRequest.get(3, TimeUnit.SECONDS).getBody(), "ok",
+                "GET", baseUrl + "/ok", null, Map.of(), Duration.ofSeconds(5), unaffectedAccess));
+            assertEquals(unaffectedRequest.get(5, TimeUnit.SECONDS).getBody(), "ok",
                 "A separate request on the shared client must remain usable");
 
             access.abortActiveRequest();
