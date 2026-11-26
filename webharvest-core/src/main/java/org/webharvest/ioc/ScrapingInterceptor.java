@@ -252,11 +252,11 @@ public final class ScrapingInterceptor implements MethodInterceptor {
          */
         public void onAfterScraping(final Harvester harvester) {
             LOG.debug("Leaving scraper scope [{}]", harvester);
-            RuntimeException firstFailure = null;
+            Throwable firstFailure = null;
             for (ListenerRegistration registration : listeners) {
                 try {
                     registration.listener.onAfterScraping(harvester);
-                } catch (RuntimeException failure) {
+                } catch (Throwable failure) {
                     if (firstFailure == null) {
                         firstFailure = failure;
                     } else if (firstFailure != failure) {
@@ -265,7 +265,7 @@ public final class ScrapingInterceptor implements MethodInterceptor {
                 }
             }
             if (firstFailure != null) {
-                throw firstFailure;
+                throwListenerFailure(firstFailure);
             }
         }
 
