@@ -546,7 +546,11 @@ public class WebBrowserPlugin extends AbstractPlugin {
         try {
             BrowserSessionState state = getBrowserSessionState(context);
             try (ExecutionResourceAccess.Lease lease = state.acquire()) {
-                return executeAction(action, url, pageName, waitTime, javascriptEnabled, context);
+                Variable result = executeAction(action, url, pageName, waitTime, javascriptEnabled, context);
+                if (state.isClosed()) {
+                    throw new IllegalStateException("Browser session terminated during the operation");
+                }
+                return result;
             }
         } catch (Exception e) {
             LOGGER.error("Error in webbrowser plugin", e);
