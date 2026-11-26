@@ -88,7 +88,7 @@ public class HttpServiceImpl implements HttpService, AutoCloseable {
     private static final Timeout DEFAULT_CONNECT_TIMEOUT = Timeout.ofSeconds(30);
 
     private final CloseableHttpClient httpClient;
-    private final boolean followRedirects;
+    private final Boolean followRedirects;
     
     /**
      * Creates a new HttpServiceImpl with a default HttpClient.
@@ -111,7 +111,7 @@ public class HttpServiceImpl implements HttpService, AutoCloseable {
      */
     public HttpServiceImpl(CloseableHttpClient httpClient) {
         this.httpClient = Objects.requireNonNull(httpClient, "HTTP client cannot be null");
-        this.followRedirects = true;
+        this.followRedirects = null;
     }
     
     /**
@@ -217,13 +217,14 @@ public class HttpServiceImpl implements HttpService, AutoCloseable {
             request.setEntity(new StringEntity(body));
         }
 
-        RequestConfig requestConfig = RequestConfig.custom()
-            .setRedirectsEnabled(followRedirects)
+        RequestConfig.Builder requestConfigBuilder = RequestConfig.custom()
             .setResponseTimeout(Timeout.ofMilliseconds(timeoutMillis))
             .setConnectionRequestTimeout(Timeout.ofMilliseconds(timeoutMillis))
-            .setHardCancellationEnabled(true)
-            .build();
-        request.setConfig(requestConfig);
+            .setHardCancellationEnabled(true);
+        if (followRedirects != null) {
+            requestConfigBuilder.setRedirectsEnabled(followRedirects);
+        }
+        request.setConfig(requestConfigBuilder.build());
 
         if (resourceAccess == null) {
             return executeRequest(request);
