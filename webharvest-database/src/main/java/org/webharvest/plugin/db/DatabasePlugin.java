@@ -92,6 +92,8 @@ public class DatabasePlugin extends AbstractPlugin {
     private static final String PASSWORD_ATT_NAME = "password";
     private static final String SQL_ATT_NAME = "sql";
     private static final String CONNECTION_ATT_NAME = "connection";
+    private static final String QUERY_TIMEOUT_ATT_NAME = "queryTimeout";
+    private static final int DEFAULT_QUERY_TIMEOUT_SECONDS = 0;
     
     /**
      * Default constructor - no dependency injection needed anymore.
@@ -194,7 +196,7 @@ public class DatabasePlugin extends AbstractPlugin {
                 @Override
                 public String[] getOptionalAttributes() {
                     return new String[] { CONNECTION_ATT_NAME, URL_ATT_NAME, DRIVER_ATT_NAME,
-                            USERNAME_ATT_NAME, PASSWORD_ATT_NAME, SQL_ATT_NAME };
+                            USERNAME_ATT_NAME, PASSWORD_ATT_NAME, SQL_ATT_NAME, QUERY_TIMEOUT_ATT_NAME };
                 }
 
                 @Override
@@ -276,7 +278,10 @@ public class DatabasePlugin extends AbstractPlugin {
         
         String connectionId = config.getProperty(CONNECTION_ATT_NAME, "").trim();
         String sql = config.getProperty(SQL_ATT_NAME, "");
-        
+        int queryTimeoutSeconds = parseQueryTimeoutSeconds(
+            config.getProperty(QUERY_TIMEOUT_ATT_NAME, Integer.toString(DEFAULT_QUERY_TIMEOUT_SECONDS)));
+        ExecutionResourceAccess resourceAccess = context.getResourceAccess();
+
         // Evaluate SQL template
         sql = evaluateTemplate(sql, context);
         if (sql == null) {
@@ -319,7 +324,6 @@ public class DatabasePlugin extends AbstractPlugin {
 
                 LOGGER.info("Creating inline connection: driver={}, url={}", driver, url);
                 inlineFactory = new StandaloneConnectionPool();
-                ExecutionResourceAccess resourceAccess = context.getResourceAccess();
                 if (resourceAccess != null) {
                     inlineResource = resourceAccess.registerOperationResource(
                         "jdbc/inline/" + UUID.randomUUID(), null, inlineFactory::closeAllConnections);
@@ -336,7 +340,7 @@ public class DatabasePlugin extends AbstractPlugin {
                 throw new RuntimeException("Database SQL is empty; provide the sql attribute or element body");
             }
 
-            return executeSql(connection, sql);
+            return executeSql(connection, sql, resourceAccess, queryTimeoutSeconds);
 
         } catch (InterruptedException interrupted) {
             primaryFailure = interrupted;
@@ -426,20 +430,48 @@ public class DatabasePlugin extends AbstractPlugin {
         return primary;
     }
 
-    private Variable executeSql(Connection connection, String sql) throws SQLException {
+    private int parseQueryTimeoutSeconds(String value) {
+        try {
+            int seconds = Integer.parseInt(value != null ? value.trim() : "0");
+            if (seconds < 0) {
+                throw new NumberFormatException("negative timeout");
+            }
+            return seconds;
+        } catch (NumberFormatException invalidTimeout) {
+            throw new IllegalArgumentException(
+                "Database queryTimeout must be a non-negative integer number of seconds", invalidTimeout);
+        }
+    }
+
+    private Variable executeSql(Connection connection, String sql,
+                                 ExecutionResourceAccess resourceAccess,
+                                 int queryTimeoutSeconds) throws SQLException {
         PreparedStatement statement = null;
         ResultSet resultSet = null;
-        
+        ExecutionResourceAccess.OperationResource statementResource = null;
+        ExecutionResourceAccess.Lease statementLease = null;
+
         Throwable primaryFailure = null;
         try {
             statement = connection.prepareStatement(sql);
+            if (queryTimeoutSeconds > 0) {
+                statement.setQueryTimeout(queryTimeoutSeconds);
+            }
+
+            if (resourceAccess != null) {
+                PreparedStatement activeStatement = statement;
+                statementResource = resourceAccess.registerOperationResource(
+                    "jdbc/statement/" + UUID.randomUUID(),
+                    activeStatement::cancel,
+                    activeStatement::close);
+                statementLease = statementResource.acquire();
+            }
 
             if (sql.trim().toLowerCase().startsWith("select")) {
-                // Query operation
                 resultSet = statement.executeQuery();
                 StringBuilder result = new StringBuilder();
                 result.append("<results>");
-                
+
                 while (resultSet.next()) {
                     result.append("<row>");
                     int columnCount = resultSet.getMetaData().getColumnCount();
@@ -454,16 +486,14 @@ public class DatabasePlugin extends AbstractPlugin {
                     }
                     result.append("</row>");
                 }
-                
+
                 result.append("</results>");
                 return new NodeVariable(result.toString());
-                
-            } else {
-                // Update/Insert/Delete operation
-                int rowsAffected = statement.executeUpdate();
-                return new NodeVariable("Rows affected: " + rowsAffected);
             }
-            
+
+            int rowsAffected = statement.executeUpdate();
+            return new NodeVariable("Rows affected: " + rowsAffected);
+
         } catch (SQLException failure) {
             primaryFailure = failure;
             throw failure;
@@ -471,7 +501,7 @@ public class DatabasePlugin extends AbstractPlugin {
             primaryFailure = failure;
             throw failure;
         } finally {
-            SQLException cleanupFailure = null;
+            Throwable cleanupFailure = null;
             if (resultSet != null) {
                 try {
                     resultSet.close();
@@ -479,28 +509,52 @@ public class DatabasePlugin extends AbstractPlugin {
                     cleanupFailure = failure;
                 }
             }
-            if (statement != null) {
+
+            if (statementLease != null) {
+                try {
+                    statementLease.close();
+                } catch (RuntimeException | Error failure) {
+                    cleanupFailure = combineFailures(cleanupFailure, failure);
+                }
+            }
+
+            if (statementResource != null) {
+                try {
+                    statementResource.close();
+                    if (statementResource.getState() != ExecutionResourceAccess.ResourceState.CLOSED) {
+                        Throwable closeFailure = statementResource.getCloseFailure();
+                        IllegalStateException failure = new IllegalStateException(
+                            "JDBC statement resource did not close: " + statementResource.getResourceId(),
+                            closeFailure);
+                        cleanupFailure = combineFailures(cleanupFailure, failure);
+                    }
+                } catch (RuntimeException | Error failure) {
+                    cleanupFailure = combineFailures(cleanupFailure, failure);
+                }
+            } else if (statement != null) {
                 try {
                     statement.close();
                 } catch (SQLException failure) {
-                    if (cleanupFailure == null) {
-                        cleanupFailure = failure;
-                    } else if (cleanupFailure != failure) {
-                        cleanupFailure.addSuppressed(failure);
-                    }
+                    cleanupFailure = combineFailures(cleanupFailure, failure);
                 }
             }
+
             if (cleanupFailure != null) {
                 if (primaryFailure != null) {
                     if (primaryFailure != cleanupFailure) {
                         primaryFailure.addSuppressed(cleanupFailure);
                     }
+                } else if (cleanupFailure instanceof SQLException) {
+                    throw (SQLException) cleanupFailure;
+                } else if (cleanupFailure instanceof RuntimeException) {
+                    throw (RuntimeException) cleanupFailure;
                 } else {
-                    throw cleanupFailure;
+                    throw (Error) cleanupFailure;
                 }
             }
         }
     }
+
 
     private String escapeXml(String value) {
         return value.replace("&", "&amp;")
