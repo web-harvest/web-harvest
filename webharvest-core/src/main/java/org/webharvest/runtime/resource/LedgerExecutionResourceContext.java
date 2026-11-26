@@ -248,6 +248,9 @@ public final class LedgerExecutionResourceContext implements ExecutionResourceAc
 
         private Handle(ResourceLedger.Registration registration) {
             this.registration = registration;
+            // Abort completion is the missing continuation when the owner and all
+            // leases became quiescent while the provider callback was still running.
+            registration.setAbortCompletionListener(() -> retryDrain(this));
         }
 
         @Override
