@@ -49,6 +49,8 @@ import org.webharvest.runtime.session.events.SessionCreatedEvent;
 import org.webharvest.runtime.session.events.SessionCompletedEvent;
 import org.webharvest.runtime.session.events.SessionStartedEvent;
 import org.webharvest.runtime.resource.ExecutionResourceAccess;
+import org.webharvest.ioc.RuntimeRegistrationCoordinator;
+import org.webharvest.ioc.ScrapingInterceptor.ScrapingAwareHelper;
 
 import java.lang.reflect.Field;
 import java.time.Duration;
@@ -83,6 +85,41 @@ public class WebHarvestServiceExecutionLifecycleTest {
     @Test(groups = {"unit", "service"}, expectedExceptions = IllegalArgumentException.class)
     public void testServiceRejectsNullEventBus() {
         new WebHarvestServiceImpl(new InlineExecutorService(), new SessionRegistryImpl(), null);
+    }
+
+    @Test(groups = {"unit", "service"})
+    public void workerInitiatedShutdownRetiresRuntimeRegistrationsAfterTaskExit() throws Exception {
+        EventBus eventBus = new EventBus();
+        ScrapingAwareHelper helper = new ScrapingAwareHelper();
+        RuntimeRegistrationCoordinator coordinator =
+            new RuntimeRegistrationCoordinator(eventBus, helper);
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            java.util.concurrent.Executors.newSingleThreadExecutor(),
+            new SessionRegistryImpl(), eventBus, coordinator);
+        WorkerInitiatedShutdownListener listener = new WorkerInitiatedShutdownListener(service);
+        coordinator.registerSubscriber(listener);
+
+        try {
+            service.executeAsync(Mockito.mock(Config.class), null, null);
+
+            assertTrue(listener.shutdownReturned.await(5, TimeUnit.SECONDS),
+                "The session worker must return from its own shutdown request");
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+            while (!coordinator.isCloseRequested() && System.nanoTime() < deadline) {
+                Thread.yield();
+            }
+
+            assertNull(listener.shutdownFailure.get(),
+                "Worker-initiated graceful shutdown must not fail");
+            assertTrue(coordinator.isCloseRequested(),
+                "Deferred finalization must close the runtime registration owner after worker exit");
+            assertEquals(coordinator.getSubscriberRegistrationCount(), 0,
+                "Deferred finalization must unregister the worker's subscriber");
+        } finally {
+            if (!coordinator.isCloseRequested()) {
+                service.shutdownNow();
+            }
+        }
     }
 
     @Test(groups = {"unit", "service"})
@@ -1693,6 +1730,27 @@ public class WebHarvestServiceExecutionLifecycleTest {
                 return false;
             }
             return super.awaitTermination(timeout, unit);
+        }
+    }
+
+    private static class WorkerInitiatedShutdownListener {
+        private final WebHarvestService service;
+        private final CountDownLatch shutdownReturned = new CountDownLatch(1);
+        private final AtomicReference<Throwable> shutdownFailure = new AtomicReference<>();
+
+        private WorkerInitiatedShutdownListener(WebHarvestService service) {
+            this.service = service;
+        }
+
+        @Subscribe
+        public void onStarted(SessionStartedEvent event) {
+            try {
+                service.shutdown();
+            } catch (Throwable failure) {
+                shutdownFailure.set(failure);
+            } finally {
+                shutdownReturned.countDown();
+            }
         }
     }
 
