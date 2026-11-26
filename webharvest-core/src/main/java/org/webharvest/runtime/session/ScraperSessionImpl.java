@@ -39,6 +39,7 @@ import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.session.events.*;
 
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
@@ -104,6 +105,7 @@ public class ScraperSessionImpl implements ExecutionTrackedSession {
     private final Config config;
     private final SessionMetrics metrics;
     private final EventBus eventBus;
+    private final AtomicBoolean createdEventPublished = new AtomicBoolean();
     private final ExecutionOwner executionOwner;
     
     private volatile SessionStatus status;
@@ -155,6 +157,24 @@ public class ScraperSessionImpl implements ExecutionTrackedSession {
      */
     public ScraperSessionImpl(String sessionId, String clientId, Config config,
                               EventBus eventBus, ExecutionOwner executionOwner) {
+        this(sessionId, clientId, config, eventBus, executionOwner, true);
+    }
+
+    /**
+     * Creates a session with explicit control over creation-event publication.
+     * Service admission uses the non-publishing form and publishes only after
+     * the session has been accepted and registered.
+     *
+     * @param sessionId unique identifier for this session
+     * @param clientId optional client identifier
+     * @param config configuration to execute
+     * @param eventBus shared runtime EventBus
+     * @param executionOwner immutable runtime/session/generation identity
+     * @param publishCreatedEvent whether to publish the creation event during construction
+     */
+    public ScraperSessionImpl(String sessionId, String clientId, Config config,
+                              EventBus eventBus, ExecutionOwner executionOwner,
+                              boolean publishCreatedEvent) {
         if (sessionId == null || sessionId.trim().isEmpty()) {
             throw new IllegalArgumentException("Session ID cannot be null or empty");
         }
@@ -181,10 +201,21 @@ public class ScraperSessionImpl implements ExecutionTrackedSession {
         this.completionLock = new ReentrantLock();
         this.completionCondition = completionLock.newCondition();
         
-        // Publish creation event
-        eventBus.post(new SessionCreatedEvent(this));
+        if (publishCreatedEvent) {
+            publishCreatedEvent();
+        }
     }
-    
+
+    /**
+     * Publishes the creation event once. Runtime services call this only after
+     * admission succeeds; legacy direct constructors retain eager publication.
+     */
+    public void publishCreatedEvent() {
+        if (createdEventPublished.compareAndSet(false, true)) {
+            eventBus.post(new SessionCreatedEvent(this));
+        }
+    }
+
     @Override
     public ExecutionOwner getExecutionOwner() {
         return executionOwner;
@@ -376,28 +407,13 @@ public class ScraperSessionImpl implements ExecutionTrackedSession {
             handler = cancellationHandler;
         }
 
-        // Cancellation callbacks and EventBus subscribers are external code.
-        // A callback failure must not strand waiters after the terminal state
-        // transition has already committed.
-        Throwable failure = null;
+        // Request worker interruption before notifying EventBus subscribers.
+        // Neither this callback nor the event proves worker quiescence.
         if (handler != null) {
-            try {
-                handler.run();
-            } catch (Throwable handlerFailure) {
-                failure = handlerFailure;
-            }
+            handler.run();
         }
-        try {
-            signalCompletion();
-        } catch (Throwable completionFailure) {
-            failure = combineFailures(failure, completionFailure);
-        }
-        try {
-            eventBus.post(new SessionCancelledEvent(this));
-        } catch (Throwable eventFailure) {
-            failure = combineFailures(failure, eventFailure);
-        }
-        rethrowCancellationFailure(failure);
+        signalCompletion();
+        eventBus.post(new SessionCancelledEvent(this));
         return true;
     }
     
@@ -505,29 +521,6 @@ public class ScraperSessionImpl implements ExecutionTrackedSession {
         eventBus.post(new SessionFailedEvent(this, failure));
     }
     
-
-    private static Throwable combineFailures(Throwable primary, Throwable secondary) {
-        if (primary == null) {
-            return secondary;
-        }
-        if (primary != secondary) {
-            primary.addSuppressed(secondary);
-        }
-        return primary;
-    }
-
-    private static void rethrowCancellationFailure(Throwable failure) {
-        if (failure instanceof RuntimeException) {
-            throw (RuntimeException) failure;
-        }
-        if (failure instanceof Error) {
-            throw (Error) failure;
-        }
-        if (failure != null) {
-            throw new IllegalStateException("Cancellation notification failed", failure);
-        }
-    }
-
     /**
      * Signals all threads waiting for completion.
      * Uses the independent completion condition; the session monitor is not required.
