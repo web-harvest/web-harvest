@@ -259,6 +259,28 @@ public class ResourceLedgerTest {
     }
 
     @Test(groups = {"unit", "runtime"})
+    public void abortIsNotInvokedAfterCloseFailure() throws InterruptedException {
+        ResourceLedger ledger = new ResourceLedger("runtime-a");
+        AtomicInteger aborts = new AtomicInteger();
+        IllegalStateException closeFailure = new IllegalStateException("close failed");
+        ResourceLedger.Registration registration = ledger.registerRuntime(
+            "close-failed-resource", aborts::incrementAndGet, () -> {
+                throw closeFailure;
+            });
+
+        registration.requestClose();
+        registration.markOwnerQuiescent();
+        ResourceLedger.DrainResult result = registration.drainAndClose(Duration.ofSeconds(1));
+        assertEquals(result.getState(), ResourceLedger.State.CLOSE_FAILED);
+        assertSame(result.getCloseFailure(), closeFailure);
+
+        registration.abort();
+        assertEquals(registration.getAbortState(), ResourceLedger.AbortState.NOT_REQUESTED);
+        assertEquals(aborts.get(), 0);
+        assertEquals(ledger.size(), 1);
+    }
+
+    @Test(groups = {"unit", "runtime"})
     public void testDuplicateIdentityAndCrossRuntimeOwnerFailClosed() {
         ResourceLedger ledger = new ResourceLedger("runtime-a");
         ResourceLedger.Registration first = ledger.registerRuntime("shared-client", null, null);
@@ -450,6 +472,33 @@ public class ResourceLedgerTest {
         assertEquals(closeCount.get(), 1);
         assertEquals(registration.getState(), ResourceLedger.State.CLOSED);
         registration.close();
+    }
+
+    @Test(groups = {"unit", "runtime"})
+    public void generationAbortIsAllowedAfterRetirementAndRunsOnlyOnce() throws InterruptedException {
+        ResourceLedger ledger = new ResourceLedger("runtime-a");
+        RegistryGenerationId generation = new RegistryGenerationId("runtime-a", "snapshot-abort");
+        AtomicInteger aborts = new AtomicInteger();
+        AtomicInteger closes = new AtomicInteger();
+        ResourceLedger.Registration registration = ledger.registerGeneration(
+            "generation-resource", generation, aborts::incrementAndGet, closes::incrementAndGet);
+
+        expectThrows(IllegalStateException.class, registration::abort);
+        assertEquals(registration.getAbortState(), ResourceLedger.AbortState.NOT_REQUESTED);
+
+        ledger.beginGenerationRetirement(generation);
+        registration.abort();
+        registration.abort();
+
+        assertEquals(aborts.get(), 1);
+        assertEquals(registration.getAbortState(), ResourceLedger.AbortState.SUCCEEDED);
+        assertEquals(closes.get(), 0);
+
+        ResourceLedger.DrainResult drained = registration.drainAndClose(Duration.ofSeconds(1));
+        assertTrue(drained.isClosed());
+        assertEquals(closes.get(), 1);
+        registration.close();
+        assertEquals(ledger.size(), 0);
     }
 
     @Test(groups = {"unit", "runtime"})
@@ -730,6 +779,227 @@ public class ResourceLedgerTest {
     @FunctionalInterface
     private interface ThrowingRunnable {
         void run() throws Exception;
+    }
+
+
+    @Test(groups = {"unit", "runtime"})
+    public void asyncAbortDoesNotBlockCallerAndRetainsResourceUntilCallbackActuallyReturns() throws Exception {
+        java.util.concurrent.ThreadPoolExecutor dispatcher = new java.util.concurrent.ThreadPoolExecutor(
+            1, 1, 0L, TimeUnit.MILLISECONDS, new java.util.concurrent.ArrayBlockingQueue<>(2),
+            runnable -> {
+                Thread thread = new Thread(runnable, "resource-ledger-abort-test");
+                thread.setDaemon(true);
+                return thread;
+            }, new java.util.concurrent.ThreadPoolExecutor.AbortPolicy());
+        CountDownLatch release = new CountDownLatch(1);
+        CountDownLatch dispatchReturned = new CountDownLatch(1);
+        AtomicReference<Throwable> dispatchFailure = new AtomicReference<>();
+        try {
+            ResourceLedger ledger = new ResourceLedger("runtime-a", dispatcher);
+            CountDownLatch entered = new CountDownLatch(1);
+            AtomicInteger aborts = new AtomicInteger();
+            AtomicInteger closes = new AtomicInteger();
+            ResourceLedger.Registration registration = ledger.registerRuntime(
+                "blocked-abort", () -> {
+                    aborts.incrementAndGet();
+                    entered.countDown();
+                    release.await();
+                }, closes::incrementAndGet);
+
+            registration.requestClose();
+            Thread caller = new Thread(() -> {
+                try {
+                    registration.abort();
+                } catch (Throwable failure) {
+                    dispatchFailure.set(failure);
+                } finally {
+                    dispatchReturned.countDown();
+                }
+            }, "resource-ledger-abort-caller");
+            caller.start();
+            assertTrue(dispatchReturned.await(2, TimeUnit.SECONDS),
+                "Abort admission must return while provider callback remains blocked");
+            assertNull(dispatchFailure.get());
+            registration.abort();
+            assertTrue(entered.await(5, TimeUnit.SECONDS));
+            assertEquals(aborts.get(), 1, "Duplicate termination must claim the callback only once");
+            assertEquals(registration.getAbortState(), ResourceLedger.AbortState.RUNNING);
+
+            registration.markOwnerQuiescent();
+            ResourceLedger.DrainResult blocked = registration.drainAndClose(Duration.ZERO);
+            assertTrue(blocked.isAbortInProgress());
+            assertEquals(blocked.getAbortState(), ResourceLedger.AbortState.RUNNING);
+            assertEquals(closes.get(), 0, "Close must not race a running abort callback");
+
+            release.countDown();
+            caller.join(5000);
+            assertFalse(caller.isAlive());
+            dispatcher.shutdown();
+            assertTrue(dispatcher.awaitTermination(5, TimeUnit.SECONDS));
+            assertEquals(registration.getAbortState(), ResourceLedger.AbortState.SUCCEEDED);
+            assertTrue(registration.drainAndClose(Duration.ofSeconds(1)).isClosed());
+            assertEquals(closes.get(), 1);
+            registration.close();
+        } finally {
+            release.countDown();
+            dispatcher.shutdownNow();
+        }
+    }
+
+    @Test(groups = {"unit", "runtime"})
+    public void asyncAbortDispatcherRejectionIsDistinctAndDoesNotPretendCallbackRan() throws Exception {
+        java.util.concurrent.ThreadPoolExecutor dispatcher = new java.util.concurrent.ThreadPoolExecutor(
+            1, 1, 0L, TimeUnit.MILLISECONDS, new java.util.concurrent.ArrayBlockingQueue<>(1),
+            runnable -> {
+                Thread thread = new Thread(runnable, "resource-ledger-rejection-test");
+                thread.setDaemon(true);
+                return thread;
+            }, new java.util.concurrent.ThreadPoolExecutor.AbortPolicy());
+        CountDownLatch entered = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        try {
+            ResourceLedger ledger = new ResourceLedger("runtime-a", dispatcher);
+            ResourceLedger.Registration running = ledger.registerRuntime("running", () -> {
+                entered.countDown();
+                release.await();
+            }, null);
+            ResourceLedger.Registration queued = ledger.registerRuntime("queued", () -> { }, null);
+            AtomicInteger rejectedCallbackRuns = new AtomicInteger();
+            ResourceLedger.Registration rejected = ledger.registerRuntime("rejected",
+                rejectedCallbackRuns::incrementAndGet, null);
+
+            running.requestClose();
+            queued.requestClose();
+            rejected.requestClose();
+            running.abort();
+            assertTrue(entered.await(5, TimeUnit.SECONDS));
+            queued.abort();
+            rejected.abort();
+
+            assertEquals(rejected.getAbortState(), ResourceLedger.AbortState.REJECTED);
+            assertTrue(rejected.getAbortFailure() instanceof java.util.concurrent.RejectedExecutionException);
+            assertEquals(rejectedCallbackRuns.get(), 0);
+            assertEquals(running.getAbortState(), ResourceLedger.AbortState.RUNNING);
+            release.countDown();
+            dispatcher.shutdown();
+            assertTrue(dispatcher.awaitTermination(5, TimeUnit.SECONDS));
+            assertEquals(queued.getAbortState(), ResourceLedger.AbortState.SUCCEEDED);
+            assertEquals(rejected.getAbortState(), ResourceLedger.AbortState.REJECTED);
+        } finally {
+            release.countDown();
+            dispatcher.shutdownNow();
+        }
+    }
+
+
+    @Test(groups = {"unit", "runtime"})
+    public void asyncAbortCallbackFailureIsRecordedOnlyAfterCallbackCompletion() throws Exception {
+        java.util.concurrent.ThreadPoolExecutor dispatcher = new java.util.concurrent.ThreadPoolExecutor(
+            1, 1, 0L, TimeUnit.MILLISECONDS, new java.util.concurrent.ArrayBlockingQueue<>(1),
+            runnable -> {
+                Thread thread = new Thread(runnable, "resource-ledger-failure-test");
+                thread.setDaemon(true);
+                return thread;
+            }, new java.util.concurrent.ThreadPoolExecutor.AbortPolicy());
+        CountDownLatch entered = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        IllegalStateException expected = new IllegalStateException("provider abort failed");
+        try {
+            ResourceLedger ledger = new ResourceLedger("runtime-a", dispatcher);
+            ResourceLedger.Registration registration = ledger.registerRuntime("failed-abort", () -> {
+                entered.countDown();
+                release.await();
+                throw expected;
+            }, null);
+            registration.requestClose();
+            registration.abort();
+            assertTrue(entered.await(5, TimeUnit.SECONDS));
+            assertEquals(registration.getAbortState(), ResourceLedger.AbortState.RUNNING);
+            assertNull(registration.getAbortFailure());
+            release.countDown();
+            dispatcher.shutdown();
+            assertTrue(dispatcher.awaitTermination(5, TimeUnit.SECONDS));
+            assertEquals(registration.getAbortState(), ResourceLedger.AbortState.FAILED);
+            assertSame(registration.getAbortFailure(), expected);
+        } finally {
+            release.countDown();
+            dispatcher.shutdownNow();
+        }
+    }
+
+
+    @Test(groups = {"unit", "runtime"})
+    public void abortDispatcherRuntimeFailureIsRetainedAsRejected() throws InterruptedException {
+        IllegalStateException dispatchFailure = new IllegalStateException("dispatcher unavailable");
+        ResourceLedger ledger = new ResourceLedger("runtime-a", command -> {
+            throw dispatchFailure;
+        });
+        ResourceLedger.Registration registration = ledger.registerRuntime("dispatch-failure", () -> {
+            fail("Rejected dispatch must not invoke the abort callback");
+        }, null);
+        registration.requestClose();
+
+        expectThrows(IllegalStateException.class, registration::abort);
+        assertEquals(registration.getAbortState(), ResourceLedger.AbortState.REJECTED);
+        assertSame(registration.getAbortFailure(), dispatchFailure);
+        assertFalse(registration.drainAndClose(Duration.ZERO).isAbortInProgress());
+    }
+
+    @Test(groups = {"unit", "runtime"})
+    public void abortDispatcherRunsOnlyClaimedTaskAndDuplicateRunnableIsIgnored() {
+        AtomicReference<Runnable> submitted = new AtomicReference<>();
+        AtomicInteger aborts = new AtomicInteger();
+        ResourceLedger ledger = new ResourceLedger("runtime-a", submitted::set);
+        ResourceLedger.Registration registration = ledger.registerRuntime(
+            "manual-dispatch", aborts::incrementAndGet, null);
+        registration.requestClose();
+
+        registration.abort();
+        registration.abort();
+        assertEquals(registration.getAbortState(), ResourceLedger.AbortState.QUEUED);
+        assertEquals(aborts.get(), 0);
+        assertNotNull(submitted.get());
+
+        submitted.get().run();
+        submitted.get().run();
+        assertEquals(aborts.get(), 1);
+        assertEquals(registration.getAbortState(), ResourceLedger.AbortState.SUCCEEDED);
+    }
+
+
+    @Test(groups = {"unit", "runtime"})
+    public void fatalAbortDispatcherFailureIsRetainedAndDoesNotLeavePhantomInProgress() throws InterruptedException {
+        AssertionError dispatchFailure = new AssertionError("fatal dispatcher failure");
+        ResourceLedger ledger = new ResourceLedger("runtime-a", command -> {
+            throw dispatchFailure;
+        });
+        ResourceLedger.Registration registration = ledger.registerRuntime(
+            "fatal-dispatch-failure", () -> fail("Abort callback must not run"), null);
+        registration.requestClose();
+
+        expectThrows(AssertionError.class, registration::abort);
+        assertEquals(registration.getAbortState(), ResourceLedger.AbortState.REJECTED);
+        assertSame(registration.getAbortFailure(), dispatchFailure);
+        assertFalse(registration.drainAndClose(Duration.ZERO).isAbortInProgress());
+    }
+
+
+    @Test(groups = {"unit", "runtime"})
+    public void dispatcherRejectionAfterCallbackCompletionDoesNotOverwriteCompletedAbort() {
+        AtomicInteger aborts = new AtomicInteger();
+        ResourceLedger ledger = new ResourceLedger("runtime-a", command -> {
+            command.run();
+            throw new java.util.concurrent.RejectedExecutionException("executor rejected after execution");
+        });
+        ResourceLedger.Registration registration = ledger.registerRuntime(
+            "completed-before-rejection", aborts::incrementAndGet, null);
+        registration.requestClose();
+
+        registration.abort();
+
+        assertEquals(aborts.get(), 1);
+        assertEquals(registration.getAbortState(), ResourceLedger.AbortState.SUCCEEDED);
+        assertNull(registration.getAbortFailure());
     }
 
     @Test(groups = {"unit", "runtime"})

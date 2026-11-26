@@ -75,6 +75,8 @@ public class WebHarvestServiceImpl implements WebHarvestService {
     private static final long SHUTDOWN_TIMEOUT_SECONDS = 60;
     private static final long CANCELLATION_GRACE_SECONDS = 5;
     private static final Duration RESOURCE_DRAIN_BUDGET = Duration.ofSeconds(5);
+    private static final int RESOURCE_ABORT_WORKERS = 2;
+    private static final int RESOURCE_ABORT_QUEUE_CAPACITY = 128;
 
     private final ExecutorService executorService;
     private final SessionRegistry sessionRegistry;
@@ -82,7 +84,8 @@ public class WebHarvestServiceImpl implements WebHarvestService {
     private final ScheduledThreadPoolExecutor timeoutScheduler;
     private final ConcurrentMap<String, SessionTask> executionTasks = new ConcurrentHashMap<>();
     private final String runtimeId = UUID.randomUUID().toString();
-    private final ResourceLedger resourceLedger = new ResourceLedger(runtimeId);
+    private final ThreadPoolExecutor resourceAbortExecutor = createResourceAbortExecutor();
+    private final ResourceLedger resourceLedger = new ResourceLedger(runtimeId, resourceAbortExecutor);
     private final AtomicLong executionGeneration = new AtomicLong();
     private final Object admissionLock = new Object();
     private int pendingSubmissions;
@@ -368,6 +371,11 @@ public class WebHarvestServiceImpl implements WebHarvestService {
                 + "resource-drain paths within " + SHUTDOWN_TIMEOUT_SECONDS + " seconds");
         }
 
+        if (!shutdownResourceAbortExecutor(deadline)) {
+            logIncompleteShutdown("resource abort callbacks", tasks);
+            throw new IllegalStateException("WebHarvestService has resource abort callbacks that did not terminate "
+                + "within " + SHUTDOWN_TIMEOUT_SECONDS + " seconds");
+        }
         finalizeTimeoutSchedulerIfQuiescent();
         LOG.info("WebHarvestService shut down after all accepted tasks and resource-drain paths completed");
     }
@@ -416,6 +424,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
         boolean submissionsSettled = false;
         boolean executorTerminated = false;
         boolean taskRunsCompleted = false;
+        boolean abortDispatcherTerminated = false;
         try {
             submissionsSettled = awaitPendingSubmissions(deadline);
             if (submissionsSettled) {
@@ -423,6 +432,9 @@ public class WebHarvestServiceImpl implements WebHarvestService {
                     remainingNanos(deadline), TimeUnit.NANOSECONDS);
                 if (executorTerminated) {
                     taskRunsCompleted = awaitTaskRunsComplete(tasks, deadline);
+                    if (taskRunsCompleted) {
+                        abortDispatcherTerminated = shutdownResourceAbortExecutor(deadline);
+                    }
                 }
             }
         } catch (InterruptedException interruption) {
@@ -433,6 +445,8 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             markTasksUnresponsive(tasks, true);
             logIncompleteShutdown(!submissionsSettled ? "submission dispatch"
                 : !executorTerminated ? "executor termination" : "worker exit or resource drain", tasks);
+        } else if (!abortDispatcherTerminated) {
+            logIncompleteShutdown("resource abort callbacks", tasks);
         } else {
             finalizeTimeoutSchedulerIfQuiescent();
         }
@@ -533,9 +547,15 @@ public class WebHarvestServiceImpl implements WebHarvestService {
         }
     }
 
+    private boolean shutdownResourceAbortExecutor(long deadline) throws InterruptedException {
+        resourceAbortExecutor.shutdown();
+        return resourceAbortExecutor.awaitTermination(remainingNanos(deadline), TimeUnit.NANOSECONDS);
+    }
+
     private void finalizeTimeoutSchedulerIfQuiescent() {
         synchronized (admissionLock) {
             if (shutdown && pendingSubmissions == 0 && executionTasks.isEmpty()) {
+                resourceAbortExecutor.shutdown();
                 timeoutScheduler.shutdownNow();
             }
         }
@@ -544,6 +564,17 @@ public class WebHarvestServiceImpl implements WebHarvestService {
     @Override
     public boolean isShutdown() {
         return shutdown;
+    }
+
+    private ThreadPoolExecutor createResourceAbortExecutor() {
+        AtomicInteger sequence = new AtomicInteger();
+        return new ThreadPoolExecutor(RESOURCE_ABORT_WORKERS, RESOURCE_ABORT_WORKERS,
+            0L, TimeUnit.MILLISECONDS, new ArrayBlockingQueue<>(RESOURCE_ABORT_QUEUE_CAPACITY), runnable -> {
+                Thread thread = new Thread(runnable,
+                    "webharvest-resource-abort-" + sequence.incrementAndGet());
+                thread.setDaemon(true);
+                return thread;
+            }, new ThreadPoolExecutor.AbortPolicy());
     }
 
     private static ScheduledThreadPoolExecutor createTimeoutScheduler() {
@@ -940,9 +971,9 @@ public class WebHarvestServiceImpl implements WebHarvestService {
                 for (org.webharvest.runtime.resource.LedgerExecutionResourceContext.DrainReport report
                     : resourceCoordinator.markOwnerQuiescentAndDrain(budget)) {
                     if (report.getState() != ResourceState.CLOSED) {
-                        LOG.warn("Resource {} for session {} remains {} (active leases: {})",
+                        LOG.warn("Resource {} for session {} remains {} (active leases: {}, abort: {})",
                             report.getResourceId(), session.getSessionId(),
-                            report.getState(), report.getActiveLeases());
+                            report.getState(), report.getActiveLeases(), report.getAbortState());
                     }
                     // Abort failure remains operationally relevant even when the
                     // resource's subsequent close succeeds and reaches CLOSED.

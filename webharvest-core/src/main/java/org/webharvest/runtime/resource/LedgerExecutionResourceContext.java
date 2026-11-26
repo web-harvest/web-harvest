@@ -220,14 +220,17 @@ public final class LedgerExecutionResourceContext implements ExecutionResourceAc
         private final String resourceId;
         private final ResourceState state;
         private final int activeLeases;
+        private final ResourceLedger.AbortState abortState;
         private final Throwable abortFailure;
         private final Throwable closeFailure;
 
         private DrainReport(String resourceId, ResourceState state, int activeLeases,
+                            ResourceLedger.AbortState abortState,
                             Throwable abortFailure, Throwable closeFailure) {
             this.resourceId = resourceId;
             this.state = state;
             this.activeLeases = activeLeases;
+            this.abortState = abortState;
             this.abortFailure = abortFailure;
             this.closeFailure = closeFailure;
         }
@@ -235,6 +238,7 @@ public final class LedgerExecutionResourceContext implements ExecutionResourceAc
         public String getResourceId() { return resourceId; }
         public ResourceState getState() { return state; }
         public int getActiveLeases() { return activeLeases; }
+        public ResourceLedger.AbortState getAbortState() { return abortState; }
         public Throwable getAbortFailure() { return abortFailure; }
         public Throwable getCloseFailure() { return closeFailure; }
     }
@@ -244,6 +248,9 @@ public final class LedgerExecutionResourceContext implements ExecutionResourceAc
 
         private Handle(ResourceLedger.Registration registration) {
             this.registration = registration;
+            // Abort completion is the missing continuation when the owner and all
+            // leases became quiescent while the provider callback was still running.
+            registration.setAbortCompletionListener(() -> retryDrain(this));
         }
 
         @Override
@@ -304,7 +311,8 @@ public final class LedgerExecutionResourceContext implements ExecutionResourceAc
                 registration.close();
             }
             return new DrainReport(getResourceId(), ResourceState.valueOf(result.getState().name()),
-                result.getActiveLeases(), result.getAbortFailure(), result.getCloseFailure());
+                result.getActiveLeases(), result.getAbortState(),
+                result.getAbortFailure(), result.getCloseFailure());
         }
 
         private void leaseReleased() {

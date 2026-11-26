@@ -44,6 +44,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -77,6 +79,8 @@ public final class ResourceLedger {
         OPERATION
     }
 
+    public enum AbortState { NOT_REQUESTED, QUEUED, RUNNING, SUCCEEDED, FAILED, REJECTED }
+
     public enum State {
         OPEN,
         CLOSE_REQUESTED,
@@ -97,16 +101,24 @@ public final class ResourceLedger {
     }
 
     private final String runtimeId;
+    private final Executor abortExecutor;
     private final ConcurrentHashMap<RegistrationKey, Entry> entries = new ConcurrentHashMap<>();
     // Retired entries remain as tombstones so a stale generation ID can never be re-pinned.
     private final ConcurrentHashMap<RegistryGenerationId, GenerationEntry> generations =
         new ConcurrentHashMap<>();
 
+    /** Historical synchronous mode; production coordinators should inject a bounded executor. */
     public ResourceLedger(String runtimeId) {
+        this(runtimeId, Runnable::run);
+    }
+
+    /** The caller owns the bounded, non-blocking executor and its shutdown lifecycle. */
+    public ResourceLedger(String runtimeId, Executor abortExecutor) {
         if (runtimeId == null || runtimeId.trim().isEmpty()) {
             throw new IllegalArgumentException("Runtime ID cannot be null or empty");
         }
         this.runtimeId = runtimeId;
+        this.abortExecutor = Objects.requireNonNull(abortExecutor, "Abort executor cannot be null");
     }
 
     public String getRuntimeId() {
@@ -348,11 +360,12 @@ public final class ResourceLedger {
         private final Map<Long, ExecutionOwner> activeLeases = new HashMap<>();
         private final AtomicLong nextLeaseId = new AtomicLong();
         private boolean ownerQuiescent;
-        private boolean abortInvoked;
+        private AbortState abortState = AbortState.NOT_REQUESTED;
         private boolean abortInProgress;
         private boolean registrationRetired;
         private Throwable abortFailure;
         private Throwable closeFailure;
+        private Runnable abortCompletionListener;
 
         private Entry(RegistrationKey key, String resourceId, Scope scope, ExecutionOwner owner,
                       RegistryGenerationId generationId, AbortAction abortAction, CloseAction closeAction) {
@@ -418,6 +431,12 @@ public final class ResourceLedger {
         public Throwable getAbortFailure() {
             synchronized (entry) {
                 return entry.abortFailure;
+            }
+        }
+
+        public AbortState getAbortState() {
+            synchronized (entry) {
+                return entry.abortState;
             }
         }
 
@@ -531,45 +550,137 @@ public final class ResourceLedger {
          * Requests best-effort interruption of active I/O. Abort is independent
          * from close and is invoked at most once; its failure remains observable.
          */
+        /**
+         * Registers the owner continuation invoked after an asynchronous abort
+         * reaches a terminal state. The callback runs outside the entry monitor.
+         * If abort already completed, the callback is invoked immediately.
+         *
+         * @param listener owner continuation to invoke after abort completion
+         */
+        public void setAbortCompletionListener(Runnable listener) {
+            Objects.requireNonNull(listener, "Abort completion listener cannot be null");
+            boolean alreadyComplete;
+            synchronized (entry) {
+                if (entry.abortCompletionListener != null) {
+                    throw new IllegalStateException("Abort completion listener is already registered");
+                }
+                entry.abortCompletionListener = listener;
+                alreadyComplete = isAbortTerminal(entry.abortState) && !entry.abortInProgress;
+            }
+            if (alreadyComplete) {
+                listener.run();
+            }
+        }
+
+        private boolean isAbortTerminal(AbortState state) {
+            return state == AbortState.SUCCEEDED || state == AbortState.FAILED
+                || state == AbortState.REJECTED;
+        }
+
+        private void notifyAbortCompletion() {
+            Runnable listener;
+            synchronized (entry) {
+                if (!isAbortTerminal(entry.abortState) || entry.abortInProgress) {
+                    return;
+                }
+                listener = entry.abortCompletionListener;
+            }
+            if (listener != null) {
+                listener.run();
+            }
+        }
+
         public void abort() {
             AbortAction action;
             boolean generationRetiring = entry.scope == Scope.GENERATION
                 && ledger.isGenerationRetiring(entry.generationId);
+            boolean noAction = false;
             synchronized (entry) {
                 if (entry.state == State.OPEN && !generationRetiring) {
                     throw new IllegalStateException(
                         "Resource close must be requested before abort: " + entry.resourceId);
                 }
-                if (entry.abortInvoked || entry.state == State.DRAINING
+                if (entry.abortState != AbortState.NOT_REQUESTED || entry.state == State.DRAINING
                     || entry.state == State.CLOSED || entry.state == State.CLOSE_FAILED) {
                     return;
                 }
-                entry.abortInvoked = true;
                 action = entry.abortAction;
-                if (action != null) {
+                if (action == null) {
+                    entry.abortState = AbortState.SUCCEEDED;
+                    entry.notifyAll();
+                    noAction = true;
+                } else {
+                    entry.abortState = AbortState.QUEUED;
                     entry.abortInProgress = true;
                 }
             }
-            if (action == null) {
+            if (noAction) {
+                notifyAbortCompletion();
                 return;
             }
             try {
-                action.abort();
-            } catch (Throwable failure) {
-                if (failure instanceof InterruptedException) {
-                    Thread.currentThread().interrupt();
-                }
+                ledger.abortExecutor.execute(() -> runAbort(action));
+            } catch (RejectedExecutionException rejected) {
                 synchronized (entry) {
-                    entry.abortFailure = failure;
+                    if (entry.abortState == AbortState.QUEUED) {
+                        entry.abortState = AbortState.REJECTED;
+                        entry.abortFailure = rejected;
+                        entry.abortInProgress = false;
+                        entry.notifyAll();
+                    }
                 }
-                if (failure instanceof Error) {
-                    throw (Error) failure;
+                notifyAbortCompletion();
+            } catch (RuntimeException dispatchFailure) {
+                synchronized (entry) {
+                    if (entry.abortState == AbortState.QUEUED) {
+                        entry.abortState = AbortState.REJECTED;
+                        entry.abortFailure = dispatchFailure;
+                        entry.abortInProgress = false;
+                        entry.notifyAll();
+                    }
+                }
+                notifyAbortCompletion();
+                throw dispatchFailure;
+            } catch (Error dispatchFailure) {
+                synchronized (entry) {
+                    if (entry.abortState == AbortState.QUEUED) {
+                        entry.abortState = AbortState.REJECTED;
+                        entry.abortFailure = dispatchFailure;
+                        entry.abortInProgress = false;
+                        entry.notifyAll();
+                    }
+                }
+                notifyAbortCompletion();
+                throw dispatchFailure;
+            }
+        }
+
+        private void runAbort(AbortAction action) {
+            synchronized (entry) {
+                if (entry.abortState != AbortState.QUEUED) {
+                    return;
+                }
+                entry.abortState = AbortState.RUNNING;
+            }
+            Throwable failure = null;
+            try {
+                action.abort();
+            } catch (Throwable thrown) {
+                failure = thrown;
+                if (thrown instanceof InterruptedException) {
+                    Thread.currentThread().interrupt();
                 }
             } finally {
                 synchronized (entry) {
+                    entry.abortFailure = failure;
+                    entry.abortState = failure == null ? AbortState.SUCCEEDED : AbortState.FAILED;
                     entry.abortInProgress = false;
                     entry.notifyAll();
                 }
+                notifyAbortCompletion();
+            }
+            if (failure instanceof Error) {
+                throw (Error) failure;
             }
         }
 
@@ -689,7 +800,8 @@ public final class ResourceLedger {
             boolean ownerQuiescent = entry.scope == Scope.GENERATION
                 ? activeGenerationPins == 0 : entry.ownerQuiescent;
             return new DrainResult(entry.state, outstanding, ownerQuiescent,
-                activeGenerationPins, entry.abortInProgress, entry.abortFailure, entry.closeFailure);
+                activeGenerationPins, entry.abortInProgress, entry.abortState,
+                entry.abortFailure, entry.closeFailure);
         }
 
         /**
@@ -806,17 +918,20 @@ public final class ResourceLedger {
         private final boolean ownerQuiescent;
         private final int activeGenerationPins;
         private final boolean abortInProgress;
+        private final AbortState abortState;
         private final Throwable abortFailure;
         private final Throwable closeFailure;
 
         private DrainResult(State state, List<OutstandingLease> outstandingLeases,
                             boolean ownerQuiescent, int activeGenerationPins,
-                            boolean abortInProgress, Throwable abortFailure, Throwable closeFailure) {
+                            boolean abortInProgress, AbortState abortState,
+                            Throwable abortFailure, Throwable closeFailure) {
             this.state = state;
             this.outstandingLeases = Collections.unmodifiableList(new ArrayList<>(outstandingLeases));
             this.ownerQuiescent = ownerQuiescent;
             this.activeGenerationPins = activeGenerationPins;
             this.abortInProgress = abortInProgress;
+            this.abortState = abortState;
             this.abortFailure = abortFailure;
             this.closeFailure = closeFailure;
         }
@@ -844,6 +959,10 @@ public final class ResourceLedger {
 
         public boolean isAbortInProgress() {
             return abortInProgress;
+        }
+
+        public AbortState getAbortState() {
+            return abortState;
         }
 
         public Throwable getAbortFailure() {

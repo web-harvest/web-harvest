@@ -18,6 +18,102 @@ import static org.testng.Assert.*;
 /** Deterministic tests for the execution-bound resource facade. */
 public class LedgerExecutionResourceContextTest {
 
+
+    @Test(groups = {"unit", "runtime"})
+    public void requestTerminationDoesNotWaitForBlockedProviderAbort() throws Exception {
+        java.util.concurrent.ThreadPoolExecutor dispatcher = new java.util.concurrent.ThreadPoolExecutor(
+            1, 1, 0L, TimeUnit.MILLISECONDS, new java.util.concurrent.ArrayBlockingQueue<>(4),
+            runnable -> {
+                Thread thread = new Thread(runnable, "execution-context-abort-test");
+                thread.setDaemon(true);
+                return thread;
+            }, new java.util.concurrent.ThreadPoolExecutor.AbortPolicy());
+        CountDownLatch entered = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        try {
+            ResourceLedger ledger = new ResourceLedger("runtime-a", dispatcher);
+            ExecutionOwner owner = new ExecutionOwner("runtime-a", "session-a", 1);
+            LedgerExecutionResourceContext context = new LedgerExecutionResourceContext(ledger, owner);
+            AtomicInteger closes = new AtomicInteger();
+            ExecutionResourceAccess.ResourceHandle resource = context.registerSessionResource(
+                "blocked-provider", () -> {
+                    entered.countDown();
+                    release.await();
+                }, closes::incrementAndGet);
+
+            context.requestTermination();
+            assertTrue(entered.await(5, TimeUnit.SECONDS));
+            java.util.List<LedgerExecutionResourceContext.DrainReport> reports =
+                context.markOwnerQuiescentAndDrain(Duration.ZERO);
+            assertEquals(reports.get(0).getAbortState(), ResourceLedger.AbortState.RUNNING);
+            assertEquals(reports.get(0).getState(), ExecutionResourceAccess.ResourceState.QUARANTINED);
+            assertEquals(closes.get(), 0);
+
+            release.countDown();
+            dispatcher.shutdown();
+            assertTrue(dispatcher.awaitTermination(5, TimeUnit.SECONDS));
+            reports = context.markOwnerQuiescentAndDrain(Duration.ofSeconds(1));
+            assertEquals(reports.get(0).getAbortState(), ResourceLedger.AbortState.SUCCEEDED);
+            assertEquals(reports.get(0).getState(), ExecutionResourceAccess.ResourceState.CLOSED);
+            assertEquals(closes.get(), 1);
+        } finally {
+            release.countDown();
+            dispatcher.shutdownNow();
+        }
+    }
+
+    @Test(groups = {"unit", "runtime"})
+    public void lateAbortCompletionAutomaticallyRetriesDrainAfterOwnerExit() throws Exception {
+        java.util.concurrent.ThreadPoolExecutor dispatcher = new java.util.concurrent.ThreadPoolExecutor(
+            1, 1, 0L, TimeUnit.MILLISECONDS, new java.util.concurrent.ArrayBlockingQueue<>(4),
+            runnable -> {
+                Thread thread = new Thread(runnable, "late-abort-completion-test");
+                thread.setDaemon(true);
+                return thread;
+            }, new java.util.concurrent.ThreadPoolExecutor.AbortPolicy());
+        CountDownLatch abortEntered = new CountDownLatch(1);
+        CountDownLatch releaseAbort = new CountDownLatch(1);
+        AtomicInteger closes = new AtomicInteger();
+        ResourceLedger ledger = new ResourceLedger("runtime-a", dispatcher);
+        ExecutionOwner owner = new ExecutionOwner("runtime-a", "late-abort-session", 1);
+        LedgerExecutionResourceContext context = new LedgerExecutionResourceContext(ledger, owner);
+        try {
+            ExecutionResourceAccess.ResourceHandle resource = context.registerSessionResource(
+                "late-abort-resource", () -> {
+                    abortEntered.countDown();
+                    releaseAbort.await();
+                }, closes::incrementAndGet);
+
+            context.requestTermination();
+            assertTrue(abortEntered.await(5, TimeUnit.SECONDS),
+                "The provider abort callback must be running asynchronously");
+
+            java.util.List<LedgerExecutionResourceContext.DrainReport> firstDrain =
+                context.markOwnerQuiescentAndDrain(Duration.ZERO);
+            assertEquals(firstDrain.get(0).getState(), ExecutionResourceAccess.ResourceState.QUARANTINED);
+            assertEquals(firstDrain.get(0).getAbortState(), ResourceLedger.AbortState.RUNNING);
+            assertEquals(closes.get(), 0);
+
+            // The owner has exited and no lease remains. Releasing abort must itself
+            // trigger the retained drain; the test deliberately performs no second drain.
+            releaseAbort.countDown();
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+            while (resource.getState() != ExecutionResourceAccess.ResourceState.CLOSED
+                && System.nanoTime() < deadline) {
+                Thread.yield();
+            }
+            assertEquals(resource.getState(), ExecutionResourceAccess.ResourceState.CLOSED,
+                "Abort completion must automatically continue the quarantined drain");
+            assertEquals(closes.get(), 1);
+            assertEquals(ledger.size(), 0,
+                "Automatically closed resources must retire their ledger registration");
+        } finally {
+            releaseAbort.countDown();
+            dispatcher.shutdown();
+            assertTrue(dispatcher.awaitTermination(5, TimeUnit.SECONDS));
+        }
+    }
+
     @Test(groups = {"unit", "runtime"})
     public void sessionResourceRemainsQuarantinedUntilOwnerAndLeasesAreQuiescent() throws Exception {
         ResourceLedger ledger = new ResourceLedger("runtime-a");
