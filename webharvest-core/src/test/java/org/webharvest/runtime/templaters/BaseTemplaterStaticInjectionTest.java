@@ -1,8 +1,8 @@
 package org.webharvest.runtime.templaters;
 
+import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
-import com.google.inject.AbstractModule;
 import com.google.inject.util.Modules;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -10,10 +10,16 @@ import org.webharvest.ioc.ScraperModule;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.ScraperContext;
 import org.webharvest.runtime.scripting.ScriptEngine;
+import org.webharvest.runtime.scripting.ScriptEngineFactory;
 import org.webharvest.runtime.scripting.ScriptSource;
 import org.webharvest.runtime.scripting.ScriptingLanguage;
-import org.webharvest.runtime.scripting.ScriptEngineFactory;
 import org.webharvest.runtime.scripting.jsr.JSRScriptEngineFactory;
+
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static org.testng.Assert.*;
 
@@ -79,10 +85,24 @@ public class BaseTemplaterStaticInjectionTest {
         assertSame(BaseTemplater.scriptEngineFactory, secondFactory,
             "The legacy static field is deliberately overwritten by the second injector");
 
-        assertEquals(BaseTemplater.evaluateToString("${value}", ScriptingLanguage.BEANSHELL, firstContext),
-            "runtime-A", "The first context must not use the second runtime's static factory");
-        assertEquals(BaseTemplater.evaluateToString("${value}", ScriptingLanguage.BEANSHELL, secondContext),
-            "runtime-B");
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        CountDownLatch start = new CountDownLatch(1);
+        try {
+            Future<String> firstResult = executor.submit(() -> {
+                start.await();
+                return BaseTemplater.evaluateToString("${value}", ScriptingLanguage.BEANSHELL, firstContext);
+            });
+            Future<String> secondResult = executor.submit(() -> {
+                start.await();
+                return BaseTemplater.evaluateToString("${value}", ScriptingLanguage.BEANSHELL, secondContext);
+            });
+            start.countDown();
+            assertEquals(firstResult.get(5, TimeUnit.SECONDS), "runtime-A",
+                "The first context must not use the second runtime's static factory");
+            assertEquals(secondResult.get(5, TimeUnit.SECONDS), "runtime-B");
+        } finally {
+            executor.shutdownNow();
+        }
     }
 
     private static ScriptEngineFactory markerFactory(final String marker) {
