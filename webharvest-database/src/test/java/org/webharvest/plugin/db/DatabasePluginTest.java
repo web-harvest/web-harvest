@@ -195,13 +195,6 @@ public class DatabasePluginTest {
         } catch (IllegalStateException expected) {
             assertTrue(expected.getMessage().contains("resource lease"));
         }
-        try {
-            ConnectionPlugin.closeNamedConnection(managedContext, "main");
-            fail("Managed JDBC pools must not be closed outside their resource owner");
-        } catch (IllegalStateException expected) {
-            assertTrue(expected.getMessage().contains("resource owner"));
-        }
-
         DatabasePlugin databasePlugin = new DatabasePlugin();
         DefaultPluginConfiguration databaseConfig = config();
         databaseConfig.setProperty("connection", "main");
@@ -217,6 +210,10 @@ public class DatabasePluginTest {
         assertFalse(physical.isClosed());
         assertEquals(ledger.size(), 1,
             "The named pool remains registered at SESSION scope after each SQL operation");
+
+        ConnectionPlugin.closeNamedConnection(managedContext, "main");
+        assertFalse(physical.isClosed(),
+            "The deprecated close helper must not bypass the managed pool's active lease");
 
         coordinator.requestTermination();
         assertFalse(physical.isClosed(),
