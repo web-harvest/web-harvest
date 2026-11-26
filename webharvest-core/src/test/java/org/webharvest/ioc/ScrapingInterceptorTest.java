@@ -9,7 +9,10 @@ import org.testng.annotations.Test;
 import org.webharvest.Harvester;
 import org.webharvest.ScrapingAware;
 
+import com.google.inject.AbstractModule;
+import com.google.inject.Guice;
 import com.google.inject.Injector;
+import com.google.inject.matcher.Matchers;
 
 /**
  * Test for ScrapingInterceptor class.
@@ -314,6 +317,86 @@ public class ScrapingInterceptorTest {
             fail("Scraping scope must be exited after identical failures");
         } catch (com.google.inject.OutOfScopeException expected) {
             // Expected: scope teardown ran.
+        }
+    }
+
+
+    @Test
+    public void productionAopUsesTheOwningInjectorAcrossTwoLiveRuntimes() {
+        ScrapingInterceptor.ScrapingAwareHelper helperA =
+                new ScrapingInterceptor.ScrapingAwareHelper();
+        ScrapingInterceptor.ScrapingAwareHelper helperB =
+                new ScrapingInterceptor.ScrapingAwareHelper();
+        RecordingListener listenerA = new RecordingListener();
+        RecordingListener listenerB = new RecordingListener();
+        helperA.addListener(listenerA);
+        helperB.addListener(listenerB);
+
+        Injector injectorA = Guice.createInjector(new InterceptorTestModule(helperA));
+        Injector injectorB = Guice.createInjector(new InterceptorTestModule(helperB));
+        TestHarvester harvesterA = injectorA.getInstance(TestHarvester.class);
+        TestHarvester harvesterB = injectorB.getInstance(TestHarvester.class);
+
+        assertEquals(harvesterA.scrape(), "scraped");
+        assertEquals(listenerA.before, 1);
+        assertEquals(listenerA.after, 1);
+        assertEquals(listenerB.before, 0);
+        assertEquals(listenerB.after, 0);
+
+        assertEquals(harvesterB.scrape(), "scraped");
+        assertEquals(listenerA.before, 1);
+        assertEquals(listenerA.after, 1);
+        assertEquals(listenerB.before, 1);
+        assertEquals(listenerB.after, 1);
+    }
+
+    public static class InterceptorTestModule extends AbstractModule {
+        private final ScrapingInterceptor.ScrapingAwareHelper helper;
+
+        InterceptorTestModule(ScrapingInterceptor.ScrapingAwareHelper helper) {
+            this.helper = helper;
+        }
+
+        @Override
+        protected void configure() {
+            ScraperScope scope = new ScraperScope();
+            bindScope(ScrapingScope.class, scope);
+            bind(ScraperScope.class).toInstance(scope);
+            bind(AttributeHolder.class).to(ScopeAttributeHolder.class);
+            bind(ScrapingInterceptor.ScrapingAwareHelper.class).toInstance(helper);
+
+            ScrapingInterceptor interceptor = new ScrapingInterceptor();
+            requestInjection(interceptor);
+            bindInterceptor(Matchers.any(), Matchers.annotatedWith(Scraping.class),
+                    interceptor);
+        }
+    }
+
+    public static class TestHarvester implements Harvester {
+        @Override
+        public org.webharvest.runtime.DynamicScopeContext execute(
+                ContextInitCallback callback) {
+            return null;
+        }
+
+        @Scraping
+        public String scrape() {
+            return "scraped";
+        }
+    }
+
+    private static class RecordingListener implements ScrapingAware {
+        private int before;
+        private int after;
+
+        @Override
+        public void onBeforeScraping(Harvester harvester) {
+            before++;
+        }
+
+        @Override
+        public void onAfterScraping(Harvester harvester) {
+            after++;
         }
     }
 
