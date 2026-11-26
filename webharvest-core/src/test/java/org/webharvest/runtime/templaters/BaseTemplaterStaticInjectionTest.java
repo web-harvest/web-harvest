@@ -58,6 +58,17 @@ public class BaseTemplaterStaticInjectionTest {
     }
     
     @Test
+    public void literalTemplateDoesNotRequireAScriptEngineFactory() {
+        DynamicScopeContext context = org.mockito.Mockito.mock(DynamicScopeContext.class);
+        org.mockito.Mockito.when(context.getScriptingLanguage()).thenReturn(null);
+        org.mockito.Mockito.when(context.getCharset()).thenReturn("UTF-8");
+
+        assertNull(BaseTemplater.scriptEngineFactory,
+            "The legacy static factory is intentionally absent for this test");
+        assertEquals(BaseTemplater.evaluateToString("literal text", null, context), "literal text");
+    }
+
+    @Test
     public void runtimeContextsUseTheirOwnScriptEngineFactory() throws Exception {
         ScriptEngineFactory firstFactory = markerFactory("runtime-A");
         ScriptEngineFactory secondFactory = markerFactory("runtime-B");
