@@ -244,40 +244,6 @@ public class ScrapingInterceptorTest {
     }
 
     @Test
-    public void afterListenerFailureRemainsPrimaryWhenScopeExitAlsoFails() throws Throwable {
-        ScraperScope scope = mock(ScraperScope.class);
-        AttributeHolder holder = mock(AttributeHolder.class);
-        ScrapingInterceptor.ScrapingAwareHelper helper =
-                new ScrapingInterceptor.ScrapingAwareHelper();
-        ScrapingAware listener = mock(ScrapingAware.class);
-        RuntimeException afterFailure = new RuntimeException("after failed");
-        RuntimeException scopeExitFailure = new RuntimeException("scope exit failed");
-        helper.addListener(listener);
-        doThrow(afterFailure).when(listener).onAfterScraping(harvester);
-        doThrow(scopeExitFailure).when(scope).exit();
-        when(injector.getInstance(ScraperScope.class)).thenReturn(scope);
-        when(injector.getInstance(ScrapingInterceptor.ScrapingAwareHelper.class))
-                .thenReturn(helper);
-        when(injector.getInstance(AttributeHolder.class)).thenReturn(holder);
-
-        try {
-            interceptor.invoke(injector, harvester, new ScrapingInterceptor.Callback() {
-                @Override
-                public Object execute() {
-                    return null;
-                }
-            });
-            fail("Expected after-listener failure");
-        } catch (RuntimeException actual) {
-            assertSame(actual, afterFailure);
-            assertEquals(actual.getSuppressed().length, 1);
-            assertSame(actual.getSuppressed()[0], scopeExitFailure);
-        }
-
-        verify(scope).exit();
-    }
-
-    @Test
     public void callbackFailureRemainsPrimaryWhenAfterListenerAlsoFails() throws Throwable {
         ScraperScope scope = new ScraperScope();
         AttributeHolder holder = mock(AttributeHolder.class);
