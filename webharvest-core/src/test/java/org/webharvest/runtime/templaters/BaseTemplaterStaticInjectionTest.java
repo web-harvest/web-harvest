@@ -58,7 +58,7 @@ public class BaseTemplaterStaticInjectionTest {
     }
     
     @Test
-    public void runtimeContextsUseTheirOwnScriptEngineFactory() {
+    public void runtimeContextsUseTheirOwnScriptEngineFactory() throws Exception {
         ScriptEngineFactory firstFactory = markerFactory("runtime-A");
         ScriptEngineFactory secondFactory = markerFactory("runtime-B");
 
