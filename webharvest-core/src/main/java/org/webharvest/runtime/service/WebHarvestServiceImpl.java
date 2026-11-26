@@ -50,6 +50,8 @@ import org.webharvest.runtime.session.ScraperSession;
 import org.webharvest.runtime.session.ScraperSessionImpl;
 import org.webharvest.runtime.session.SessionRegistry;
 import org.webharvest.runtime.session.SessionRegistryImpl;
+import org.webharvest.ioc.RuntimeRegistrationCoordinator;
+import org.webharvest.ioc.ScrapingInterceptor.ScrapingAwareHelper;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -81,12 +83,14 @@ public class WebHarvestServiceImpl implements WebHarvestService {
     private final ExecutorService executorService;
     private final SessionRegistry sessionRegistry;
     private final EventBus eventBus;
+    private final RuntimeRegistrationCoordinator registrationCoordinator;
     private final ScheduledThreadPoolExecutor timeoutScheduler;
     private final ConcurrentMap<String, SessionTask> executionTasks = new ConcurrentHashMap<>();
     private final String runtimeId = UUID.randomUUID().toString();
     private final ThreadPoolExecutor resourceAbortExecutor = createResourceAbortExecutor();
     private final ResourceLedger resourceLedger = new ResourceLedger(runtimeId, resourceAbortExecutor);
     private final AtomicLong executionGeneration = new AtomicLong();
+    private final AtomicBoolean deferredFinalizationStarted = new AtomicBoolean();
     private final Object admissionLock = new Object();
     private int pendingSubmissions;
     private boolean executorShutdownInitiated;
@@ -97,11 +101,20 @@ public class WebHarvestServiceImpl implements WebHarvestService {
      * Creates a service using the EventBus owned by this Guice runtime.
      *
      * @param eventBus shared runtime EventBus
+     * @param registrationCoordinator injector-owned registration lifecycle
      */
     @Inject
+    public WebHarvestServiceImpl(EventBus eventBus,
+                                 RuntimeRegistrationCoordinator registrationCoordinator) {
+        this(Executors.newCachedThreadPool(new SessionThreadFactory()),
+            new SessionRegistryImpl(), eventBus, registrationCoordinator);
+    }
+
+    /** Compatibility constructor for direct, non-Guice service composition. */
     public WebHarvestServiceImpl(EventBus eventBus) {
         this(Executors.newCachedThreadPool(new SessionThreadFactory()),
-            new SessionRegistryImpl(), eventBus);
+            new SessionRegistryImpl(), eventBus,
+            new RuntimeRegistrationCoordinator(eventBus, new ScrapingAwareHelper()));
     }
 
     /** Creates a service using the default cached session executor. */
@@ -129,6 +142,17 @@ public class WebHarvestServiceImpl implements WebHarvestService {
     public WebHarvestServiceImpl(ExecutorService executorService,
                                  SessionRegistry sessionRegistry,
                                  EventBus eventBus) {
+        this(executorService, sessionRegistry, eventBus,
+            new RuntimeRegistrationCoordinator(eventBus, new ScrapingAwareHelper()));
+    }
+
+    /**
+     * Creates a service with explicit runtime-owned session and registration components.
+     */
+    public WebHarvestServiceImpl(ExecutorService executorService,
+                                 SessionRegistry sessionRegistry,
+                                 EventBus eventBus,
+                                 RuntimeRegistrationCoordinator registrationCoordinator) {
         if (executorService == null) {
             throw new IllegalArgumentException("ExecutorService cannot be null");
         }
@@ -138,10 +162,14 @@ public class WebHarvestServiceImpl implements WebHarvestService {
         if (eventBus == null) {
             throw new IllegalArgumentException("EventBus cannot be null");
         }
+        if (registrationCoordinator == null) {
+            throw new IllegalArgumentException("RuntimeRegistrationCoordinator cannot be null");
+        }
 
         this.executorService = executorService;
         this.sessionRegistry = sessionRegistry;
         this.eventBus = eventBus;
+        this.registrationCoordinator = registrationCoordinator;
         this.timeoutScheduler = createTimeoutScheduler();
     }
 
@@ -549,7 +577,14 @@ public class WebHarvestServiceImpl implements WebHarvestService {
 
     private boolean shutdownResourceAbortExecutor(long deadline) throws InterruptedException {
         resourceAbortExecutor.shutdown();
-        return resourceAbortExecutor.awaitTermination(remainingNanos(deadline), TimeUnit.NANOSECONDS);
+        boolean terminated = resourceAbortExecutor.awaitTermination(
+            remainingNanos(deadline), TimeUnit.NANOSECONDS);
+        if (terminated) {
+            // Runtime registrations are retired only after workers, resource drains,
+            // and asynchronous abort callbacks have all reached quiescence.
+            registrationCoordinator.close();
+        }
+        return terminated;
     }
 
     private void finalizeTimeoutSchedulerIfQuiescent() {
@@ -559,6 +594,63 @@ public class WebHarvestServiceImpl implements WebHarvestService {
                 timeoutScheduler.shutdownNow();
             }
         }
+    }
+
+    private static void awaitTerminationUninterruptibly(ExecutorService executor) {
+        boolean interrupted = false;
+        try {
+            while (true) {
+                try {
+                    if (executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS)) {
+                        return;
+                    }
+                } catch (InterruptedException interruption) {
+                    interrupted = true;
+                }
+            }
+        } finally {
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+
+    /**
+     * Completes runtime retirement when shutdown was initiated by one of its own
+     * session workers. Such a worker cannot wait for its own executor to terminate;
+     * the finalizer therefore runs on a separate daemon thread after the last task
+     * has completed its cleanup and submission admission has settled.
+     */
+    private void scheduleDeferredRuntimeFinalizationIfQuiescent() {
+        boolean startFinalizer = false;
+        synchronized (admissionLock) {
+            if (shutdown && pendingSubmissions == 0 && executionTasks.isEmpty()
+                && executorShutdownCompleted.getCount() == 0
+                && deferredFinalizationStarted.compareAndSet(false, true)) {
+                startFinalizer = true;
+            }
+        }
+        if (!startFinalizer) {
+            return;
+        }
+
+        Thread finalizer = new Thread(() -> {
+            try {
+                // This background thread does not extend the caller's bounded shutdown wait.
+                // It must, however, keep waiting: a slow abort callback may outlive the
+                // public shutdown deadline, and registrations must remain until it exits.
+                awaitTerminationUninterruptibly(executorService);
+                resourceAbortExecutor.shutdown();
+                awaitTerminationUninterruptibly(resourceAbortExecutor);
+                registrationCoordinator.close();
+                finalizeTimeoutSchedulerIfQuiescent();
+                LOG.info("Deferred WebHarvestService runtime finalization completed after worker-initiated shutdown");
+            } catch (RuntimeException failure) {
+                LOG.error("Deferred runtime finalization failed; runtime registrations remain tracked", failure);
+            }
+        }, "webharvest-runtime-finalizer-" + runtimeId);
+        finalizer.setDaemon(true);
+        finalizer.start();
     }
 
     @Override
@@ -687,6 +779,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
                 }
                 shutdownExecutorWhenReady();
                 finalizeTimeoutSchedulerIfQuiescent();
+                scheduleDeferredRuntimeFinalizationIfQuiescent();
             }
         }
 
@@ -724,6 +817,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
             taskCompletion.countDown();
             executionTasks.remove(session.getSessionId(), this);
             finalizeTimeoutSchedulerIfQuiescent();
+            scheduleDeferredRuntimeFinalizationIfQuiescent();
         }
 
         private void requestCancellation() {
