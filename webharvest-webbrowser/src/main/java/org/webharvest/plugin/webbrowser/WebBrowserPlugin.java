@@ -351,7 +351,7 @@ public class WebBrowserPlugin extends AbstractPlugin {
                 eventBus.unregister(this);
             }
             if (sessionId != null) {
-                SESSION_PAGES.remove(sessionId, this);
+                SESSION_PAGES.remove(stateKey, this);
             }
         }
 
