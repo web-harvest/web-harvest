@@ -33,8 +33,8 @@
 
 package org.webharvest.ioc;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.aopalliance.intercept.MethodInterceptor;
 import org.aopalliance.intercept.MethodInvocation;
@@ -184,59 +184,117 @@ public final class ScrapingInterceptor implements MethodInterceptor {
     // TODO Missing unit test
     // TODO It is easy to register listener but how about unregistering it?
     // TODO Resolve duplication of methods with ScrapingAware
+    /**
+     * Thread-safe helper for snapshot-based scraping lifecycle notification.
+     * Concurrent scraping scopes may invoke the same listener concurrently.
+     */
     @Singleton
     public static class ScrapingAwareHelper {
 
-        /**
-         * Collection of {@link ScrapingAware} listeners.
-         */
-        private final List<ScrapingAware> listeners =
-                new ArrayList<ScrapingAware>();
+        private final CopyOnWriteArrayList<ListenerRegistration> listeners =
+                new CopyOnWriteArrayList<ListenerRegistration>();
 
         /**
-         * Register {@link ScrapingAware} listener.
-         *
-         * @param listener
-         *            reference to listener object.
+         * Compatibility registration method. The registration remains active
+         * for this helper's lifetime unless a caller uses {@link #registerListener(ScrapingAware)}
+         * and retains its token.
          */
-        // FIXME rbala Not thread safe
-        // TODO Synchronize listener's registration
         public void addListener(final ScrapingAware listener) {
+            registerListener(listener);
+        }
+
+        /**
+         * Registers a listener and returns an idempotent token for future-snapshot
+         * removal. Closing the token does not wait for notifications that already
+         * captured this registration.
+         *
+         * @param listener listener to register
+         * @return token that removes this exact registration from future snapshots
+         */
+        public ListenerRegistration registerListener(final ScrapingAware listener) {
             if (listener == null) {
                 throw new IllegalArgumentException("Listener is required");
             }
-            listeners.add(listener);
+            ListenerRegistration registration = new ListenerRegistration(this, listener);
+            listeners.add(registration);
+            return registration;
         }
 
         /**
-         * Notify all registered listeners about new scraping scope.
-         *
-         * @param harvester
-         *            reference to the {@link Harvester} the event applies to.
+         * Notify the listeners in one immutable CopyOnWriteArrayList snapshot.
+         * Listener callbacks may overlap across concurrent scraping scopes,
+         * including callbacks to the same listener instance; listeners with
+         * mutable state must provide their own thread safety.
          */
-        // TODO Missing unit test
         public void onBeforeScraping(final Harvester harvester) {
             LOG.debug("Entering scraper scope [{}]", harvester);
-            for (final ScrapingAware listener : listeners) {
-                listener.onBeforeScraping(harvester);
+            RuntimeException firstFailure = null;
+            for (ListenerRegistration registration : listeners) {
+                try {
+                    registration.listener.onBeforeScraping(harvester);
+                } catch (RuntimeException failure) {
+                    if (firstFailure == null) {
+                        firstFailure = failure;
+                    } else if (firstFailure != failure) {
+                        firstFailure.addSuppressed(failure);
+                    }
+                }
+            }
+            if (firstFailure != null) {
+                throw firstFailure;
             }
         }
 
         /**
-         * Notify all registered listeners about scraping scope that is about
-         * the end.
-         *
-         * @param harvester
-         *            reference to the {@link Harvester} the event applies to.
+         * Notify the listeners in one immutable CopyOnWriteArrayList snapshot.
+         * Runtime exceptions are aggregated so one failing listener does not
+         * prevent remaining listeners from receiving teardown notification.
          */
-        // TODO Missing unit test
         public void onAfterScraping(final Harvester harvester) {
             LOG.debug("Leaving scraper scope [{}]", harvester);
-            for (final ScrapingAware listener : listeners) {
-                listener.onAfterScraping(harvester);
+            RuntimeException firstFailure = null;
+            for (ListenerRegistration registration : listeners) {
+                try {
+                    registration.listener.onAfterScraping(harvester);
+                } catch (RuntimeException failure) {
+                    if (firstFailure == null) {
+                        firstFailure = failure;
+                    } else if (firstFailure != failure) {
+                        firstFailure.addSuppressed(failure);
+                    }
+                }
+            }
+            if (firstFailure != null) {
+                throw firstFailure;
             }
         }
 
+        /**
+         * One helper-scoped registration. This token removes only its own entry;
+         * it does not carry runtime ownership or guarantee callback drain.
+         */
+        public static final class ListenerRegistration implements AutoCloseable {
+            private final ScrapingAwareHelper helper;
+            private final ScrapingAware listener;
+            private final AtomicBoolean closed = new AtomicBoolean();
+
+            private ListenerRegistration(ScrapingAwareHelper helper, ScrapingAware listener) {
+                this.helper = helper;
+                this.listener = listener;
+            }
+
+            @Override
+            public void close() {
+                if (closed.compareAndSet(false, true)) {
+                    helper.listeners.remove(this);
+                }
+            }
+
+            /** Returns whether this exact registration token has been closed. */
+            public boolean isClosed() {
+                return closed.get();
+            }
+        }
     }
 
 }
