@@ -45,6 +45,20 @@ public class HttpServiceOperationLifecycleTest {
                 output.write(body);
             }
         });
+        server.createContext("/delayed-headers", exchange -> {
+            try {
+                Thread.sleep(600);
+                byte[] body = "late".getBytes(StandardCharsets.UTF_8);
+                exchange.sendResponseHeaders(200, body.length);
+                try (OutputStream output = exchange.getResponseBody()) {
+                    output.write(body);
+                }
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+            } catch (Exception ignored) {
+                // A timed-out client may close the connection before headers arrive.
+            }
+        });
         server.createContext("/blocked", exchange -> {
             blockedRequestStarted.countDown();
             exchange.sendResponseHeaders(200, 0);
@@ -107,6 +121,20 @@ public class HttpServiceOperationLifecycleTest {
             releaseBlockedRequest.countDown();
             executor.shutdownNow();
             executor.awaitTermination(3, TimeUnit.SECONDS);
+        }
+    }
+
+    @Test
+    public void responseTimeoutBoundsAStalledResponse() throws Exception {
+        try (HttpServiceImpl service = new HttpServiceImpl()) {
+            try {
+                service.request("GET", baseUrl + "/delayed-headers", null, Map.of(),
+                    Duration.ofMillis(150), null);
+                fail("A response that exceeds the configured timeout must fail");
+            } catch (HttpServiceException expected) {
+                assertTrue(expected.getCause() != null,
+                    "Timeout failure should retain the underlying I/O cause");
+            }
         }
     }
 
