@@ -139,16 +139,25 @@ public class WebHarvestServiceExecutionLifecycleTest {
 
             assertTrue(listener.shutdownReturned.await(5, TimeUnit.SECONDS),
                 "The session worker must return from its own forced-shutdown request");
+            assertTrue(listener.abortStarted.await(5, TimeUnit.SECONDS),
+                "The resource abort callback must be active before runtime retirement");
+            assertFalse(coordinator.isCloseRequested(),
+                "Runtime registrations must remain while an asynchronous abort callback is active");
+
+            listener.releaseAbort.countDown();
             long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
             while (!coordinator.isCloseRequested() && System.nanoTime() < deadline) {
                 Thread.yield();
             }
 
             assertTrue(coordinator.isCloseRequested(),
-                "Deferred finalization must close the runtime registration owner after forced worker exit");
+                "Deferred finalization must close the runtime registration owner after abort quiescence");
+            assertEquals(listener.resourceCloseCount.get(), 1,
+                "Resource close must complete before runtime registration retirement");
             assertEquals(coordinator.getSubscriberRegistrationCount(), 0,
                 "Deferred finalization must unregister the worker's subscriber after shutdownNow");
         } finally {
+            listener.releaseAbort.countDown();
             if (!coordinator.isCloseRequested()) {
                 service.shutdownNow();
             }
@@ -1770,6 +1779,9 @@ public class WebHarvestServiceExecutionLifecycleTest {
         private final WebHarvestService service;
         private final boolean immediate;
         private final CountDownLatch shutdownReturned = new CountDownLatch(1);
+        private final CountDownLatch abortStarted = new CountDownLatch(1);
+        private final CountDownLatch releaseAbort = new CountDownLatch(1);
+        private final AtomicInteger resourceCloseCount = new AtomicInteger();
         private final AtomicReference<Throwable> shutdownFailure = new AtomicReference<>();
 
         private WorkerInitiatedShutdownListener(WebHarvestService service, boolean immediate) {
@@ -1781,6 +1793,18 @@ public class WebHarvestServiceExecutionLifecycleTest {
         public void onStarted(SessionStartedEvent event) {
             try {
                 if (immediate) {
+                    event.getSession().getContext().getResourceAccess().registerSessionResource(
+                        "test/worker-initiated-shutdown",
+                        () -> {
+                            abortStarted.countDown();
+                            try {
+                                releaseAbort.await();
+                            } catch (InterruptedException interrupted) {
+                                Thread.currentThread().interrupt();
+                                throw new IllegalStateException("Abort callback interrupted", interrupted);
+                            }
+                        },
+                        resourceCloseCount::incrementAndGet);
                     service.shutdownNow();
                 } else {
                     service.shutdown();
