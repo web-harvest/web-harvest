@@ -98,8 +98,8 @@ public class LedgerExecutionResourceContextTest {
             // trigger the retained drain; the test deliberately performs no second drain.
             releaseAbort.countDown();
             long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
-            while (resource.getState() != ExecutionResourceAccess.ResourceState.CLOSED
-                && System.nanoTime() < deadline) {
+            while ((resource.getState() != ExecutionResourceAccess.ResourceState.CLOSED
+                    || ledger.size() != 0) && System.nanoTime() < deadline) {
                 Thread.yield();
             }
             assertEquals(resource.getState(), ExecutionResourceAccess.ResourceState.CLOSED,
