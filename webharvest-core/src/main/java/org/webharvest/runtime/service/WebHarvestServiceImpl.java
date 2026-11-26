@@ -46,6 +46,7 @@ import org.webharvest.runtime.session.ExecutionOwner;
 import org.webharvest.runtime.resource.ExecutionResourceAccess.ResourceState;
 import org.webharvest.runtime.resource.LedgerExecutionResourceCoordinator;
 import org.webharvest.runtime.resource.ResourceLedger;
+import org.webharvest.runtime.resource.RuntimeResourceManager;
 import org.webharvest.runtime.session.ScraperSession;
 import org.webharvest.runtime.session.ScraperSessionImpl;
 import org.webharvest.runtime.session.SessionRegistry;
@@ -84,6 +85,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
     private final SessionRegistry sessionRegistry;
     private final EventBus eventBus;
     private final RuntimeRegistrationCoordinator registrationCoordinator;
+    private final RuntimeResourceManager runtimeResourceManager;
     private final ScheduledThreadPoolExecutor timeoutScheduler;
     private final ConcurrentMap<String, SessionTask> executionTasks = new ConcurrentHashMap<>();
     private final String runtimeId = UUID.randomUUID().toString();
@@ -105,16 +107,25 @@ public class WebHarvestServiceImpl implements WebHarvestService {
      */
     @Inject
     public WebHarvestServiceImpl(EventBus eventBus,
+                                 RuntimeRegistrationCoordinator registrationCoordinator,
+                                 RuntimeResourceManager runtimeResourceManager) {
+        this(Executors.newCachedThreadPool(new SessionThreadFactory()),
+            new SessionRegistryImpl(), eventBus, registrationCoordinator, runtimeResourceManager);
+    }
+
+    /** Compatibility constructor for direct composition without a Guice runtime resource manager. */
+    public WebHarvestServiceImpl(EventBus eventBus,
                                  RuntimeRegistrationCoordinator registrationCoordinator) {
         this(Executors.newCachedThreadPool(new SessionThreadFactory()),
-            new SessionRegistryImpl(), eventBus, registrationCoordinator);
+            new SessionRegistryImpl(), eventBus, registrationCoordinator, new RuntimeResourceManager());
     }
 
     /** Compatibility constructor for direct, non-Guice service composition. */
     public WebHarvestServiceImpl(EventBus eventBus) {
         this(Executors.newCachedThreadPool(new SessionThreadFactory()),
             new SessionRegistryImpl(), eventBus,
-            new RuntimeRegistrationCoordinator(eventBus, new ScrapingAwareHelper()));
+            new RuntimeRegistrationCoordinator(eventBus, new ScrapingAwareHelper()),
+            new RuntimeResourceManager());
     }
 
     /** Creates a service using the default cached session executor. */
@@ -143,7 +154,8 @@ public class WebHarvestServiceImpl implements WebHarvestService {
                                  SessionRegistry sessionRegistry,
                                  EventBus eventBus) {
         this(executorService, sessionRegistry, eventBus,
-            new RuntimeRegistrationCoordinator(eventBus, new ScrapingAwareHelper()));
+            new RuntimeRegistrationCoordinator(eventBus, new ScrapingAwareHelper()),
+            new RuntimeResourceManager());
     }
 
     /**
@@ -153,6 +165,17 @@ public class WebHarvestServiceImpl implements WebHarvestService {
                                  SessionRegistry sessionRegistry,
                                  EventBus eventBus,
                                  RuntimeRegistrationCoordinator registrationCoordinator) {
+        this(executorService, sessionRegistry, eventBus, registrationCoordinator, new RuntimeResourceManager());
+    }
+
+    /**
+     * Creates a service with explicit runtime-owned session, registration and resource components.
+     */
+    public WebHarvestServiceImpl(ExecutorService executorService,
+                                 SessionRegistry sessionRegistry,
+                                 EventBus eventBus,
+                                 RuntimeRegistrationCoordinator registrationCoordinator,
+                                 RuntimeResourceManager runtimeResourceManager) {
         if (executorService == null) {
             throw new IllegalArgumentException("ExecutorService cannot be null");
         }
@@ -165,11 +188,15 @@ public class WebHarvestServiceImpl implements WebHarvestService {
         if (registrationCoordinator == null) {
             throw new IllegalArgumentException("RuntimeRegistrationCoordinator cannot be null");
         }
+        if (runtimeResourceManager == null) {
+            throw new IllegalArgumentException("RuntimeResourceManager cannot be null");
+        }
 
         this.executorService = executorService;
         this.sessionRegistry = sessionRegistry;
         this.eventBus = eventBus;
         this.registrationCoordinator = registrationCoordinator;
+        this.runtimeResourceManager = runtimeResourceManager;
         this.timeoutScheduler = createTimeoutScheduler();
     }
 
@@ -582,7 +609,11 @@ public class WebHarvestServiceImpl implements WebHarvestService {
         if (terminated) {
             // Runtime registrations are retired only after workers, resource drains,
             // and asynchronous abort callbacks have all reached quiescence.
-            registrationCoordinator.close();
+            try {
+                registrationCoordinator.close();
+            } finally {
+                runtimeResourceManager.close();
+            }
         }
         return terminated;
     }
@@ -642,7 +673,11 @@ public class WebHarvestServiceImpl implements WebHarvestService {
                 awaitTerminationUninterruptibly(executorService);
                 resourceAbortExecutor.shutdown();
                 awaitTerminationUninterruptibly(resourceAbortExecutor);
-                registrationCoordinator.close();
+                try {
+                    registrationCoordinator.close();
+                } finally {
+                    runtimeResourceManager.close();
+                }
                 finalizeTimeoutSchedulerIfQuiescent();
                 LOG.info("Deferred WebHarvestService runtime finalization completed after worker-initiated shutdown");
             } catch (RuntimeException failure) {
