@@ -56,7 +56,9 @@ public class ScrapingAwareHelperTest {
         CountDownLatch callbackEntered = new CountDownLatch(1);
         CountDownLatch releaseCallback = new CountDownLatch(1);
         AtomicInteger removedCalls = new AtomicInteger();
+        AtomicInteger removedAfterCalls = new AtomicInteger();
         AtomicInteger addedCalls = new AtomicInteger();
+        AtomicInteger addedAfterCalls = new AtomicInteger();
         AtomicReference<Throwable> failure = new AtomicReference<>();
 
         ScrapingAware removedListener = new ScrapingAware() {
@@ -74,7 +76,7 @@ public class ScrapingAwareHelperTest {
 
             @Override
             public void onAfterScraping(Harvester value) {
-                // No-op.
+                removedAfterCalls.incrementAndGet();
             }
         };
         ScrapingInterceptor.ScrapingAwareHelper.ListenerRegistration token =
@@ -83,6 +85,7 @@ public class ScrapingAwareHelperTest {
         Thread notification = new Thread(() -> {
             try {
                 helper.onBeforeScraping(harvester);
+                helper.onAfterScraping(harvester);
             } catch (Throwable unexpected) {
                 failure.set(unexpected);
             }
@@ -101,7 +104,7 @@ public class ScrapingAwareHelperTest {
 
                 @Override
                 public void onAfterScraping(Harvester value) {
-                    // No-op.
+                    addedAfterCalls.incrementAndGet();
                 }
             });
         } finally {
@@ -115,10 +118,53 @@ public class ScrapingAwareHelperTest {
             "An in-flight snapshot may finish after its token is closed");
         assertEquals(addedCalls.get(), 0,
             "A listener added after snapshot capture must not receive that notification");
+        assertEquals(removedAfterCalls.get(), 1,
+            "A listener removed mid-scope must still receive its matching after notification");
+        assertEquals(addedAfterCalls.get(), 0,
+            "A listener added mid-scope must not receive an unmatched after notification");
 
         helper.onBeforeScraping(harvester);
+        helper.onAfterScraping(harvester);
         assertEquals(removedCalls.get(), 1);
         assertEquals(addedCalls.get(), 1);
+        assertEquals(addedAfterCalls.get(), 1);
+    }
+
+    @Test
+    public void nestedScopesReuseTheirOwnListenerSnapshotsInLifoOrder() {
+        ScrapingInterceptor.ScrapingAwareHelper helper =
+                new ScrapingInterceptor.ScrapingAwareHelper();
+        Harvester harvester = mock(Harvester.class);
+        AtomicInteger firstAfterCalls = new AtomicInteger();
+        AtomicInteger secondAfterCalls = new AtomicInteger();
+        ScrapingInterceptor.ScrapingAwareHelper.ListenerRegistration first =
+                helper.registerListener(new ScrapingAware() {
+                    @Override
+                    public void onBeforeScraping(Harvester value) { }
+                    @Override
+                    public void onAfterScraping(Harvester value) {
+                        firstAfterCalls.incrementAndGet();
+                    }
+                });
+
+        helper.onBeforeScraping(harvester);
+        helper.registerListener(new ScrapingAware() {
+            @Override
+            public void onBeforeScraping(Harvester value) { }
+            @Override
+            public void onAfterScraping(Harvester value) {
+                secondAfterCalls.incrementAndGet();
+            }
+        });
+        helper.onBeforeScraping(harvester);
+        first.close();
+
+        helper.onAfterScraping(harvester);
+        helper.onAfterScraping(harvester);
+        assertEquals(firstAfterCalls.get(), 2,
+                "Both nested and outer scopes must retain their captured first listener");
+        assertEquals(secondAfterCalls.get(), 1,
+                "The listener added after outer entry belongs only to the nested scope");
     }
 
     @Test
