@@ -934,6 +934,25 @@ public class ResourceLedgerTest {
         assertFalse(registration.drainAndClose(Duration.ZERO).isAbortInProgress());
     }
 
+
+    @Test(groups = {"unit", "runtime"})
+    public void dispatcherRejectionAfterCallbackCompletionDoesNotOverwriteCompletedAbort() {
+        AtomicInteger aborts = new AtomicInteger();
+        ResourceLedger ledger = new ResourceLedger("runtime-a", command -> {
+            command.run();
+            throw new java.util.concurrent.RejectedExecutionException("executor rejected after execution");
+        });
+        ResourceLedger.Registration registration = ledger.registerRuntime(
+            "completed-before-rejection", aborts::incrementAndGet, null);
+        registration.requestClose();
+
+        registration.abort();
+
+        assertEquals(aborts.get(), 1);
+        assertEquals(registration.getAbortState(), ResourceLedger.AbortState.SUCCEEDED);
+        assertNull(registration.getAbortFailure());
+    }
+
     @Test(groups = {"unit", "runtime"})
     public void testStaleRegistrationTokenCannotRetireReplacement() throws InterruptedException {
         ResourceLedger ledger = new ResourceLedger("runtime-a");
