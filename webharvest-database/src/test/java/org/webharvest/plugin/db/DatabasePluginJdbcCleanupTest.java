@@ -40,6 +40,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -51,6 +52,9 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.testng.annotations.Test;
 import org.webharvest.runtime.resource.ExecutionResourceAccess;
+import org.webharvest.runtime.resource.LedgerExecutionResourceCoordinator;
+import org.webharvest.runtime.resource.ResourceLedger;
+import org.webharvest.runtime.session.ExecutionOwner;
 import org.webharvest.runtime.variables.Variable;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -188,6 +192,61 @@ public class DatabasePluginJdbcCleanupTest {
 
         org.mockito.Mockito.verify(statement,
             org.mockito.Mockito.never()).setQueryTimeout(org.mockito.ArgumentMatchers.anyInt());
+    }
+
+    @Test
+    public void realResourceLedgerAbortCancelsBlockedJdbcStatementAndDrainsAfterLeaseRelease() throws Exception {
+        Connection connection = mock(Connection.class);
+        PreparedStatement statement = mock(PreparedStatement.class);
+        ResultSet resultSet = mock(ResultSet.class);
+        CountDownLatch queryStarted = new CountDownLatch(1);
+        CountDownLatch cancellationObserved = new CountDownLatch(1);
+        CountDownLatch releaseQuery = new CountDownLatch(1);
+
+        ResourceLedger ledger = new ResourceLedger("jdbc-test-runtime");
+        ExecutionOwner owner = new ExecutionOwner("jdbc-test-runtime", "jdbc-cancel-session", 1);
+        LedgerExecutionResourceCoordinator coordinator =
+            new LedgerExecutionResourceCoordinator(ledger, owner);
+
+        when(connection.prepareStatement(anyString())).thenReturn(statement);
+        when(statement.executeQuery()).thenAnswer(invocation -> {
+            queryStarted.countDown();
+            if (!releaseQuery.await(3, TimeUnit.SECONDS)) {
+                throw new SQLException("Timed out waiting for Statement.cancel()");
+            }
+            return resultSet;
+        });
+        when(resultSet.next()).thenReturn(false);
+        doAnswer(invocation -> {
+            cancellationObserved.countDown();
+            releaseQuery.countDown();
+            return null;
+        }).when(statement).cancel();
+
+        ExecutorService worker = Executors.newSingleThreadExecutor();
+        try {
+            Future<Object> execution = worker.submit(
+                () -> invokeExecuteSql(connection, "SELECT 1", coordinator.getAccess(), 0));
+            assertTrue(queryStarted.await(2, TimeUnit.SECONDS),
+                "JDBC execution must be blocked before owner termination");
+
+            coordinator.requestTermination();
+            assertTrue(cancellationObserved.await(2, TimeUnit.SECONDS),
+                "ResourceLedger abort must invoke Statement.cancel()");
+            execution.get(2, TimeUnit.SECONDS);
+
+            coordinator.markOwnerQuiescentAndDrain(Duration.ofSeconds(1));
+            verify(statement).cancel();
+            verify(statement).close();
+            assertEquals(ledger.size(), 0,
+                "The statement operation resource must drain after its execution lease is released");
+        } catch (ExecutionException failure) {
+            throw new AssertionError("JDBC execution should exit after ResourceLedger abort", failure.getCause());
+        } finally {
+            releaseQuery.countDown();
+            worker.shutdownNow();
+            worker.awaitTermination(2, TimeUnit.SECONDS);
+        }
     }
 
     @Test
