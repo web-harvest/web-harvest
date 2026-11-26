@@ -100,6 +100,7 @@ public class WebHarvestServiceImpl implements WebHarvestService {
      * Creates a service using the EventBus owned by this Guice runtime.
      *
      * @param eventBus shared runtime EventBus
+     * @param registrationCoordinator injector-owned registration lifecycle
      */
     @Inject
     public WebHarvestServiceImpl(EventBus eventBus,
