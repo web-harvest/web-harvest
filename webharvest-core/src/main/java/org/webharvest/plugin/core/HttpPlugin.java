@@ -34,6 +34,7 @@
 package org.webharvest.plugin.core;
 
 import java.net.URLEncoder;
+import java.time.Duration;
 import java.nio.charset.StandardCharsets;
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -156,7 +157,7 @@ import org.webharvest.runtime.scripting.ScriptingLanguage;
  * <ul>
  *   <li><strong>url</strong> (required): The HTTP/HTTPS URL to request</li>
  *   <li><strong>method</strong> (optional): HTTP method (GET, POST, PUT, DELETE, etc.) - default: GET</li>
- *   <li><strong>timeout</strong> (optional): Request timeout in milliseconds - default: 30000</li>
+ *   <li><strong>timeout</strong> (optional): Response and connection-pool acquisition timeout in milliseconds - default: 30000</li>
  *   <li><strong>charset</strong> (optional): Character encoding - default: UTF-8</li>
  *   <li><strong>followRedirects</strong> (optional): Follow HTTP redirects - default: true</li>
  * </ul>
@@ -299,14 +300,25 @@ public class HttpPlugin extends AbstractPlugin {
                 body = "";
             }
 
-            HttpResponse response;
-            if ("GET".equals(normalizedMethod)) {
-                response = httpService.get(urlWithParams, headers);
-            } else if ("POST".equals(normalizedMethod)) {
-                response = httpService.post(urlWithParams, body, headers);
-            } else {
-                response = httpService.request(normalizedMethod, urlWithParams, body, headers);
+            String timeoutValue = getConfiguration().getProperty("timeout", "30000");
+            long timeoutMillis;
+            try {
+                timeoutMillis = Long.parseLong(timeoutValue.trim());
+            } catch (NumberFormatException invalidTimeout) {
+                throw new IllegalArgumentException("HTTP timeout must be a positive integer in milliseconds",
+                    invalidTimeout);
             }
+            if (timeoutMillis <= 0) {
+                throw new IllegalArgumentException("HTTP timeout must be a positive integer in milliseconds");
+            }
+
+            HttpResponse response = httpService.request(
+                normalizedMethod,
+                urlWithParams,
+                body,
+                headers,
+                Duration.ofMillis(timeoutMillis),
+                context.getResourceAccess());
             
             // Bug #39 Fix: Check if response should be treated as binary
             String contentType = response.getContentType();
