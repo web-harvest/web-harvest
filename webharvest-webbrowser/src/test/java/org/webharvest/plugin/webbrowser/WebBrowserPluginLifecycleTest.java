@@ -320,8 +320,9 @@ public class WebBrowserPluginLifecycleTest {
                 "Browser navigation must reach the blocked loopback endpoint");
 
             resources.requestTermination();
-            releaseBlockedBrowserRequest.countDown();
 
+            // The abort callback must interrupt the active navigation without
+            // relying on the remote endpoint to release its response.
             try {
                 load.get(3, TimeUnit.SECONDS);
                 fail("A browser operation must not succeed after its owner is terminated");
@@ -330,6 +331,7 @@ public class WebBrowserPluginLifecycleTest {
                     "Owner termination must surface as a failed browser operation");
             }
 
+            releaseBlockedBrowserRequest.countDown();
             java.util.List<LedgerExecutionResourceContext.DrainReport> reports =
                 resources.markOwnerQuiescentAndDrain(Duration.ofSeconds(2));
             assertEquals(reports.size(), 1);
