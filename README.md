@@ -75,6 +75,7 @@ These are roadmap targets, not claims that the independent SPI, separate extensi
 - [Groovy runtime migration notes](docs/GROOVY_RUNTIME_MIGRATION.md) — production runtime baseline and downstream compatibility guidance.
 - [Release readiness](docs/RELEASE_READINESS.md) — verified distribution status.
 - [Semantic metadata](docs/semantic-metadata/) — current catalog/schema notes.
+- [Data-platform sink boundary](docs/architecture/data-platform-sink-boundary.md) — proposed optional output-publication contract; no platform dependency or implementation.
 - [XML examples](docs/web/examples/) — illustrative workflow configurations.
 
 The `docs/web/**` tree contains historical and versioned documentation. Do not assume that old version-specific plugin counts or generated pages describe the current Core membership.
