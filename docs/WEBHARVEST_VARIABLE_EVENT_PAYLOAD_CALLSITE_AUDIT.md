@@ -368,6 +368,15 @@ Other Core plugins use Variable primarily as an execution/return carrier, scope 
 
 **Architectural implication:** Preserve legacy behavior through explicit adapters and characterization tests. Do not silently normalize Loop and While to one behavior, change CallPlugin's return normalization, or assume every ListVariable is a homogeneous typed collection.
 
+## 4.1 Bounded repository source inventory
+
+A follow-up tree-driven source pass used the recursive Git tree for the inspected `main` SHA and fetched source files by exact repository path, rather than relying on GitHub Code Search.
+
+- The recursive tree contains 2,123 entries and 768 Java files (663 under `webharvest-core`; the remaining modules are CLI, Database, FTP, IDE, Mail, WebBrowser and ZIP).
+- The targeted Core pass fetched 65 production Java files covering all Core plugin classes plus the Variable, context, scripting and templating boundaries. The previously documented 47-file direct Core plugin-package sweep remains a narrower package-level count.
+- The non-Core pass fetched all 49 production Java files under the optional modules/CLI/IDE source roots, plus the documentation generator source. It confirmed additional Variable boundaries in the CLI argument-to-context path, IDE variable extraction/stringification, Database connection handles/results, FTP text/binary handling, Mail attachments, WebBrowser results and ZIP context-held output streams.
+- This is a source-file inventory for the selected boundaries, not a full symbol-level audit of every Core package, test source, generated code, public API consumer or downstream embedding application. GitHub Code Search returned zero/incomplete results for known symbols; those results are not evidence that no other call sites exist.
+
 ## 5. Design constraints derived from evidence
 
 The next data/payload API design should be evaluated against these constraints:
@@ -380,15 +389,6 @@ The next data/payload API design should be evaluated against these constraints:
 6. **Keep runtime notifications distinct from domain events.** Session/plugin lifecycle events may carry references and execution metadata, but domain event schemas and durable event persistence are separate concerns.
 7. **Preserve resource cleanup semantics.** Database pool cleanup currently depends on session terminal notifications; stream/artifact resources need deterministic cleanup on completion, failure, cancellation and runtime shutdown.
 8. **Do not force media frameworks into Core.** Core should own neutral payload/stream lifecycle contracts only where proven necessary; codecs, capture protocols, AI inference and vendor integrations remain provider modules.
-
-## 4.1 Bounded repository source inventory
-
-A follow-up tree-driven source pass used the recursive Git tree for the inspected `main` SHA and fetched source files by exact repository path, rather than relying on GitHub Code Search.
-
-- The recursive tree contains 2,123 entries and 768 Java files (663 under `webharvest-core`; the remaining modules are CLI, Database, FTP, IDE, Mail, WebBrowser and ZIP).
-- The targeted Core pass fetched 65 production Java files covering all Core plugin classes plus the Variable, context, scripting and templating boundaries. The previously documented 47-file direct Core plugin-package sweep remains a narrower package-level count.
-- The non-Core pass fetched all 49 production Java files under the optional modules/CLI/IDE source roots, plus the documentation generator source. It confirmed additional Variable boundaries in the CLI argument-to-context path, IDE variable extraction/stringification, Database connection handles/results, FTP text/binary handling, Mail attachments, WebBrowser results and ZIP context-held output streams.
-- This is a source-file inventory for the selected boundaries, not a full symbol-level audit of every Core package, test source, generated code, public API consumer or downstream embedding application. GitHub Code Search returned zero/incomplete results for known symbols; those results are not evidence that no other call sites exist.
 
 ## 5. Remaining unknowns and next inspections
 
