@@ -306,6 +306,55 @@ public class FtpClientResourceTest {
         }
     }
 
+    @Test
+    public void dataSocketReturnedDuringAbortIsClosedInsteadOfEscapingTracking() throws Exception {
+        FtpClientFactory.ManagedFtpClient client = new FtpClientFactory.ManagedFtpClient();
+        CountDownLatch firstCloseStarted = new CountDownLatch(1);
+        CountDownLatch releaseFirstClose = new CountDownLatch(1);
+        Socket firstDataSocket = new Socket() {
+            @Override
+            public synchronized void close() throws java.io.IOException {
+                firstCloseStarted.countDown();
+                try {
+                    if (!releaseFirstClose.await(3, TimeUnit.SECONDS)) {
+                        throw new java.io.IOException("Timed out waiting to release first data socket");
+                    }
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                    throw new java.io.IOException("Interrupted while closing first data socket", interrupted);
+                }
+                super.close();
+            }
+        };
+        client.trackDataSocket(firstDataSocket);
+
+        ExecutorService disconnector = Executors.newSingleThreadExecutor();
+        try {
+            Future<?> disconnect = disconnector.submit(() -> {
+                client.disconnect();
+                return null;
+            });
+            assertTrue(firstCloseStarted.await(3, TimeUnit.SECONDS),
+                "Disconnect must snapshot the first socket before the late socket is returned");
+
+            Socket lateDataSocket = mock(Socket.class);
+            try {
+                client.trackDataSocket(lateDataSocket);
+                throw new AssertionError("A data socket must not be admitted after disconnect starts");
+            } catch (java.io.IOException expected) {
+                assertTrue(expected.getMessage().contains("already disconnecting"));
+            }
+            verify(lateDataSocket).close();
+
+            releaseFirstClose.countDown();
+            disconnect.get(3, TimeUnit.SECONDS);
+            assertTrue(firstDataSocket.isClosed());
+        } finally {
+            releaseFirstClose.countDown();
+            disconnector.shutdownNow();
+        }
+    }
+
     private static void serveBlockedRetrieve(ServerSocket controlServer, ServerSocket dataServer,
                                              CountDownLatch dataAccepted, CountDownLatch dataClosed,
                                              AtomicReference<Throwable> serverFailure) {
