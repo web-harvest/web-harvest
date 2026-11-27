@@ -119,29 +119,29 @@ public class FtpClientResourceTest {
             FtpClientResource resource = FtpClientResource.open(context);
             try {
                 FTPClient client = resource.getClient();
-            client.connect("127.0.0.1", controlServer.getLocalPort());
-            assertTrue(client.login("user", "secret"));
-            assertTrue(client.setFileType(FTPClient.BINARY_FILE_TYPE));
+                client.connect("127.0.0.1", controlServer.getLocalPort());
+                assertTrue(client.login("user", "secret"));
+                assertTrue(client.setFileType(FTPClient.BINARY_FILE_TYPE));
 
-            Future<Boolean> transfer = worker.submit(
-                () -> client.retrieveFile("blocked.bin", new ByteArrayOutputStream()));
-            assertTrue(dataAccepted.await(3, TimeUnit.SECONDS),
-                "The server must observe the active data connection before abort");
+                Future<Boolean> transfer = worker.submit(
+                    () -> client.retrieveFile("blocked.bin", new ByteArrayOutputStream()));
+                assertTrue(dataAccepted.await(3, TimeUnit.SECONDS),
+                    "The server must observe the active data connection before abort");
 
-            ArgumentCaptor<ExecutionResourceAccess.AbortAction> abort =
-                ArgumentCaptor.forClass(ExecutionResourceAccess.AbortAction.class);
-            verify(access).registerOperationResource(anyString(), abort.capture(), any());
-            abort.getValue().abort();
+                ArgumentCaptor<ExecutionResourceAccess.AbortAction> abort =
+                    ArgumentCaptor.forClass(ExecutionResourceAccess.AbortAction.class);
+                verify(access).registerOperationResource(anyString(), abort.capture(), any());
+                abort.getValue().abort();
 
-            try {
-                transfer.get(3, TimeUnit.SECONDS);
-                throw new AssertionError("Aborted FTP transfer must not report success");
-            } catch (ExecutionException expected) {
-                // Closing the tracked data and control sockets terminates the blocked read.
-            }
-            assertTrue(dataClosed.await(3, TimeUnit.SECONDS),
-                "Owner abort must close the data socket, not only the FTP control socket");
-            assertFalse(client.isConnected(), "Owner abort must disconnect the control socket");
+                try {
+                    transfer.get(3, TimeUnit.SECONDS);
+                    throw new AssertionError("Aborted FTP transfer must not report success");
+                } catch (ExecutionException expected) {
+                    // Closing the tracked data and control sockets terminates the blocked read.
+                }
+                assertTrue(dataClosed.await(3, TimeUnit.SECONDS),
+                    "Owner abort must close the data socket, not only the FTP control socket");
+                assertFalse(client.isConnected(), "Owner abort must disconnect the control socket");
             } finally {
                 resource.close();
             }
@@ -174,6 +174,9 @@ public class FtpClientResourceTest {
                     reply(writer, "230 logged in");
                 } else if ("TYPE".equals(verb)) {
                     reply(writer, "200 binary type set");
+                } else if ("EPSV".equals(verb)) {
+                    reply(writer, "229 Entering Extended Passive Mode (|||"
+                        + dataServer.getLocalPort() + "|)");
                 } else if ("PASV".equals(verb)) {
                     int port = dataServer.getLocalPort();
                     reply(writer, "227 Entering Passive Mode (127,0,0,1,"
