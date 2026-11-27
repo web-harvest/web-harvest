@@ -28,6 +28,8 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.assertTrue;
 
 /** End-to-end cancellation contract for SMTP DATA in progress. */
@@ -92,6 +94,10 @@ public class MailPluginLifecycleTest {
                 throw new AssertionError("Aborted SMTP send must not report delivery success");
             } catch (ExecutionException expected) {
                 // JavaMail reports the broken SMTP socket; remote delivery remains unknown.
+                MailPluginException mailFailure = findMailFailure(expected);
+                assertNotNull(mailFailure, "The failure must expose its SMTP effect disposition");
+                assertEquals(mailFailure.getDeliveryDisposition(),
+                    MailPluginException.DeliveryDisposition.UNKNOWN);
             }
             assertTrue(clientSocketClosed.await(3, TimeUnit.SECONDS),
                 "Owner abort must close the actual SMTP socket");
@@ -110,6 +116,17 @@ public class MailPluginLifecycleTest {
         if (serverFailure.get() != null && !(serverFailure.get() instanceof java.net.SocketException)) {
             throw new AssertionError("SMTP test server failed", serverFailure.get());
         }
+    }
+
+    private static MailPluginException findMailFailure(Throwable failure) {
+        Throwable current = failure;
+        while (current != null) {
+            if (current instanceof MailPluginException) {
+                return (MailPluginException) current;
+            }
+            current = current.getCause();
+        }
+        return null;
     }
 
     private static void serveBlockedSmtp(ServerSocket serverSocket, CountDownLatch dataReceived,
