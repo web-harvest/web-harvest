@@ -928,3 +928,71 @@ The scanner itself mutates the process-global singleton registry. It does not re
 **Membership review direction (2026-11-27):** FTP and Mail are not Core plugins and must remain optional integrations. Their `@CorePlugin` annotations are historical/discovery metadata and must not be interpreted as Core membership or permission for default activation. The future descriptor model must represent product/module membership independently from implementation annotations and scan eligibility. Because the current opt-in `PluginPackageScanner` filters candidates by `@CorePlugin`, do not simply remove that annotation from FTP or Mail as an isolated cleanup: doing so would also make those classes invisible to that legacy scanner. Replace the discovery marker with a general plugin/module contribution descriptor first, and retain an explicit compatibility adapter for existing host package-scan configurations until their usage is characterized. WebBrowser remains unclassified pending a focused capability, lifecycle, isolation, dependency and workflow-necessity review; neither its current annotation nor its presence in an optional Maven module settles that decision. Database and ZIP remain outside default Core in the current inventory; this note does not reopen their separate status.
 
 **Migration requirement:** preserve the existing opt-in semantics where compatibility requires them, but replace package scanning as a live-registration operation. A host should explicitly select module contributions and classloader/lifecycle scope; the runtime should inspect/validate them as a candidate, report all conflicts and missing dependencies, then publish a single immutable generation. Discovery must not silently activate code merely because it is visible on the classpath. Add module-level characterization tests for FTP, Mail, WebBrowser, Database, and ZIP before changing these integration paths.
+
+## 37. Plugin identity, XML bindings, module membership, and runtime construction are separate contracts
+
+The current APIs conflate several independent concerns:
+
+- `@CorePlugin` contains one `elementName`, a namespace, a version and UI-oriented flags. It is named and documented as a Core-membership marker, but it is also used as the discovery filter for optional integrations.
+- `PluginMetadata` also exposes one namespace/element-name pair, `isCorePlugin()`, and a `String[] getDependencies()`. FTP, Mail and WebBrowser currently return `isCorePlugin() == true` and an empty dependency array despite being separate Maven modules with substantial third-party dependencies.
+- `PluginConfigurationSchema` describes configuration attributes and XML content/parent constraints. It is not a module manifest or a runtime capability declaration.
+- `PluginMetadataCatalog.collectDependencies()` merges `PluginMetadata.getDependencies()`, schema `getRequiredParents()`, and semantic required-parent types into one descriptor `dependencies` list. These values do not have the same meaning: a required XML parent is a grammar/content-model constraint, not a module or plugin installation dependency.
+- `DefaultPluginFactory` discovers classes through registry-held plugin instances and constructs new instances reflectively. Its fallback metadata is synthesized from class names; it does not provide a host-owned dependency resolver or a module lifecycle boundary.
+
+**Design direction:** introduce a module contribution model whose descriptors are data and whose executable bindings are host-resolved construction functions. Do not extend `@CorePlugin` into a general module annotation and do not treat `PluginMetadata` as the authoritative runtime descriptor.
+
+A future module contribution should distinguish at least:
+
+1. **Module identity:** stable module ID, module version, compatibility range for the WebHarvest plugin/runtime SPI, origin/provenance, and explicit activation policy.
+2. **Plugin identity:** stable plugin ID and plugin version, independent of Java class name and XML spelling.
+3. **Executable binding:** a factory/provider key resolved by the host. The descriptor must not require Core to instantiate arbitrary classes with reflection or discover dependencies from constructors.
+4. **XML bindings:** zero or more expanded QNames (namespace URI + local name), including explicit aliases and version/deprecation metadata. One implementation may serve multiple XML names; multiple implementations must not claim the same active QName unless the host explicitly selects a documented override policy.
+5. **Configuration contract:** typed instance inputs, validation and lifecycle requirements, separate from XML dialect grammar.
+6. **Capabilities:** declared capabilities provided by this contribution and requirements it needs from the runtime/host.
+7. **Presentation metadata:** name, description, category, tags and UI hints as a projection for tools/editors, never as the executable registration authority.
+
+A module descriptor groups a set of contributions and declares module-level requirements. A contribution can be discovered without being selected, and selected without becoming active until the complete candidate generation validates. Module membership is an explicit host/product decision; classpath presence, package name, Java annotation and `isCorePlugin()` are not activation policy.
+
+The current `CorePluginsRegistrar` remains useful as a compatibility source for the known Core XML mapping set, but the future generated model should represent each XML binding explicitly and map it to a plugin identity and factory binding. Preserve the current 44 Core XML names and historical aliases as characterized inputs; do not infer XML names from Java class names or assume one XML name per implementation.
+
+## 38. Dependency declarations must be typed and validated before publication
+
+The current single `PluginMetadata.getDependencies()` string array is insufficient and semantically overloaded. The metadata catalog's merging of required XML parents into `dependencies` confirms that it cannot safely become the module dependency graph.
+
+The future model should use distinct dependency categories with different validation rules:
+
+- **Module requirements:** required/optional module IDs and compatible version ranges. These determine whether a selected module set is complete.
+- **Runtime capability requirements:** named capabilities supplied by the host or another selected provider, with explicit version/contract constraints. Examples include HTTP transport, credential resolution, browser rendering, database connectivity or filesystem access. A capability is a contract, not a dependency on a particular implementation artifact.
+- **Plugin composition requirements:** only where a plugin genuinely requires another executable plugin to be present. This must not be used to express that one XML element must be nested under another.
+- **XML content constraints:** allowed/required children, required parent QNames, root eligibility and body rules. These remain in the XML dialect/configuration grammar.
+- **Build/package dependencies:** Maven artifacts and transitive libraries. These belong to module packaging and distribution metadata; they are not automatically runtime capabilities or plugin dependencies.
+
+Candidate validation should resolve required module versions and capability providers, reject missing or ambiguous providers, detect dependency cycles where ordering is meaningful, and produce a complete diagnostic report before publication. Optional requirements must have explicit absence behavior; they must not silently degrade a required feature.
+
+Do not infer runtime capabilities solely from Maven dependencies. For example, HtmlUnit is an implementation dependency of the WebBrowser module; it does not imply that Core itself provides a browser capability. Likewise FTP and Mail use their own transport libraries without making those libraries part of the Core runtime contract.
+
+## 39. Classloader ownership and generation retirement are runtime lifecycle concerns
+
+The inspected discovery and registry paths are not unload-safe:
+
+- `PluginPackageScanner` searches both the thread context loader and its defining loader, then reduces candidates to class-name keys with `putIfAbsent`. If two loaders expose the same fully qualified class name, one candidate is silently hidden; class name alone does not identify a contribution or its defining loader.
+- The scanner registers `Class` objects into the process-wide `CorePluginRegistry` singleton. That registry retains implementation classes with no module ownership or retirement operation.
+- `DefaultPluginFactory` caches constructors keyed by `Class`, which also retains the defining loader while entries remain.
+- `PluginMetadataCatalog` is a static catalog assembled by classpath scanning and reflective instantiation. It is a metadata projection, not a generation-scoped loader or executable registry.
+- `Plugin.cleanup()` is an instance lifecycle callback. It is not a module shutdown callback and does not by itself establish that every instance, thread, event listener, static resource or classloader owned by a module has been released.
+- `RegistryGenerationId` is only a value object. It does not publish generations, pin them to executions, track active users, or retire provider/classloader resources.
+
+**Required runtime semantics:**
+
+1. A runtime owns its module selections, classloader/provider handles and current immutable registry generation. There must be no process-global mutable registry shared implicitly by independent runtime instances.
+2. Module discovery yields candidate contribution metadata plus the actual defining loader/provider identity. Discovery must not initialize arbitrary plugin classes or mutate the active generation.
+3. The host resolves executable bindings through an explicit construction/dependency-resolution seam. The runtime validates all selected contributions and XML QName collisions before publishing one complete generation atomically.
+4. An execution acquires a generation lease at admission, before parsing or resolving plugin nodes. Parser dialect validation, XML-to-plugin binding, factory resolution and execution must all use that same pinned generation. A running execution must never switch implementations midway because another generation was published.
+5. Publishing a new generation affects new executions only. The previous generation remains usable until all execution leases and generation-owned resources are released.
+6. Retirement is two-phase: stop admitting new executions to the old generation, wait for or explicitly cancel its active executions according to host policy, then close plugin/module resources and release factory caches and classloader references. A module loader may be closed only after no retained generation, plugin instance, callback, thread, event listener or host handle can still reach it.
+7. Independent runtimes may load different versions of the same module concurrently. Their module IDs may match, but provider instances, classloaders and generation identities must remain isolated.
+
+Do not promise arbitrary hot-unload as a first milestone. First implement immutable runtime-scoped generations, execution pinning and deterministic shutdown for a runtime that is itself closing. Live replacement/unload can follow only after leak, concurrency and in-flight execution tests prove the retirement protocol.
+
+**Characterization gates before implementation:** test same-FQCN contributions from two classloaders; independent runtime instances with distinct module selections; publication while an execution is blocked inside a plugin; failure during candidate validation; module resource cleanup after the last generation lease; missing/optional capability behavior; duplicate QName conflicts; and XML aliases mapped to one executable plugin. Add explicit tests proving that FTP/Mail are discoverable as optional contributions without becoming default Core registrations.
+
