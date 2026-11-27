@@ -908,3 +908,21 @@ The module tree and registrar source show a more precise situation than a generi
 The current module contract is therefore **manual module-specific registration into one global map**, not runtime-scoped plugin composition. The future host API should accept module contributions through a common typed contract, validate the complete candidate (including optional dependency availability and duplicate XML identities), and publish once. A module registrar should describe/contribute registrations; it should not receive a mutable live registry to modify after publication.
 
 Characterization still required before retiring the current hooks: inspect every optional module's public integration documentation and tests, determine whether users call the package scanner for FTP/Mail/WebBrowser, and record the expected XML names and dependency behavior for all optional modules. No optional module behavior is changed by this documentation finding.
+
+
+## 36. Optional modules are discoverable through the opt-in package scanner
+
+The earlier module inventory must be refined: FTP, Mail, and WebBrowser do not have dedicated registrar classes, but their principal plugin classes are annotated with `@CorePlugin` and are eligible for the existing opt-in `PluginPackageScanner`.
+
+- `FtpPlugin` declares element `ftp`.
+- `MailPlugin` declares element `mail`.
+- `WebBrowserPlugin` declares element `web-browser`.
+- The scanner accepts explicit package names or the comma-separated `webharvest.plugin.packages` system property. It searches both exploded directories and JAR package resources, considers the thread context classloader and its own defining classloader, loads candidate classes without initialization, filters for concrete `Plugin` implementations annotated with `@CorePlugin`, then calls `CorePluginRegistry.registerMapping(null, pluginClass, elementName)`.
+- The scanner is explicitly opt-in and is not invoked by the inspected default `ScraperModule` bootstrap. The current module-specific Database and ZIP registrars are separate manual integration paths.
+- Scanner tests cover no-op/blank property behavior, comma-separated package values, package/JAR discovery, classloader fallback, and filtering to annotated plugin classes. They primarily use Core package fixtures; no module-level integration test was found that proves scanning the FTP, Mail, and WebBrowser packages end-to-end.
+
+This means the extension surface today is heterogeneous: Core has fixed registration; Database and ZIP have explicit registrar methods; FTP/Mail/WebBrowser can be registered by package scanning; and scanner configuration is an opt-in host decision. There is no single module manifest or common module contribution contract.
+
+The scanner itself mutates the process-global singleton registry. It does not record module provenance, plugin version, dependency requirements, capabilities, or a contribution identity. Duplicate element names are passed to `registerMapping`, whose `put` behavior silently replaces the previous mapping. A package scan can therefore change the meaning of an already accepted XML element without a conflict report or generation boundary. Enumeration failures are logged and scanning continues; this is not an all-or-nothing module activation protocol.
+
+**Migration requirement:** preserve the existing opt-in semantics where compatibility requires them, but replace package scanning as a live-registration operation. A host should explicitly select module contributions and classloader/lifecycle scope; the runtime should inspect/validate them as a candidate, report all conflicts and missing dependencies, then publish a single immutable generation. Discovery must not silently activate code merely because it is visible on the classpath. Add module-level characterization tests for FTP, Mail, WebBrowser, Database, and ZIP before changing these integration paths.
