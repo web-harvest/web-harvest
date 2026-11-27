@@ -34,9 +34,11 @@
 package org.webharvest.events;
 
 /**
- * Represents an object that serves purpose as storage of {@link EventHandler}
- * (supporting different types of events).
- * Handlers can be registered but not unregistered.
+ * Runtime-scoped catalogue of {@link EventHandler} instances supporting
+ * different event types. Handlers remain registered for the runtime lifetime;
+ * their public {@code @Subscribe} methods receive matching events only while
+ * the event's Harvester route is active. Independent sessions may invoke the
+ * same handler concurrently, so handlers must be thread-safe.
  *
  * @author Robert Bala
  * @since 2.1.0-SNAPSHOT
@@ -50,7 +52,7 @@ public interface HandlerHolder {
      *
      * @param handler event handler to register.
      */
-    // FIXME rbala Do we need a registration handler with unregister method?
+    // Runtime-level removal is coordinated with runtime retirement in a later lifecycle slice.
     void register(EventHandler<?> handler);
 
 }

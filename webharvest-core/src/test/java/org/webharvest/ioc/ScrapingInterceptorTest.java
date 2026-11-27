@@ -3,12 +3,16 @@ package org.webharvest.ioc;
 import static org.mockito.Mockito.*;
 import static org.testng.Assert.*;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 import org.aopalliance.intercept.MethodInvocation;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.webharvest.Harvester;
 import org.webharvest.ScrapingAware;
+import org.webharvest.runtime.DynamicScopeContext;
 
+import com.google.inject.Guice;
 import com.google.inject.Injector;
 
 /**
@@ -51,6 +55,89 @@ public class ScrapingInterceptorTest {
         }
         verify(methodInvocation).getThis();
         verify(methodInvocation, never()).proceed();
+    }
+
+    @Test
+    public void invokeUsesTheInjectorOwnedByItsRuntimeBinding() throws Throwable {
+        Injector owningInjector = mock(Injector.class);
+        Injector unrelatedInjector = mock(Injector.class);
+        ScraperScope owningScope = new ScraperScope();
+        ScrapingInterceptor.ScrapingAwareHelper owningHelper =
+                new ScrapingInterceptor.ScrapingAwareHelper();
+        AttributeHolder owningHolder = mock(AttributeHolder.class);
+        when(owningInjector.getInstance(ScraperScope.class)).thenReturn(owningScope);
+        when(owningInjector.getInstance(ScrapingInterceptor.ScrapingAwareHelper.class))
+                .thenReturn(owningHelper);
+        when(owningInjector.getInstance(AttributeHolder.class)).thenReturn(owningHolder);
+
+        MethodInvocation invocation = mock(MethodInvocation.class);
+        when(invocation.getThis()).thenReturn(harvester);
+        when(invocation.proceed()).thenReturn("owning-runtime");
+        ScrapingInterceptor owningInterceptor = new ScrapingInterceptor(() -> owningInjector);
+
+        assertEquals(owningInterceptor.invoke(invocation), "owning-runtime");
+        verify(owningInjector).getInstance(ScraperScope.class);
+        verify(owningInjector).getInstance(ScrapingInterceptor.ScrapingAwareHelper.class);
+        verify(owningInjector).getInstance(AttributeHolder.class);
+        verifyNoInteractions(unrelatedInjector);
+    }
+
+    @Test
+    public void twoGuiceManagedHarvestersUseTheirOwningRuntimeInjector() {
+        Injector firstRuntime = Guice.createInjector(
+                new ScraperModule(System.getProperty("user.dir")));
+        Injector secondRuntime = Guice.createInjector(
+                new ScraperModule(System.getProperty("user.dir")));
+
+        AtomicInteger firstBefore = new AtomicInteger();
+        AtomicInteger firstAfter = new AtomicInteger();
+        AtomicInteger secondBefore = new AtomicInteger();
+        AtomicInteger secondAfter = new AtomicInteger();
+
+        firstRuntime.getInstance(ScrapingInterceptor.ScrapingAwareHelper.class)
+                .addListener(new ScrapingAware() {
+                    @Override
+                    public void onBeforeScraping(Harvester harvester) {
+                        firstBefore.incrementAndGet();
+                    }
+
+                    @Override
+                    public void onAfterScraping(Harvester harvester) {
+                        firstAfter.incrementAndGet();
+                    }
+                });
+        secondRuntime.getInstance(ScrapingInterceptor.ScrapingAwareHelper.class)
+                .addListener(new ScrapingAware() {
+                    @Override
+                    public void onBeforeScraping(Harvester harvester) {
+                        secondBefore.incrementAndGet();
+                    }
+
+                    @Override
+                    public void onAfterScraping(Harvester harvester) {
+                        secondAfter.incrementAndGet();
+                    }
+                });
+
+        firstRuntime.getInstance(GuiceManagedHarvester.class).execute(null);
+        assertEquals(firstBefore.get(), 1);
+        assertEquals(firstAfter.get(), 1);
+        assertEquals(secondBefore.get(), 0);
+        assertEquals(secondAfter.get(), 0);
+
+        secondRuntime.getInstance(GuiceManagedHarvester.class).execute(null);
+        assertEquals(firstBefore.get(), 1);
+        assertEquals(firstAfter.get(), 1);
+        assertEquals(secondBefore.get(), 1);
+        assertEquals(secondAfter.get(), 1);
+    }
+
+    public static class GuiceManagedHarvester implements Harvester {
+        @Override
+        @Scraping
+        public DynamicScopeContext execute(ContextInitCallback callback) {
+            return null;
+        }
     }
 
     @Test

@@ -34,6 +34,7 @@
 package org.webharvest.plugin.mail;
 
 import java.io.IOException;
+import java.time.Duration;
 
 import javax.activation.DataSource;
 
@@ -42,6 +43,8 @@ import org.apache.commons.mail.Email;
 import org.apache.commons.mail.EmailException;
 import org.apache.commons.mail.HtmlEmail;
 import org.apache.commons.mail.SimpleEmail;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
@@ -53,8 +56,6 @@ import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.NodeVariable;
 import org.webharvest.runtime.variables.Variable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Email sending processor - SMTP email support with HTML, attachments, and authentication.
@@ -358,7 +359,9 @@ public class MailPlugin extends AbstractPlugin {
         subject = evaluateTemplate(subject, context);
         
         LOGGER.debug("Mail Plugin - SMTP: " + smtpHost + ":" + smtpPort + ", From: " + from + ", To: " + to + ", Subject: " + subject);
-        
+
+        boolean sendStarted = false;
+        boolean sendConfirmed = false;
         try {
             Email email;
             if ("html".equalsIgnoreCase(type)) {
@@ -386,17 +389,47 @@ public class MailPlugin extends AbstractPlugin {
             String bodyContent = getBodyContent(context);
             setBodyContent(email, bodyContent, "html".equalsIgnoreCase(type));
             
-            String messageId = email.send();
-            LOGGER.debug("Mail sent successfully with message ID: " + messageId);
+            // Commons Email defaults to 60-second socket timeouts. Keep SMTP
+            // connection and I/O waits finite and expose the underlying socket to
+            // the execution owner through the session's SocketFactory instance.
+            email.setSocketConnectionTimeout(Duration.ofMillis(SmtpSocketResource.CONNECT_TIMEOUT_MILLIS));
+            email.setSocketTimeout(Duration.ofMillis(SmtpSocketResource.READ_TIMEOUT_MILLIS));
+            javax.mail.Session mailSession = email.getMailSession();
+            TrackingSmtpSocketFactory socketFactory = new TrackingSmtpSocketFactory();
+            mailSession.getProperties().put("mail.smtp.socketFactory", socketFactory);
+            // Do not let JavaMail silently fall back to an untracked raw socket.
+            mailSession.getProperties().setProperty("mail.smtp.socketFactory.fallback", "false");
+            mailSession.getProperties().setProperty(
+                "mail.smtp.writetimeout", Integer.toString(SmtpSocketResource.WRITE_TIMEOUT_MILLIS));
+
+            try (SmtpSocketResource smtpResource = SmtpSocketResource.open(context, socketFactory)) {
+                sendStarted = true;
+                String messageId = email.send();
+                sendConfirmed = true;
+                LOGGER.debug("Mail sent successfully with message ID: " + messageId);
+                return new NodeVariable("Email sent successfully. Message ID: " + messageId);
+            }
             
-            return new NodeVariable("Email sent successfully. Message ID: " + messageId);
-            
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            throw interrupted;
         } catch (EmailException e) {
             LOGGER.error("Failed to send email", e);
-            throw new RuntimeException("Failed to send email: " + e.getMessage(), e);
+            MailPluginException.DeliveryDisposition disposition = sendStarted
+                ? MailPluginException.DeliveryDisposition.UNKNOWN
+                : MailPluginException.DeliveryDisposition.NOT_STARTED;
+            MailPluginException failure = new MailPluginException(
+                "SMTP delivery disposition: " + disposition, disposition, e);
+            throw new RuntimeException("Failed to send email: " + e.getMessage(), failure);
         } catch (Exception e) {
             LOGGER.error("Unexpected error in mail plugin", e);
-            throw new RuntimeException("Unexpected error in mail plugin: " + e.getMessage(), e);
+            MailPluginException.DeliveryDisposition disposition = sendConfirmed
+                ? MailPluginException.DeliveryDisposition.CONFIRMED
+                : sendStarted ? MailPluginException.DeliveryDisposition.UNKNOWN
+                    : MailPluginException.DeliveryDisposition.NOT_STARTED;
+            MailPluginException failure = new MailPluginException(
+                "SMTP delivery disposition: " + disposition, disposition, e);
+            throw new RuntimeException("Unexpected error in mail plugin: " + e.getMessage(), failure);
         }
     }
 

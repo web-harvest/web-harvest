@@ -35,6 +35,7 @@ package org.webharvest.plugin.core;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -55,6 +56,7 @@ import org.webharvest.plugin.LinkedServiceMetadata;
 import org.webharvest.plugin.ParentChildRelationship;
 import org.webharvest.plugin.annotations.CorePlugin;
 import org.webharvest.plugin.services.HttpResponse;
+import org.webharvest.plugin.services.ExecutionAwareHttpService;
 import com.google.inject.Inject;
 import org.webharvest.plugin.services.HttpService;
 import org.webharvest.plugin.services.HttpServiceException;
@@ -156,7 +158,7 @@ import org.webharvest.runtime.scripting.ScriptingLanguage;
  * <ul>
  *   <li><strong>url</strong> (required): The HTTP/HTTPS URL to request</li>
  *   <li><strong>method</strong> (optional): HTTP method (GET, POST, PUT, DELETE, etc.) - default: GET</li>
- *   <li><strong>timeout</strong> (optional): Request timeout in milliseconds - default: 30000</li>
+ *   <li><strong>timeout</strong> (optional): Response inactivity and connection-pool acquisition timeout in milliseconds - default: 30000</li>
  *   <li><strong>charset</strong> (optional): Character encoding - default: UTF-8</li>
  *   <li><strong>followRedirects</strong> (optional): Follow HTTP redirects - default: true</li>
  * </ul>
@@ -299,36 +301,69 @@ public class HttpPlugin extends AbstractPlugin {
                 body = "";
             }
 
+            String timeoutValue = getConfiguration().getProperty("timeout", "30000");
+            if (timeoutValue == null || timeoutValue.isBlank()) {
+                timeoutValue = "30000";
+            }
+            long timeoutMillis;
+            try {
+                timeoutMillis = Long.parseLong(timeoutValue.trim());
+            } catch (NumberFormatException invalidTimeout) {
+                throw new IllegalArgumentException("HTTP timeout must be a positive integer in milliseconds",
+                    invalidTimeout);
+            }
+            if (timeoutMillis <= 0) {
+                throw new IllegalArgumentException("HTTP timeout must be a positive integer in milliseconds");
+            }
+
+            // Only a service-managed execution can lend the HTTP provider an
+            // owner-bound resource capability. Preserve the legacy service API
+            // for standalone/legacy contexts that do not have one.
             HttpResponse response;
-            if ("GET".equals(normalizedMethod)) {
+            if (context.getResourceAccess() != null) {
+                if (!(httpService instanceof ExecutionAwareHttpService)) {
+                    throw new IllegalStateException(
+                        "HTTP provider does not support execution-owned request cancellation");
+                }
+                response = ((ExecutionAwareHttpService) httpService).request(
+                    normalizedMethod,
+                    urlWithParams,
+                    body,
+                    headers,
+                    Duration.ofMillis(timeoutMillis),
+                    context.getResourceAccess());
+            } else if ("GET".equals(normalizedMethod)) {
                 response = httpService.get(urlWithParams, headers);
             } else if ("POST".equals(normalizedMethod)) {
                 response = httpService.post(urlWithParams, body, headers);
             } else {
                 response = httpService.request(normalizedMethod, urlWithParams, body, headers);
             }
-            
-            // Bug #39 Fix: Check if response should be treated as binary
-            String contentType = response.getContentType();
-            boolean isBinary = isBinaryContentType(contentType);
-            
-            if (isBinary) {
-                // Binary content: images, PDFs, videos, etc.
-                byte[] binaryData = response.getBodyAsBinary();
-                LOGGER.debug("HttpPlugin: Binary response, {} bytes", binaryData.length);
-                return new NodeVariable(binaryData);
-            } else {
-                // Text content: HTML, JSON, XML, etc.
-                String responseBody = response.getBody();
-                LOGGER.debug("HttpPlugin: Text response, {} chars", responseBody.length());
-                LOGGER.debug("HttpPlugin: First 200 chars = '{}'", 
-                    responseBody.substring(0, Math.min(responseBody.length(), 200)));
-                return new NodeVariable(responseBody);
-            }
-            
+
+            return toResponseVariable(response);
+
         } catch (Exception e) {
+            if (e instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+                throw (InterruptedException) e;
+            }
             throw new IllegalStateException("HTTP request failed: " + e.getMessage(), e);
         }
+    }
+
+    private Variable toResponseVariable(HttpResponse response) {
+        // Bug #39 Fix: Check if response should be treated as binary.
+        String contentType = response.getContentType();
+        if (isBinaryContentType(contentType)) {
+            byte[] binaryData = response.getBodyAsBinary();
+            LOGGER.debug("HttpPlugin: Binary response, {} bytes", binaryData.length);
+            return new NodeVariable(binaryData);
+        }
+        String responseBody = response.getBody();
+        LOGGER.debug("HttpPlugin: Text response, {} chars", responseBody.length());
+        LOGGER.debug("HttpPlugin: First 200 chars = '{}'",
+            responseBody.substring(0, Math.min(responseBody.length(), 200)));
+        return new NodeVariable(responseBody);
     }
 
     private Map<String, String> collectHeaders(PluginConfiguration configuration) {

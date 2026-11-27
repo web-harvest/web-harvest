@@ -37,6 +37,9 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.PluginConfiguration;
@@ -47,6 +50,7 @@ import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.database.StandaloneConnectionPool;
+import org.webharvest.runtime.resource.ExecutionResourceAccess;
 import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.NodeVariable;
 import org.webharvest.runtime.variables.Variable;
@@ -73,8 +77,13 @@ import org.slf4j.LoggerFactory;
  *           url="jdbc:h2:mem:test"
  *           username="sa"
  *           password=""
+ *           queryTimeout="30"
  *           sql="SELECT * FROM table"/&gt;
  * </pre>
+ *
+ * <p>The optional {@code queryTimeout} attribute uses JDBC seconds. Zero (the
+ * default) preserves the JDBC driver's timeout behavior. Managed executions
+ * additionally register the active statement for best-effort cancellation.</p>
  * 
  * @author WebHarvest Team
  * @since 2.1.0
@@ -90,6 +99,7 @@ public class DatabasePlugin extends AbstractPlugin {
     private static final String PASSWORD_ATT_NAME = "password";
     private static final String SQL_ATT_NAME = "sql";
     private static final String CONNECTION_ATT_NAME = "connection";
+    private static final String QUERY_TIMEOUT_ATT_NAME = "queryTimeout";
     
     /**
      * Default constructor - no dependency injection needed anymore.
@@ -192,7 +202,7 @@ public class DatabasePlugin extends AbstractPlugin {
                 @Override
                 public String[] getOptionalAttributes() {
                     return new String[] { CONNECTION_ATT_NAME, URL_ATT_NAME, DRIVER_ATT_NAME,
-                            USERNAME_ATT_NAME, PASSWORD_ATT_NAME, SQL_ATT_NAME };
+                            USERNAME_ATT_NAME, PASSWORD_ATT_NAME, SQL_ATT_NAME, QUERY_TIMEOUT_ATT_NAME };
                 }
 
                 @Override
@@ -274,6 +284,7 @@ public class DatabasePlugin extends AbstractPlugin {
         
         String connectionId = config.getProperty(CONNECTION_ATT_NAME, "").trim();
         String sql = config.getProperty(SQL_ATT_NAME, "");
+        int queryTimeoutSeconds = parseQueryTimeout(config.getProperty(QUERY_TIMEOUT_ATT_NAME, "0"));
         
         // Evaluate SQL template
         sql = evaluateTemplate(sql, context);
@@ -291,75 +302,190 @@ public class DatabasePlugin extends AbstractPlugin {
         }
         
         Connection connection = null;
+        ConnectionPlugin.NamedConnectionLease namedConnectionLease = null;
         StandaloneConnectionPool inlineFactory = null;
+        ExecutionResourceAccess.OperationResource inlineResource = null;
+        ExecutionResourceAccess.Lease inlineLease = null;
+        Throwable primaryFailure = null;
         try {
-            // Option 1: Use named connection from ConnectionPlugin
+            // Option 1: Use a named session resource and hold a lease for the full SQL operation.
             if (!connectionId.isEmpty()) {
                 LOGGER.info("Using named connection: {}", connectionId);
-                connection = ConnectionPlugin.getNamedConnection(context, connectionId);
-            } 
-            // Option 2: Inline connection (backward compatibility)
+                namedConnectionLease = ConnectionPlugin.acquireNamedConnection(context, connectionId);
+                connection = namedConnectionLease.getConnection();
+            }
+            // Option 2: Inline connection (backward compatibility), owned by this operation.
             else {
                 String url = config.getProperty(URL_ATT_NAME);
                 String driver = config.getProperty(DRIVER_ATT_NAME);
                 String username = config.getProperty(USERNAME_ATT_NAME, "");
                 String password = config.getProperty(PASSWORD_ATT_NAME, "");
-                
-                // Evaluate template expressions
+
                 url = evaluateTemplate(url, context);
                 driver = evaluateTemplate(driver, context);
                 username = evaluateTemplate(username, context);
                 password = evaluateTemplate(password, context);
-                
+
                 LOGGER.info("Creating inline connection: driver={}, url={}", driver, url);
-                
-                // Use StandaloneConnectionPool for inline connections
                 inlineFactory = new StandaloneConnectionPool();
-                if (context.getEventBus() != null) {
-                    inlineFactory.registerForSession(context.getEventBus());
+                ExecutionResourceAccess resourceAccess = context.getResourceAccess();
+                if (resourceAccess != null) {
+                    inlineResource = resourceAccess.registerOperationResource(
+                        "jdbc/inline/" + UUID.randomUUID(), null, inlineFactory::closeAllConnections);
+                    inlineLease = inlineResource.acquire();
+                } else if (context.getEventBus() != null && context.getSession() != null) {
+                    // Compatibility for contexts created outside the managed service.
+                    inlineFactory.registerForSession(
+                        context.getEventBus(), context.getSession().getSessionId());
                 }
                 connection = inlineFactory.getConnection(driver, url, username, password);
             }
-            
+
             if (sql.trim().isEmpty()) {
                 throw new RuntimeException("Database SQL is empty; provide the sql attribute or element body");
             }
 
-            // Execute SQL
-            return executeSql(connection, sql);
-            
+            return executeSql(connection, sql, queryTimeoutSeconds, context.getResourceAccess());
+
+        } catch (InterruptedException interrupted) {
+            primaryFailure = interrupted;
+            Thread.currentThread().interrupt();
+            throw interrupted;
         } catch (SQLException e) {
+            RuntimeException failure =
+                new RuntimeException("Database operation failed: " + e.getMessage(), e);
+            primaryFailure = failure;
             LOGGER.error("Database operation failed", e);
-            throw new RuntimeException("Database operation failed: " + e.getMessage(), e);
+            throw failure;
         } catch (Exception e) {
+            RuntimeException failure =
+                new RuntimeException("Unexpected error in database plugin: " + e.getMessage(), e);
+            primaryFailure = failure;
             LOGGER.error("Unexpected error in database plugin", e);
-            throw new RuntimeException("Unexpected error in database plugin: " + e.getMessage(), e);
+            throw failure;
+        } catch (Error failure) {
+            primaryFailure = failure;
+            throw failure;
         } finally {
-            if (context.getEventBus() == null) {
-                if (!connectionId.isEmpty()) {
-                    ConnectionPlugin.closeNamedConnection(context, connectionId);
-                } else if (inlineFactory != null) {
+            Throwable cleanupFailure = null;
+            try {
+                if (inlineLease != null) {
+                    inlineLease.close();
+                }
+            } catch (RuntimeException | Error failure) {
+                cleanupFailure = failure;
+            }
+
+            try {
+                if (inlineResource != null) {
+                    inlineResource.close();
+                    if (inlineResource.getState() != ExecutionResourceAccess.ResourceState.CLOSED) {
+                        LOGGER.warn("Inline JDBC resource {} ended in state {}",
+                            inlineResource.getResourceId(), inlineResource.getState());
+                        if (inlineResource.getCloseFailure() != null) {
+                            LOGGER.warn("Inline JDBC resource close failed",
+                                inlineResource.getCloseFailure());
+                        }
+                    }
+                } else if (inlineFactory != null
+                    && context.getResourceAccess() == null
+                    && (context.getEventBus() == null || context.getSession() == null)) {
                     inlineFactory.closeAllConnections();
                 }
-            } else if (connection != null) {
-                try {
-                    // The pool proxy intentionally suppresses close; the session
-                    // event handler owns physical connection cleanup.
-                    connection.close();
-                } catch (SQLException e) {
-                    LOGGER.warn("Failed to close database connection proxy", e);
+            } catch (RuntimeException | Error failure) {
+                cleanupFailure = combineFailures(cleanupFailure, failure);
+            }
+
+            try {
+                if (namedConnectionLease != null) {
+                    namedConnectionLease.close();
+                }
+                // Legacy contexts have no ledger lease to retire the named pool.
+                // Keep the historical physical-connection cleanup in that mode.
+                if (!connectionId.isEmpty()
+                    && context.getResourceAccess() == null
+                    && (context.getEventBus() == null || context.getSession() == null)) {
+                    ConnectionPlugin.closeNamedConnection(context, connectionId);
+                }
+            } catch (RuntimeException | Error failure) {
+                cleanupFailure = combineFailures(cleanupFailure, failure);
+            }
+
+            if (cleanupFailure != null) {
+                if (primaryFailure != null) {
+                    if (primaryFailure != cleanupFailure) {
+                        primaryFailure.addSuppressed(cleanupFailure);
+                    }
+                } else if (cleanupFailure instanceof RuntimeException) {
+                    throw (RuntimeException) cleanupFailure;
+                } else {
+                    throw (Error) cleanupFailure;
                 }
             }
         }
     }
 
-    private Variable executeSql(Connection connection, String sql) throws SQLException, PluginException {
+    private int parseQueryTimeout(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return 0;
+        }
+        try {
+            int seconds = Integer.parseInt(value.trim());
+            if (seconds < 0) {
+                throw new IllegalArgumentException("Database queryTimeout must be zero or a positive integer in seconds");
+            }
+            return seconds;
+        } catch (NumberFormatException invalidTimeout) {
+            throw new IllegalArgumentException(
+                "Database queryTimeout must be zero or a positive integer in seconds", invalidTimeout);
+        }
+    }
+
+    private Throwable combineFailures(Throwable primary, Throwable next) {
+        if (primary == null) {
+            return next;
+        }
+        if (primary != next) {
+            primary.addSuppressed(next);
+        }
+        return primary;
+    }
+
+    private Variable executeSql(Connection connection, String sql, int queryTimeoutSeconds,
+                                 ExecutionResourceAccess resourceAccess) throws SQLException {
         PreparedStatement statement = null;
         ResultSet resultSet = null;
-        
+        ExecutionResourceAccess.OperationResource statementResource = null;
+        ExecutionResourceAccess.Lease statementLease = null;
+        CountDownLatch statementCloseCompleted = null;
+        AtomicReference<Throwable> statementCloseFailure = new AtomicReference<>();
+
+        Throwable primaryFailure = null;
         try {
             statement = connection.prepareStatement(sql);
-            
+            if (queryTimeoutSeconds > 0) {
+                statement.setQueryTimeout(queryTimeoutSeconds);
+            }
+            if (resourceAccess != null) {
+                PreparedStatement activeStatement = statement;
+                CountDownLatch closeCompleted = new CountDownLatch(1);
+                statementCloseCompleted = closeCompleted;
+                statementResource = resourceAccess.registerOperationResource(
+                    "jdbc/statement/" + UUID.randomUUID(),
+                    activeStatement::cancel,
+                    () -> {
+                        try {
+                            activeStatement.close();
+                        } catch (SQLException | RuntimeException failure) {
+                            statementCloseFailure.set(failure);
+                            throw failure;
+                        } finally {
+                            closeCompleted.countDown();
+                        }
+                    });
+                statementLease = statementResource.acquire();
+            }
+
             if (sql.trim().toLowerCase().startsWith("select")) {
                 // Query operation
                 resultSet = statement.executeQuery();
@@ -390,21 +516,90 @@ public class DatabasePlugin extends AbstractPlugin {
                 return new NodeVariable("Rows affected: " + rowsAffected);
             }
             
+        } catch (SQLException failure) {
+            primaryFailure = failure;
+            throw failure;
+        } catch (RuntimeException | Error failure) {
+            primaryFailure = failure;
+            throw failure;
         } finally {
+            SQLException cleanupFailure = null;
             if (resultSet != null) {
                 try {
                     resultSet.close();
-                } catch (SQLException e) {
-                    LOGGER.warn("Failed to close result set", e);
+                } catch (SQLException failure) {
+                    cleanupFailure = failure;
                 }
             }
-            if (statement != null) {
+            if (statementLease != null) {
+                try {
+                    statementLease.close();
+                } catch (RuntimeException | Error failure) {
+                    if (cleanupFailure == null) {
+                        cleanupFailure = new SQLException("Failed to release JDBC statement lease", failure);
+                    } else {
+                        cleanupFailure.addSuppressed(failure);
+                    }
+                }
+            }
+            if (statementResource != null) {
+                try {
+                    statementResource.close();
+                } catch (RuntimeException | Error failure) {
+                    if (cleanupFailure == null) {
+                        cleanupFailure = new SQLException("Failed to close managed JDBC statement", failure);
+                    } else {
+                        cleanupFailure.addSuppressed(failure);
+                    }
+                } finally {
+                    // The connection lease is released by doExecute only after this
+                    // callback completes, so a delayed abort cannot race pool close.
+                    awaitStatementClose(statementCloseCompleted);
+                }
+                Throwable closeFailure = statementCloseFailure.get();
+                if (closeFailure != null) {
+                    SQLException failure = new SQLException("Failed to close managed JDBC statement", closeFailure);
+                    if (cleanupFailure == null) {
+                        cleanupFailure = failure;
+                    } else {
+                        cleanupFailure.addSuppressed(failure);
+                    }
+                }
+            } else if (statement != null) {
                 try {
                     statement.close();
-                } catch (SQLException e) {
-                    LOGGER.warn("Failed to close statement", e);
+                } catch (SQLException failure) {
+                    if (cleanupFailure == null) {
+                        cleanupFailure = failure;
+                    } else if (cleanupFailure != failure) {
+                        cleanupFailure.addSuppressed(failure);
+                    }
                 }
             }
+            if (cleanupFailure != null) {
+                if (primaryFailure != null) {
+                    if (primaryFailure != cleanupFailure) {
+                        primaryFailure.addSuppressed(cleanupFailure);
+                    }
+                } else {
+                    throw cleanupFailure;
+                }
+            }
+        }
+    }
+
+    private void awaitStatementClose(CountDownLatch completed) {
+        boolean interrupted = false;
+        while (true) {
+            try {
+                completed.await();
+                break;
+            } catch (InterruptedException interruption) {
+                interrupted = true;
+            }
+        }
+        if (interrupted) {
+            Thread.currentThread().interrupt();
         }
     }
 

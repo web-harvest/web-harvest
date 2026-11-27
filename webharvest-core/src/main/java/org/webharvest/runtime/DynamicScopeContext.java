@@ -46,7 +46,10 @@ import com.google.common.eventbus.EventBus;
 import org.webharvest.definition.Config;
 // REMOVED in v2.2.x - these classes no longer exist
 import org.webharvest.runtime.scripting.ScriptingLanguage;
+import org.webharvest.runtime.scripting.ScriptEngineFactory;
 import org.webharvest.runtime.session.ScraperSession;
+import org.webharvest.runtime.session.ExecutionOwner;
+import org.webharvest.runtime.resource.ExecutionResourceAccess;
 import org.webharvest.runtime.variables.Variable;
 import org.webharvest.utils.KeyValuePair;
 
@@ -99,6 +102,15 @@ public interface DynamicScopeContext extends Iterable<KeyValuePair<Variable>> {
      */
     void setCharset(String charset);
 
+    /**
+     * Returns the script-engine factory owned by the runtime that created this context.
+     * Legacy context implementations may return {@code null}; callers may then use
+     * the deprecated process-wide compatibility fallback.
+     */
+    default ScriptEngineFactory getScriptEngineFactory() {
+        return null;
+    }
+
     Config getConfig();
 
     @Deprecated
@@ -135,6 +147,36 @@ public interface DynamicScopeContext extends Iterable<KeyValuePair<Variable>> {
      * @see org.webharvest.runtime.session.ScraperSession
      */
     ScraperSession getSession();
+
+    /**
+     * Returns the immutable owner of this service-managed execution, when bound.
+     * Legacy and externally supplied contexts may return null.
+     */
+    default ExecutionOwner getExecutionOwner() {
+        return null;
+    }
+
+    /**
+     * Binds this context to one immutable execution owner before publication.
+     * Implementations that support service-managed execution must reject rebinding.
+     */
+    default void setExecutionOwner(ExecutionOwner owner) {
+        if (owner != null) {
+            throw new UnsupportedOperationException("This context does not support execution ownership");
+        }
+    }
+
+    /** Returns the immutable, execution-bound resource access facade, if present. */
+    default ExecutionResourceAccess getResourceAccess() {
+        return null;
+    }
+
+    /** Binds the host-owned resource facade before this context is published. */
+    default void setResourceAccess(ExecutionResourceAccess resourceAccess) {
+        if (resourceAccess != null) {
+            throw new UnsupportedOperationException("This context does not support resource access");
+        }
+    }
     
     /**
      * Sets the EventBus for this context.

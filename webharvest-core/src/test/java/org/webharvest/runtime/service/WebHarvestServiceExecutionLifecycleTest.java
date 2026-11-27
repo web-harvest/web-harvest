@@ -34,6 +34,8 @@
 package org.webharvest.runtime.service;
 
 import com.google.common.eventbus.EventBus;
+import com.google.inject.Guice;
+import com.google.inject.Injector;
 import com.google.common.eventbus.Subscribe;
 import org.mockito.Mockito;
 import org.testng.annotations.Test;
@@ -41,21 +43,33 @@ import org.webharvest.definition.Config;
 import org.webharvest.runtime.session.ExecutionState;
 import org.webharvest.runtime.session.ExecutionTrackedSession;
 import org.webharvest.runtime.session.ScraperSession;
+import org.webharvest.runtime.session.SessionRegistry;
 import org.webharvest.runtime.session.SessionRegistryImpl;
 import org.webharvest.runtime.session.SessionStatus;
 import org.webharvest.runtime.session.TerminationDisposition;
 import org.webharvest.runtime.session.events.SessionCreatedEvent;
+import org.webharvest.runtime.session.events.SessionCompletedEvent;
 import org.webharvest.runtime.session.events.SessionStartedEvent;
+import org.webharvest.runtime.resource.ExecutionResourceAccess;
+import org.webharvest.runtime.resource.RuntimeResourceManager;
+import org.webharvest.plugin.services.HttpService;
+import org.webharvest.ioc.RuntimeRegistrationCoordinator;
+import org.webharvest.ioc.ScraperModule;
+import org.webharvest.ioc.ScrapingInterceptor.ScrapingAwareHelper;
 
+import java.lang.reflect.Field;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.AbstractExecutorService;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.testng.Assert.*;
@@ -76,6 +90,112 @@ public class WebHarvestServiceExecutionLifecycleTest {
     @Test(groups = {"unit", "service"}, expectedExceptions = IllegalArgumentException.class)
     public void testServiceRejectsNullEventBus() {
         new WebHarvestServiceImpl(new InlineExecutorService(), new SessionRegistryImpl(), null);
+    }
+
+    @Test(groups = {"unit", "service"})
+    public void guiceRuntimeClosesSharedHttpClientAfterSessionRuntimeShutdown() throws Exception {
+        Injector injector = Guice.createInjector(new ScraperModule(System.getProperty("user.dir")));
+        RuntimeResourceManager resources = injector.getInstance(RuntimeResourceManager.class);
+        injector.getInstance(HttpService.class);
+        assertEquals(resources.getRegisteredCount(), 1,
+            "The Guice-managed shared HTTP client must register as a runtime resource");
+
+        WebHarvestService service = injector.getInstance(WebHarvestService.class);
+        service.shutdown();
+
+        assertTrue(resources.isClosed(), "Service shutdown must retire runtime-owned resources");
+        assertEquals(resources.getRegisteredCount(), 0);
+    }
+
+    @Test(groups = {"unit", "service"})
+    public void workerInitiatedShutdownRetiresRuntimeRegistrationsAfterTaskExit() throws Exception {
+        EventBus eventBus = new EventBus();
+        ScrapingAwareHelper helper = new ScrapingAwareHelper();
+        RuntimeRegistrationCoordinator coordinator =
+            new RuntimeRegistrationCoordinator(eventBus, helper);
+        RuntimeResourceManager runtimeResources = new RuntimeResourceManager();
+        AtomicBoolean runtimeResourceClosed = new AtomicBoolean();
+        runtimeResources.register("worker-owned-resource", () -> runtimeResourceClosed.set(true));
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            java.util.concurrent.Executors.newSingleThreadExecutor(),
+            new SessionRegistryImpl(), eventBus, coordinator, runtimeResources);
+        WorkerInitiatedShutdownListener listener = new WorkerInitiatedShutdownListener(service, false);
+        coordinator.registerSubscriber(listener);
+
+        try {
+            service.executeAsync(Mockito.mock(Config.class), null, null);
+
+            assertTrue(listener.shutdownReturned.await(5, TimeUnit.SECONDS),
+                "The session worker must return from its own shutdown request");
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+            while (!coordinator.isCloseRequested() && System.nanoTime() < deadline) {
+                Thread.yield();
+            }
+
+            assertNull(listener.shutdownFailure.get(),
+                "Worker-initiated graceful shutdown must not fail");
+            assertTrue(coordinator.isCloseRequested(),
+                "Deferred finalization must close the runtime registration owner after worker exit");
+            assertEquals(coordinator.getSubscriberRegistrationCount(), 0,
+                "Deferred finalization must unregister the worker's subscriber");
+            assertTrue(runtimeResources.isClosed(),
+                "Deferred finalization must close runtime-owned resources after worker exit");
+            assertTrue(runtimeResourceClosed.get(),
+                "Runtime resource close action must run after worker exit");
+        } finally {
+            if (!coordinator.isCloseRequested()) {
+                service.shutdownNow();
+            }
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
+    public void workerInitiatedShutdownNowRetiresRuntimeRegistrationsAfterTaskExit() throws Exception {
+        EventBus eventBus = new EventBus();
+        ScrapingAwareHelper helper = new ScrapingAwareHelper();
+        RuntimeRegistrationCoordinator coordinator =
+            new RuntimeRegistrationCoordinator(eventBus, helper);
+        RuntimeResourceManager runtimeResources = new RuntimeResourceManager();
+        AtomicBoolean runtimeResourceClosed = new AtomicBoolean();
+        runtimeResources.register("worker-owned-resource", () -> runtimeResourceClosed.set(true));
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            java.util.concurrent.Executors.newSingleThreadExecutor(),
+            new SessionRegistryImpl(), eventBus, coordinator, runtimeResources);
+        WorkerInitiatedShutdownListener listener = new WorkerInitiatedShutdownListener(service, true);
+        coordinator.registerSubscriber(listener);
+
+        try {
+            service.executeAsync(Mockito.mock(Config.class), null, null);
+
+            assertTrue(listener.shutdownReturned.await(5, TimeUnit.SECONDS),
+                "The session worker must return from its own forced-shutdown request");
+            assertTrue(listener.abortStarted.await(5, TimeUnit.SECONDS),
+                "The resource abort callback must be active before runtime retirement");
+            assertFalse(coordinator.isCloseRequested(),
+                "Runtime registrations must remain while an asynchronous abort callback is active");
+
+            listener.releaseAbort.countDown();
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+            while (!coordinator.isCloseRequested() && System.nanoTime() < deadline) {
+                Thread.yield();
+            }
+
+            assertTrue(coordinator.isCloseRequested(),
+                "Deferred finalization must close the runtime registration owner after abort quiescence");
+            assertEquals(listener.resourceCloseCount.get(), 1,
+                "Resource close must complete before runtime registration retirement");
+            assertEquals(coordinator.getSubscriberRegistrationCount(), 0,
+                "Deferred finalization must unregister the worker's subscriber after shutdownNow");
+            assertTrue(runtimeResources.isClosed(),
+                "Deferred shutdownNow finalization must close runtime-owned resources");
+            assertTrue(runtimeResourceClosed.get(),
+                "Runtime resource close action must run after abort quiescence");
+        } finally {
+            listener.releaseAbort.countDown();
+            if (!coordinator.isCloseRequested()) {
+                service.shutdownNow();
+            }
+        }
     }
 
     @Test(groups = {"unit", "service"})
@@ -111,12 +231,335 @@ public class WebHarvestServiceExecutionLifecycleTest {
     }
 
     @Test(groups = {"unit", "service"})
+    public void testCancellationAbortsSessionResourcesBeforeWorkerExit() throws InterruptedException {
+        EventBus eventBus = new EventBus();
+        BlockingResourceListener listener = new BlockingResourceListener();
+        eventBus.register(listener);
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            java.util.concurrent.Executors.newSingleThreadExecutor(),
+            new SessionRegistryImpl(), eventBus);
+
+        try {
+            ScraperSession session = service.executeAsync(Mockito.mock(Config.class), null, null);
+            ExecutionTrackedSession tracked = (ExecutionTrackedSession) session;
+            assertTrue(listener.started.await(5, TimeUnit.SECONDS));
+
+            assertTrue(session.cancel());
+            assertEquals(listener.resource.getState(), ExecutionResourceAccess.ResourceState.QUARANTINED,
+                "Cancellation must quarantine resources until the owner exits");
+            assertTrue(listener.interrupted.await(5, TimeUnit.SECONDS));
+            assertTrue(listener.abortStarted.await(5, TimeUnit.SECONDS),
+                "The asynchronous abort callback must start while the worker is still active");
+            assertEquals(listener.abortCount.get(), 1);
+            assertFalse(tracked.awaitExecutionCompletion(0),
+                "The non-cooperative callback must remain active after interruption");
+            assertEquals(listener.resource.getState(), ExecutionResourceAccess.ResourceState.QUARANTINED,
+                "A resource must remain quarantined while its execution owner is still active");
+
+            listener.release.countDown();
+            assertTrue(tracked.awaitExecutionCompletion(5000));
+            assertTrue(listener.closed.await(5, TimeUnit.SECONDS),
+                "Resource cleanup follows the observed execution-exit signal");
+            assertEquals(listener.closeCount.get(), 1);
+            // The close callback signals before drainAndClose publishes CLOSED.
+            // Wait for the ledger's post-callback state transition rather than
+            // racing that final publication.
+            long closeDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+            while (listener.resource.getState() != ExecutionResourceAccess.ResourceState.CLOSED
+                && System.nanoTime() < closeDeadline) {
+                Thread.yield();
+            }
+            assertEquals(listener.resource.getState(), ExecutionResourceAccess.ResourceState.CLOSED);
+        } finally {
+            listener.release.countDown();
+            service.shutdown();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
+    public void testFatalResourceDrainFailureRemainsObservableThroughSubmittedFuture() throws InterruptedException {
+        EventBus eventBus = new EventBus();
+        FatalCloseResourceListener listener = new FatalCloseResourceListener();
+        eventBus.register(listener);
+        CapturingInlineExecutorService executor = new CapturingInlineExecutorService();
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            executor, new SessionRegistryImpl(), eventBus);
+
+        try {
+            ScraperSession session = service.executeAsync(Mockito.mock(Config.class), null, null);
+            ExecutionTrackedSession tracked = (ExecutionTrackedSession) session;
+
+            assertTrue(tracked.awaitExecutionCompletion(0),
+                "Worker exit is published before resource draining");
+            assertNotNull(listener.resource, "SessionStarted must register the test resource");
+            assertNotNull(executor.submittedFuture, "The executor must retain the submitted Future");
+
+            try {
+                executor.submittedFuture.get();
+                fail("A fatal resource-close failure must remain attached to the submitted Future");
+            } catch (java.util.concurrent.ExecutionException expected) {
+                assertSame(expected.getCause(), listener.fatalFailure,
+                    "The original fatal cleanup failure must be propagated unchanged");
+            }
+
+            assertEquals(session.getStatus(), SessionStatus.COMPLETED,
+                "A post-execution cleanup failure must not rewrite the business outcome");
+            assertEquals(listener.resource.getCloseFailure(), listener.fatalFailure);
+        } finally {
+            service.shutdown();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
+    public void testRuntimeCloseFailureIsRetainedInDrainReport() throws InterruptedException,
+        java.util.concurrent.ExecutionException {
+        EventBus eventBus = new EventBus();
+        RuntimeCloseFailureListener listener = new RuntimeCloseFailureListener();
+        eventBus.register(listener);
+        CapturingInlineExecutorService executor = new CapturingInlineExecutorService();
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            executor, new SessionRegistryImpl(), eventBus);
+
+        try {
+            ScraperSession session = service.executeAsync(Mockito.mock(Config.class), null, null);
+            assertNotNull(executor.submittedFuture);
+            assertNull(executor.submittedFuture.get(),
+                "A non-fatal close failure is recorded in the drain report, not thrown from the task");
+            assertEquals(session.getStatus(), SessionStatus.COMPLETED);
+            assertNotNull(listener.resource);
+            assertEquals(listener.resource.getState(), ExecutionResourceAccess.ResourceState.CLOSE_FAILED);
+            assertSame(listener.resource.getCloseFailure(), listener.closeFailure);
+        } finally {
+            service.shutdown();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
+    public void testAbortFailureIsRetainedEvenWhenResourceCloseSucceeds() throws InterruptedException {
+        EventBus eventBus = new EventBus();
+        AbortFailureResourceListener listener = new AbortFailureResourceListener();
+        eventBus.register(listener);
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            java.util.concurrent.Executors.newSingleThreadExecutor(), new SessionRegistryImpl(), eventBus);
+
+        try {
+            ScraperSession session = service.executeAsync(Mockito.mock(Config.class), null, null);
+            ExecutionTrackedSession tracked = (ExecutionTrackedSession) session;
+            assertTrue(listener.started.await(5, TimeUnit.SECONDS));
+            assertTrue(session.cancel());
+            assertTrue(listener.interrupted.await(5, TimeUnit.SECONDS));
+            assertTrue(tracked.awaitExecutionCompletion(5000));
+            assertNotNull(listener.resource);
+            long closeDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+            while (listener.resource.getState() != ExecutionResourceAccess.ResourceState.CLOSED
+                && System.nanoTime() < closeDeadline) {
+                Thread.yield();
+            }
+            assertEquals(listener.resource.getState(), ExecutionResourceAccess.ResourceState.CLOSED);
+            assertEquals(listener.closeCount.get(), 1);
+            assertTrue(listener.resource.getAbortFailure() instanceof IllegalStateException,
+                "Abort failure must remain observable even when the later close succeeds");
+        } finally {
+            service.shutdown();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
+    public void testInterruptedDrainKeepsLeasedResourceQuarantinedUntilLeaseRelease() throws InterruptedException {
+        EventBus eventBus = new EventBus();
+        InterruptDuringDrainListener listener = new InterruptDuringDrainListener();
+        eventBus.register(listener);
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            java.util.concurrent.Executors.newSingleThreadExecutor(), new SessionRegistryImpl(), eventBus);
+
+        try {
+            ScraperSession session = service.executeAsync(Mockito.mock(Config.class), null, null);
+            ExecutionTrackedSession tracked = (ExecutionTrackedSession) session;
+            assertTrue(session.awaitCompletion(5000));
+            assertTrue(tracked.awaitExecutionCompletion(5000));
+            assertNotNull(listener.resource);
+            assertNotNull(listener.lease);
+
+            long quarantineDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+            while (listener.resource.getState() != ExecutionResourceAccess.ResourceState.QUARANTINED
+                && System.nanoTime() < quarantineDeadline) {
+                Thread.yield();
+            }
+            assertEquals(listener.resource.getState(), ExecutionResourceAccess.ResourceState.QUARANTINED);
+            assertEquals(listener.resource.getActiveLeaseCount(), 1,
+                "Interrupted drain must not close a resource while its lease is active");
+
+            listener.lease.close();
+            long closeDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+            while (listener.resource.getState() != ExecutionResourceAccess.ResourceState.CLOSED
+                && System.nanoTime() < closeDeadline) {
+                Thread.yield();
+            }
+            assertEquals(listener.resource.getState(), ExecutionResourceAccess.ResourceState.CLOSED,
+                "Lease release must retry the now-quiescent resource drain");
+        } finally {
+            service.shutdown();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
+    public void testSessionResourcesAreClosedAfterObservedWorkerExit() throws InterruptedException {
+        EventBus eventBus = new EventBus();
+        SessionResourceRegistrationListener listener = new SessionResourceRegistrationListener();
+        eventBus.register(listener);
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            new InlineExecutorService(), new SessionRegistryImpl(), eventBus);
+
+        try {
+            ScraperSession session = service.executeAsync(Mockito.mock(Config.class), null, null);
+            ExecutionTrackedSession tracked = (ExecutionTrackedSession) session;
+
+            assertTrue(tracked.awaitExecutionCompletion(0));
+            assertNotNull(listener.resource);
+            assertEquals(listener.resource.getState(), ExecutionResourceAccess.ResourceState.CLOSED);
+            assertEquals(listener.closeCount.get(), 1);
+            assertEquals(listener.abortCount.get(), 0);
+        } finally {
+            service.shutdown();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
     public void testShutdownIsIdempotent() throws InterruptedException {
         WebHarvestServiceImpl service = new WebHarvestServiceImpl(
             new InlineExecutorService(), new SessionRegistryImpl(), new EventBus());
         service.shutdown();
         service.shutdown();
         assertTrue(service.isShutdown());
+    }
+
+    @Test(groups = {"unit", "service"})
+    public void testSessionCompletedSubscriberRunsOutsideSessionTaskMonitor() throws Exception {
+        EventBus eventBus = new EventBus();
+        BlockingCompletedListener listener = new BlockingCompletedListener();
+        eventBus.register(listener);
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            new InlineExecutorService(), new SessionRegistryImpl(), eventBus);
+        AtomicReference<Throwable> submitFailure = new AtomicReference<>();
+        Thread submitter = new Thread(() -> {
+            try {
+                service.executeAsync(Mockito.mock(Config.class), null, null);
+            } catch (Throwable failure) {
+                submitFailure.set(failure);
+            }
+        }, "inline-session-completion");
+
+        try {
+            submitter.start();
+            assertTrue(listener.entered.await(5, TimeUnit.SECONDS));
+
+            Field tasksField = WebHarvestServiceImpl.class.getDeclaredField("executionTasks");
+            tasksField.setAccessible(true);
+            @SuppressWarnings("unchecked")
+            Map<String, Object> tasks = (Map<String, Object>) tasksField.get(service);
+            Object task = tasks.get(listener.session.getSessionId());
+            assertNotNull(task, "The completing task remains registered during event delivery");
+
+            CountDownLatch taskMonitorAcquired = new CountDownLatch(1);
+            Thread monitorProbe = new Thread(() -> {
+                synchronized (task) {
+                    taskMonitorAcquired.countDown();
+                }
+            }, "session-task-monitor-probe");
+            monitorProbe.start();
+
+            assertTrue(taskMonitorAcquired.await(5, TimeUnit.SECONDS),
+                "SessionCompletedEvent subscribers must not run while holding the SessionTask monitor");
+
+            listener.release.countDown();
+            submitter.join(5000);
+            monitorProbe.join(5000);
+            assertFalse(submitter.isAlive());
+            assertFalse(monitorProbe.isAlive());
+            assertNull(submitFailure.get());
+            assertEquals(listener.session.getStatus(), SessionStatus.COMPLETED);
+        } finally {
+            listener.release.countDown();
+            submitter.join(5000);
+            service.shutdownNow();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
+    public void testShutdownRejectionDoesNotPublishSessionCreatedEvent() throws InterruptedException {
+        EventBus eventBus = new EventBus();
+        CreatedEventCounter listener = new CreatedEventCounter();
+        eventBus.register(listener);
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            new InlineExecutorService(), new SessionRegistryImpl(), eventBus);
+
+        try {
+            service.shutdown();
+            try {
+                service.executeAsync(Mockito.mock(Config.class), null, null);
+                fail("A shut down service must reject new sessions");
+            } catch (IllegalStateException expected) {
+                // Expected: rejected before admission, so no creation event is observable.
+            }
+            assertEquals(listener.count.get(), 0,
+                "Rejected post-shutdown submissions must not publish SessionCreatedEvent");
+        } finally {
+            service.shutdown();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
+    public void testRegistryAdmissionFailureDoesNotPublishSessionCreatedEvent() throws InterruptedException {
+        EventBus eventBus = new EventBus();
+        CreatedEventCounter listener = new CreatedEventCounter();
+        eventBus.register(listener);
+        SessionRegistry registry = Mockito.mock(SessionRegistry.class);
+        Mockito.doThrow(new IllegalStateException("registry unavailable"))
+            .when(registry).register(Mockito.any(ScraperSession.class));
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            new InlineExecutorService(), registry, eventBus);
+
+        try {
+            try {
+                service.executeAsync(Mockito.mock(Config.class), null, null);
+                fail("A registry failure must reject admission");
+            } catch (IllegalStateException expected) {
+                assertEquals(expected.getMessage(), "registry unavailable");
+            }
+            assertEquals(listener.count.get(), 0,
+                "A failed registry admission must not publish SessionCreatedEvent");
+        } finally {
+            service.shutdown();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
+    public void testAcceptedSessionPublishesCreatedEventExactlyOnceOutsideAdmissionLock()
+            throws InterruptedException, ReflectiveOperationException {
+        EventBus eventBus = new EventBus();
+        CreatedEventAdmissionProbe listener = new CreatedEventAdmissionProbe();
+        eventBus.register(listener);
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            new InlineExecutorService(), new SessionRegistryImpl(), eventBus);
+        Field lockField = WebHarvestServiceImpl.class.getDeclaredField("admissionLock");
+        lockField.setAccessible(true);
+        listener.admissionLock = lockField.get(service);
+
+        try {
+            ScraperSession session = service.executeAsync(Mockito.mock(Config.class), null, null);
+            assertTrue(listener.probeCompleted.await(5, TimeUnit.SECONDS),
+                "The creation subscriber must be able to acquire admissionLock from another thread");
+            assertTrue(listener.lockAcquired.get(),
+                "SessionCreatedEvent subscribers must not run under admissionLock");
+            assertEquals(listener.count.get(), 1,
+                "An accepted session must publish exactly one creation event");
+
+            ((org.webharvest.runtime.session.ScraperSessionImpl) session).publishCreatedEvent();
+            assertEquals(listener.count.get(), 1,
+                "Repeated publication attempts must remain exactly-once");
+        } finally {
+            service.shutdown();
+        }
     }
 
     @Test(groups = {"unit", "service"})
@@ -141,7 +584,7 @@ public class WebHarvestServiceExecutionLifecycleTest {
     }
 
     @Test(groups = {"unit", "service"})
-    public void testCreatedEventCancellationCancelsFutureBeforeWorkerEntry() throws InterruptedException {
+    public void testCreatedEventCancellationFinishesBeforeExecutorDispatch() throws InterruptedException {
         EventBus eventBus = new EventBus();
         eventBus.register(new CancelOnCreatedListener());
         ExecutorService executor = new java.util.concurrent.ThreadPoolExecutor(
@@ -317,18 +760,17 @@ public class WebHarvestServiceExecutionLifecycleTest {
     }
 
     @Test(groups = {"unit", "service"})
-    public void testSubmitAndShutdownHaveAtomicAdmissionBoundary() throws InterruptedException {
-        EventBus eventBus = new EventBus();
+    public void testSubmitDoesNotHoldAdmissionLockAndShutdownWaitsForReservation() throws InterruptedException {
         CountDownLatch submitEntered = new CountDownLatch(1);
         CountDownLatch releaseSubmit = new CountDownLatch(1);
-        CountDownLatch shutdownStarted = new CountDownLatch(1);
         BlockingSubmitExecutorService executor = new BlockingSubmitExecutorService(
             java.util.concurrent.Executors.newSingleThreadExecutor(), submitEntered, releaseSubmit);
         WebHarvestServiceImpl service = new WebHarvestServiceImpl(
-            executor, new SessionRegistryImpl(), eventBus);
+            executor, new SessionRegistryImpl(), new EventBus());
         AtomicReference<ScraperSession> accepted = new AtomicReference<>();
         AtomicReference<Throwable> submitFailure = new AtomicReference<>();
         AtomicReference<Throwable> shutdownFailure = new AtomicReference<>();
+        AtomicReference<Throwable> rejectedAdmission = new AtomicReference<>();
 
         Thread submitter = new Thread(() -> {
             try {
@@ -336,48 +778,165 @@ public class WebHarvestServiceExecutionLifecycleTest {
             } catch (Throwable failure) {
                 submitFailure.set(failure);
             }
-        });
+        }, "blocked-executor-submission");
         Thread shutdownThread = new Thread(() -> {
-            shutdownStarted.countDown();
             try {
                 service.shutdown();
             } catch (Throwable failure) {
                 shutdownFailure.set(failure);
             }
-        });
+        }, "bounded-graceful-shutdown");
 
         try {
             submitter.start();
             assertTrue(submitEntered.await(5, TimeUnit.SECONDS));
             shutdownThread.start();
-            assertTrue(shutdownStarted.await(5, TimeUnit.SECONDS));
 
             long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
-            while (shutdownThread.getState() != Thread.State.BLOCKED
-                && System.nanoTime() < deadline) {
+            while (!service.isShutdown() && System.nanoTime() < deadline) {
                 Thread.yield();
             }
-            assertEquals(shutdownThread.getState(), Thread.State.BLOCKED,
-                "Shutdown must wait for the in-flight admission critical section");
+            assertTrue(service.isShutdown(), "Shutdown must close admission before waiting for dispatch");
+
+            Thread admissionProbe = new Thread(() -> {
+                try {
+                    service.executeAsync(Mockito.mock(Config.class), null, null);
+                } catch (Throwable failure) {
+                    rejectedAdmission.set(failure);
+                }
+            }, "post-shutdown-admission-probe");
+            admissionProbe.start();
+            admissionProbe.join(1000);
+            assertFalse(admissionProbe.isAlive(),
+                "A blocked executor submission must not hold admissionLock");
+            assertTrue(rejectedAdmission.get() instanceof IllegalStateException,
+                "New submissions must be rejected promptly after admission closes");
 
             releaseSubmit.countDown();
             submitter.join(5000);
             shutdownThread.join(5000);
             assertFalse(submitter.isAlive());
             assertFalse(shutdownThread.isAlive());
-            assertNull(submitFailure.get());
+            assertNull(submitFailure.get(),
+                "A reservation accepted before shutdown must be allowed to reach the executor");
             assertNull(shutdownFailure.get());
-
-            ScraperSession session = accepted.get();
-            assertNotNull(session, "The submission must be either accepted and tracked or rejected");
-            assertTrue(session.awaitCompletion(5000));
-            ExecutionTrackedSession tracked = (ExecutionTrackedSession) session;
+            assertNotNull(accepted.get());
+            assertTrue(accepted.get().awaitCompletion(5000));
+            ExecutionTrackedSession tracked = (ExecutionTrackedSession) accepted.get();
             assertTrue(tracked.awaitExecutionCompletion(5000));
-            assertTrue(service.getSession(session.getSessionId()).isPresent());
+            assertEquals(accepted.get().getStatus(), SessionStatus.COMPLETED);
         } finally {
             releaseSubmit.countDown();
             submitter.join(5000);
             shutdownThread.join(5000);
+            service.shutdownNow();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
+    public void shutdownNowSignalsExecutorWhileProviderAbortRemainsBlocked() throws Exception {
+        EventBus eventBus = new EventBus();
+        BlockingAbortResourceListener listener = new BlockingAbortResourceListener();
+        eventBus.register(listener);
+        CountDownLatch executorShutdownSignal = new CountDownLatch(1);
+        ShutdownSignalExecutorService executor = new ShutdownSignalExecutorService(
+            java.util.concurrent.Executors.newSingleThreadExecutor(), executorShutdownSignal);
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            executor, new SessionRegistryImpl(), eventBus);
+        ScraperSession session = service.executeAsync(Mockito.mock(Config.class), null, null);
+        ExecutionTrackedSession tracked = (ExecutionTrackedSession) session;
+        Thread shutdownCaller = new Thread(service::shutdownNow, "blocked-provider-abort-shutdown");
+        try {
+            assertTrue(listener.started.await(5, TimeUnit.SECONDS));
+            shutdownCaller.start();
+            assertTrue(listener.abortEntered.await(5, TimeUnit.SECONDS));
+            assertTrue(executorShutdownSignal.await(2, TimeUnit.SECONDS),
+                "A blocked provider abort must not prevent the session executor shutdown signal");
+            shutdownCaller.join(3000);
+            assertFalse(shutdownCaller.isAlive(),
+                "shutdownNow must return within its bounded wait while the provider callback remains blocked");
+            assertEquals(listener.resource.getState(), ExecutionResourceAccess.ResourceState.QUARANTINED);
+            assertEquals(listener.closeCount.get(), 0);
+            assertEquals(listener.workerInterrupted.getCount(), 0L);
+            // Let the execution owner exit first while the provider abort remains blocked.
+            // The first drain must quarantine and return; late abort completion must
+            // independently trigger the retained drain without a second service call.
+            listener.releaseWorker.countDown();
+            assertTrue(tracked.awaitExecutionCompletion(5000));
+            assertEquals(listener.resource.getState(), ExecutionResourceAccess.ResourceState.QUARANTINED);
+            assertEquals(listener.closeCount.get(), 0);
+
+            listener.releaseAbort.countDown();
+            assertTrue(listener.closed.await(5, TimeUnit.SECONDS));
+            long closedDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+            while (listener.resource.getState() != ExecutionResourceAccess.ResourceState.CLOSED
+                && System.nanoTime() < closedDeadline) {
+                Thread.yield();
+            }
+            assertEquals(listener.resource.getState(), ExecutionResourceAccess.ResourceState.CLOSED);
+            assertEquals(listener.closeCount.get(), 1);
+        } finally {
+            listener.releaseAbort.countDown();
+            listener.releaseWorker.countDown();
+            shutdownCaller.join(5000);
+        }
+        service.shutdownNow();
+    }
+
+    @Test(groups = {"unit", "service"})
+    public void testShutdownNowCancelsActiveTaskWhileAnotherSubmissionIsBlocked() throws InterruptedException {
+        EventBus eventBus = new EventBus();
+        BlockingStartedListener listener = new BlockingStartedListener();
+        eventBus.register(listener);
+        CountDownLatch secondSubmitEntered = new CountDownLatch(1);
+        CountDownLatch releaseSecondSubmit = new CountDownLatch(1);
+        BlockSecondSubmitExecutorService executor = new BlockSecondSubmitExecutorService(
+            java.util.concurrent.Executors.newSingleThreadExecutor(),
+            secondSubmitEntered, releaseSecondSubmit);
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            executor, new SessionRegistryImpl(), eventBus);
+        AtomicReference<Throwable> secondSubmitFailure = new AtomicReference<>();
+        Thread secondSubmitter = null;
+        ScraperSession activeSession = null;
+
+        try {
+            activeSession = service.executeAsync(Mockito.mock(Config.class), null, null);
+            ExecutionTrackedSession activeTracked = (ExecutionTrackedSession) activeSession;
+            assertTrue(listener.started.await(5, TimeUnit.SECONDS));
+
+            secondSubmitter = new Thread(() -> {
+                try {
+                    service.executeAsync(Mockito.mock(Config.class), null, null);
+                } catch (Throwable failure) {
+                    secondSubmitFailure.set(failure);
+                }
+            }, "blocked-second-submission");
+            secondSubmitter.start();
+            assertTrue(secondSubmitEntered.await(5, TimeUnit.SECONDS));
+
+            service.shutdownNow();
+
+            assertEquals(activeSession.getStatus(), SessionStatus.CANCELLED);
+            assertTrue(listener.interrupted.await(5, TimeUnit.SECONDS),
+                "shutdownNow must interrupt the active worker without waiting for the blocked submitter");
+            assertEquals(activeTracked.getExecutionState(), ExecutionState.UNRESPONSIVE,
+                "The active non-cooperative worker remains explicitly unresponsive");
+
+            releaseSecondSubmit.countDown();
+            secondSubmitter.join(5000);
+            assertFalse(secondSubmitter.isAlive());
+            assertTrue(secondSubmitFailure.get() instanceof IllegalStateException,
+                "The in-flight submission must settle as rejected after executor shutdown");
+
+            listener.release.countDown();
+            assertTrue(activeTracked.awaitExecutionCompletion(5000));
+            assertEquals(activeTracked.getExecutionState(), ExecutionState.EXITED);
+        } finally {
+            releaseSecondSubmit.countDown();
+            listener.release.countDown();
+            if (secondSubmitter != null) {
+                secondSubmitter.join(5000);
+            }
             service.shutdownNow();
         }
     }
@@ -414,6 +973,296 @@ public class WebHarvestServiceExecutionLifecycleTest {
             assertEquals(session.getStatus(), SessionStatus.COMPLETED);
             assertEquals(tracked.getExecutionState(), ExecutionState.EXITED);
             service.shutdown();
+        } finally {
+            listener.release.countDown();
+            service.shutdownNow();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
+    public void testWorkerMarksExecutionExitedWhenSessionTurnsTerminalBeforeEntry()
+            throws InterruptedException {
+        ExecutorService executor = new java.util.concurrent.ThreadPoolExecutor(
+            1, 1, 0, TimeUnit.MILLISECONDS, new java.util.concurrent.LinkedBlockingQueue<>());
+        CountDownLatch blockerStarted = new CountDownLatch(1);
+        CountDownLatch releaseBlocker = new CountDownLatch(1);
+        executor.submit(() -> {
+            blockerStarted.countDown();
+            try {
+                releaseBlocker.await();
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+            }
+        });
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            executor, new SessionRegistryImpl(), new EventBus());
+
+        try {
+            assertTrue(blockerStarted.await(5, TimeUnit.SECONDS));
+            ScraperSession session = service.executeAsync(Mockito.mock(Config.class), null, null);
+            ExecutionTrackedSession tracked = (ExecutionTrackedSession) session;
+            ((org.webharvest.runtime.session.ScraperSessionImpl) session)
+                .markFailed(new IllegalStateException("terminal transition before worker entry"));
+
+            releaseBlocker.countDown();
+            assertTrue(tracked.awaitExecutionCompletion(5000));
+            assertEquals(session.getStatus(), SessionStatus.FAILED);
+            assertEquals(tracked.getExecutionState(), ExecutionState.EXITED);
+        } finally {
+            releaseBlocker.countDown();
+            service.shutdown();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
+    public void testSuccessfulCompletionGateRejectsExternallyTerminalSession() throws InterruptedException {
+        EventBus eventBus = new EventBus();
+        BlockingStartedListener listener = new BlockingStartedListener();
+        eventBus.register(listener);
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            java.util.concurrent.Executors.newSingleThreadExecutor(),
+            new SessionRegistryImpl(), eventBus);
+
+        try {
+            ScraperSession session = service.executeAsync(Mockito.mock(Config.class), null, null);
+            ExecutionTrackedSession tracked = (ExecutionTrackedSession) session;
+            assertTrue(listener.started.await(5, TimeUnit.SECONDS));
+
+            IllegalStateException externalFailure =
+                new IllegalStateException("session terminated while scraper was entering");
+            ((org.webharvest.runtime.session.ScraperSessionImpl) session).markFailed(externalFailure);
+            listener.release.countDown();
+
+            assertTrue(tracked.awaitExecutionCompletion(5000));
+            assertEquals(session.getStatus(), SessionStatus.FAILED);
+            assertSame(session.getError(), externalFailure);
+            assertEquals(tracked.getExecutionState(), ExecutionState.EXITED);
+        } finally {
+            listener.release.countDown();
+            service.shutdown();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
+    public void testPendingSubmissionWaitHonorsExpiredMonotonicDeadline() throws Exception {
+        CountDownLatch submitEntered = new CountDownLatch(1);
+        CountDownLatch releaseSubmit = new CountDownLatch(1);
+        BlockingSubmitExecutorService executor = new BlockingSubmitExecutorService(
+            java.util.concurrent.Executors.newSingleThreadExecutor(), submitEntered, releaseSubmit);
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            executor, new SessionRegistryImpl(), new EventBus());
+        AtomicReference<Throwable> submitFailure = new AtomicReference<>();
+        Thread submitter = new Thread(() -> {
+            try {
+                service.executeAsync(Mockito.mock(Config.class), null, null);
+            } catch (Throwable failure) {
+                submitFailure.set(failure);
+            }
+        }, "deadline-expired-submission");
+
+        try {
+            submitter.start();
+            assertTrue(submitEntered.await(5, TimeUnit.SECONDS));
+            java.lang.reflect.Method awaitPending = WebHarvestServiceImpl.class
+                .getDeclaredMethod("awaitPendingSubmissions", long.class);
+            awaitPending.setAccessible(true);
+            Object result = awaitPending.invoke(service, System.nanoTime() - 1L);
+            assertEquals(result, Boolean.FALSE,
+                "An expired monotonic deadline must not wait for the blocked executor call");
+        } finally {
+            releaseSubmit.countDown();
+            submitter.join(5000);
+            assertFalse(submitter.isAlive());
+            assertNull(submitFailure.get());
+            service.shutdown();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
+    public void testGracefulShutdownFromSessionWorkerDefersFinalization() throws InterruptedException {
+        EventBus eventBus = new EventBus();
+        GracefulShutdownFromStartedListener listener = new GracefulShutdownFromStartedListener();
+        eventBus.register(listener);
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            java.util.concurrent.Executors.newSingleThreadExecutor(),
+            new SessionRegistryImpl(), eventBus);
+        listener.service = service;
+
+        try {
+            ScraperSession session = service.executeAsync(Mockito.mock(Config.class), null, null);
+            ExecutionTrackedSession tracked = (ExecutionTrackedSession) session;
+            assertTrue(listener.shutdownReturned.await(5, TimeUnit.SECONDS));
+            assertTrue(session.awaitCompletion(5000));
+            assertTrue(tracked.awaitExecutionCompletion(5000));
+            assertEquals(session.getStatus(), SessionStatus.COMPLETED);
+            assertTrue(service.isShutdown());
+            service.shutdown();
+        } finally {
+            service.shutdownNow();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
+    public void testForcedShutdownFromSessionWorkerDefersFinalization() throws InterruptedException {
+        EventBus eventBus = new EventBus();
+        ForcedShutdownFromStartedListener listener = new ForcedShutdownFromStartedListener();
+        eventBus.register(listener);
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            java.util.concurrent.Executors.newSingleThreadExecutor(),
+            new SessionRegistryImpl(), eventBus);
+        listener.service = service;
+
+        try {
+            ScraperSession session = service.executeAsync(Mockito.mock(Config.class), null, null);
+            ExecutionTrackedSession tracked = (ExecutionTrackedSession) session;
+            assertTrue(listener.shutdownReturned.await(5, TimeUnit.SECONDS));
+            assertTrue(tracked.awaitExecutionCompletion(5000));
+            assertEquals(session.getStatus(), SessionStatus.CANCELLED);
+            assertEquals(tracked.getExecutionState(), ExecutionState.EXITED);
+            assertTrue(service.isShutdown());
+        } finally {
+            service.shutdownNow();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
+    public void testGracefulShutdownInterruptionPropagatesAndReservationStillResolves()
+            throws InterruptedException {
+        CountDownLatch submitEntered = new CountDownLatch(1);
+        CountDownLatch releaseSubmit = new CountDownLatch(1);
+        BlockingSubmitExecutorService executor = new BlockingSubmitExecutorService(
+            java.util.concurrent.Executors.newSingleThreadExecutor(), submitEntered, releaseSubmit);
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            executor, new SessionRegistryImpl(), new EventBus());
+        AtomicReference<ScraperSession> accepted = new AtomicReference<>();
+        AtomicReference<Throwable> submitFailure = new AtomicReference<>();
+        AtomicReference<Throwable> shutdownFailure = new AtomicReference<>();
+
+        Thread submitter = new Thread(() -> {
+            try {
+                accepted.set(service.executeAsync(Mockito.mock(Config.class), null, null));
+            } catch (Throwable failure) {
+                submitFailure.set(failure);
+            }
+        }, "interruptible-blocked-submission");
+        Thread shutdownThread = new Thread(() -> {
+            try {
+                service.shutdown();
+            } catch (Throwable failure) {
+                shutdownFailure.set(failure);
+            }
+        }, "interrupted-graceful-shutdown");
+
+        try {
+            submitter.start();
+            assertTrue(submitEntered.await(5, TimeUnit.SECONDS));
+            shutdownThread.start();
+            awaitTimedWaiting(shutdownThread);
+            shutdownThread.interrupt();
+            shutdownThread.join(5000);
+            assertFalse(shutdownThread.isAlive());
+            assertTrue(shutdownFailure.get() instanceof InterruptedException,
+                "Graceful shutdown must propagate interruption instead of continuing to wait");
+
+            releaseSubmit.countDown();
+            submitter.join(5000);
+            assertFalse(submitter.isAlive());
+            assertNull(submitFailure.get());
+            assertNotNull(accepted.get());
+            assertTrue(accepted.get().awaitCompletion(5000));
+            service.shutdown();
+        } finally {
+            releaseSubmit.countDown();
+            submitter.join(5000);
+            shutdownThread.join(5000);
+            service.shutdownNow();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
+    public void testShutdownNowInterruptionRestoresInterruptAndResolvesReservation()
+            throws InterruptedException {
+        CountDownLatch submitEntered = new CountDownLatch(1);
+        CountDownLatch releaseSubmit = new CountDownLatch(1);
+        BlockingSubmitExecutorService executor = new BlockingSubmitExecutorService(
+            java.util.concurrent.Executors.newSingleThreadExecutor(), submitEntered, releaseSubmit);
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            executor, new SessionRegistryImpl(), new EventBus());
+        AtomicReference<Throwable> submitFailure = new AtomicReference<>();
+        AtomicBoolean interruptRestored = new AtomicBoolean();
+
+        Thread submitter = new Thread(() -> {
+            try {
+                service.executeAsync(Mockito.mock(Config.class), null, null);
+            } catch (Throwable failure) {
+                submitFailure.set(failure);
+            }
+        }, "forced-interruptible-submission");
+        Thread shutdownThread = new Thread(() -> {
+            service.shutdownNow();
+            interruptRestored.set(Thread.currentThread().isInterrupted());
+        }, "interrupted-forced-shutdown");
+
+        try {
+            submitter.start();
+            assertTrue(submitEntered.await(5, TimeUnit.SECONDS));
+            shutdownThread.start();
+            awaitTimedWaiting(shutdownThread);
+            shutdownThread.interrupt();
+            shutdownThread.join(5000);
+            assertFalse(shutdownThread.isAlive());
+            assertTrue(interruptRestored.get(),
+                "shutdownNow must restore the caller's interrupt flag");
+
+            releaseSubmit.countDown();
+            submitter.join(5000);
+            assertFalse(submitter.isAlive());
+            assertTrue(submitFailure.get() instanceof IllegalStateException);
+        } finally {
+            releaseSubmit.countDown();
+            submitter.join(5000);
+            shutdownThread.join(5000);
+            service.shutdownNow();
+        }
+    }
+
+    @Test(groups = {"unit", "service"})
+    public void testShutdownNowDoesNotMarkWorkerUnresponsiveWhenOnlyResourceDrainIsBlocked()
+            throws Exception {
+        EventBus eventBus = new EventBus();
+        BlockingCloseResourceListener listener = new BlockingCloseResourceListener();
+        eventBus.register(listener);
+        ExecutorService executor = java.util.concurrent.Executors.newSingleThreadExecutor();
+        WebHarvestServiceImpl service = new WebHarvestServiceImpl(
+            executor, new SessionRegistryImpl(), eventBus);
+
+        try {
+            ScraperSession session = service.executeAsync(Mockito.mock(Config.class), null, null);
+            ExecutionTrackedSession tracked = (ExecutionTrackedSession) session;
+            assertTrue(listener.closeEntered.await(5, TimeUnit.SECONDS),
+                "The worker should have exited execution and entered resource drain");
+
+            service.shutdownNow();
+
+            assertEquals(session.getStatus(), SessionStatus.COMPLETED);
+            assertEquals(tracked.getExecutionState(), ExecutionState.EXITED,
+                "A blocked resource close is not an unresponsive execution worker");
+
+            Field tasksField = WebHarvestServiceImpl.class.getDeclaredField("executionTasks");
+            tasksField.setAccessible(true);
+            @SuppressWarnings("unchecked")
+            Map<String, Object> tasks = (Map<String, Object>) tasksField.get(service);
+            assertTrue(tasks.containsKey(session.getSessionId()),
+                "The service task remains tracked until resource cleanup returns");
+
+            listener.release.countDown();
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+            while (tasks.containsKey(session.getSessionId()) && System.nanoTime() < deadline) {
+                Thread.yield();
+            }
+            assertFalse(tasks.containsKey(session.getSessionId()),
+                "The service task is removed only after resource cleanup returns");
+            assertEquals(tracked.getExecutionState(), ExecutionState.EXITED);
         } finally {
             listener.release.countDown();
             service.shutdownNow();
@@ -478,6 +1327,303 @@ public class WebHarvestServiceExecutionLifecycleTest {
         } finally {
             listener.release.countDown();
             service.shutdownNow();
+        }
+    }
+
+    private static void awaitTimedWaiting(Thread thread) throws InterruptedException {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+        while (thread.getState() != Thread.State.TIMED_WAITING && System.nanoTime() < deadline) {
+            Thread.yield();
+        }
+        assertEquals(thread.getState(), Thread.State.TIMED_WAITING,
+            "The shutdown thread should be waiting on the pending-submission condition");
+    }
+
+    private static class GracefulShutdownFromStartedListener {
+        private final CountDownLatch shutdownReturned = new CountDownLatch(1);
+        private volatile WebHarvestServiceImpl service;
+
+        @Subscribe
+        public void onStarted(SessionStartedEvent event) {
+            try {
+                service.shutdown();
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+            } finally {
+                shutdownReturned.countDown();
+            }
+        }
+    }
+
+    private static class ForcedShutdownFromStartedListener {
+        private final CountDownLatch shutdownReturned = new CountDownLatch(1);
+        private volatile WebHarvestServiceImpl service;
+
+        @Subscribe
+        public void onStarted(SessionStartedEvent event) {
+            try {
+                service.shutdownNow();
+            } finally {
+                shutdownReturned.countDown();
+            }
+        }
+    }
+
+    private static class BlockingCompletedListener {
+        private final CountDownLatch entered = new CountDownLatch(1);
+        private final CountDownLatch release = new CountDownLatch(1);
+        private volatile ScraperSession session;
+
+        @Subscribe
+        public void onCompleted(org.webharvest.runtime.session.events.SessionCompletedEvent event) {
+            session = event.getSession();
+            entered.countDown();
+            try {
+                release.await();
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+
+    private static class BlockingAbortResourceListener {
+        private final CountDownLatch started = new CountDownLatch(1);
+        private final CountDownLatch abortEntered = new CountDownLatch(1);
+        private final CountDownLatch releaseAbort = new CountDownLatch(1);
+        private final CountDownLatch releaseWorker = new CountDownLatch(1);
+        private final CountDownLatch workerInterrupted = new CountDownLatch(1);
+        private final CountDownLatch closed = new CountDownLatch(1);
+        private final AtomicInteger closeCount = new AtomicInteger();
+        private volatile ExecutionResourceAccess.ResourceHandle resource;
+        private volatile ExecutionResourceAccess.Lease lease;
+        @Subscribe
+        public void onSessionStarted(SessionStartedEvent event) {
+            resource = event.getSession().getContext().getResourceAccess().registerSessionResource(
+                "test/blocked-provider-abort", () -> {
+                    abortEntered.countDown();
+                    releaseAbort.await();
+                }, () -> {
+                    closeCount.incrementAndGet();
+                    closed.countDown();
+                });
+            lease = resource.acquire();
+            started.countDown();
+            boolean waiting = true;
+            while (waiting) {
+                try {
+                    releaseWorker.await();
+                    waiting = false;
+                } catch (InterruptedException expected) {
+                    workerInterrupted.countDown();
+                }
+            }
+            lease.close();
+        }
+    }
+
+    private static class ShutdownSignalExecutorService extends DelegatingExecutorService {
+        private final CountDownLatch shutdownSignal;
+        private ShutdownSignalExecutorService(ExecutorService delegate, CountDownLatch shutdownSignal) {
+            super(delegate);
+            this.shutdownSignal = shutdownSignal;
+        }
+        @Override
+        public List<Runnable> shutdownNow() {
+            shutdownSignal.countDown();
+            return super.shutdownNow();
+        }
+    }
+
+    private static class BlockingResourceListener {
+        private final CountDownLatch started = new CountDownLatch(1);
+        private final CountDownLatch interrupted = new CountDownLatch(1);
+        private final CountDownLatch abortStarted = new CountDownLatch(1);
+        private final CountDownLatch release = new CountDownLatch(1);
+        private final CountDownLatch closed = new CountDownLatch(1);
+        private final java.util.concurrent.atomic.AtomicInteger abortCount =
+            new java.util.concurrent.atomic.AtomicInteger();
+        private final java.util.concurrent.atomic.AtomicInteger closeCount =
+            new java.util.concurrent.atomic.AtomicInteger();
+        private volatile ExecutionResourceAccess.ResourceHandle resource;
+        private volatile ExecutionResourceAccess.Lease lease;
+
+        @Subscribe
+        public void onSessionStarted(SessionStartedEvent event) {
+            resource = event.getSession().getContext().getResourceAccess().registerSessionResource(
+                "test/cancellable-session-resource", () -> {
+                    abortCount.incrementAndGet();
+                    abortStarted.countDown();
+                }, () -> {
+                    closeCount.incrementAndGet();
+                    closed.countDown();
+                });
+            // Model active I/O: cancellation must abort it, but the lease stays held
+            // until the simulated operation explicitly exits.
+            lease = resource.acquire();
+            started.countDown();
+            boolean waiting = true;
+            while (waiting) {
+                try {
+                    release.await();
+                    waiting = false;
+                } catch (InterruptedException expected) {
+                    interrupted.countDown();
+                    // Keep the simulated I/O operation active until explicitly released.
+                }
+            }
+            lease.close();
+        }
+    }
+
+    private static class BlockingCloseResourceListener {
+        private final CountDownLatch closeEntered = new CountDownLatch(1);
+        private final CountDownLatch release = new CountDownLatch(1);
+
+        @Subscribe
+        public void onSessionStarted(SessionStartedEvent event) {
+            event.getSession().getContext().getResourceAccess().registerSessionResource(
+                "test/blocking-resource-close", null, () -> {
+                    closeEntered.countDown();
+                    boolean waiting = true;
+                    while (waiting) {
+                        try {
+                            release.await();
+                            waiting = false;
+                        } catch (InterruptedException expected) {
+                            // Keep close blocked to distinguish resource drain from worker execution.
+                        }
+                    }
+                });
+        }
+    }
+
+    private static class InterruptDuringDrainListener {
+        private volatile ExecutionResourceAccess.ResourceHandle resource;
+        private volatile ExecutionResourceAccess.Lease lease;
+
+        @Subscribe
+        public void onSessionStarted(SessionStartedEvent event) {
+            resource = event.getSession().getContext().getResourceAccess().registerSessionResource(
+                "test/interrupted-drain", null, () -> { });
+            lease = resource.acquire();
+        }
+
+        @Subscribe
+        public void onSessionCompleted(SessionCompletedEvent event) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private static class RuntimeCloseFailureListener {
+        private final IllegalStateException closeFailure =
+            new IllegalStateException("recoverable resource close failure");
+        private volatile ExecutionResourceAccess.ResourceHandle resource;
+
+        @Subscribe
+        public void onSessionStarted(SessionStartedEvent event) {
+            resource = event.getSession().getContext().getResourceAccess().registerSessionResource(
+                "test/runtime-close-failure", null, () -> {
+                    throw closeFailure;
+                });
+        }
+    }
+
+    private static class AbortFailureResourceListener {
+        private final CountDownLatch started = new CountDownLatch(1);
+        private final CountDownLatch interrupted = new CountDownLatch(1);
+        private final java.util.concurrent.atomic.AtomicInteger closeCount =
+            new java.util.concurrent.atomic.AtomicInteger();
+        private volatile ExecutionResourceAccess.ResourceHandle resource;
+
+        @Subscribe
+        public void onSessionStarted(SessionStartedEvent event) {
+            resource = event.getSession().getContext().getResourceAccess().registerSessionResource(
+                "test/abort-failure",
+                () -> { throw new IllegalStateException("resource abort failure"); },
+                closeCount::incrementAndGet);
+            started.countDown();
+            try {
+                new CountDownLatch(1).await();
+            } catch (InterruptedException expected) {
+                interrupted.countDown();
+            }
+        }
+    }
+
+    private static class FatalCloseResourceListener {
+        private final AssertionError fatalFailure =
+            new AssertionError("fatal resource close failure");
+        private volatile ExecutionResourceAccess.ResourceHandle resource;
+
+        @Subscribe
+        public void onSessionStarted(SessionStartedEvent event) {
+            resource = event.getSession().getContext().getResourceAccess().registerSessionResource(
+                "test/fatal-close-resource", null, () -> {
+                    throw fatalFailure;
+                });
+        }
+    }
+
+    private static class CapturingInlineExecutorService extends InlineExecutorService {
+        private volatile java.util.concurrent.Future<?> submittedFuture;
+
+        @Override
+        public void execute(Runnable command) {
+            if (command instanceof java.util.concurrent.Future<?>) {
+                submittedFuture = (java.util.concurrent.Future<?>) command;
+            }
+            super.execute(command);
+        }
+    }
+
+    private static class SessionResourceRegistrationListener {
+        private final java.util.concurrent.atomic.AtomicInteger abortCount =
+            new java.util.concurrent.atomic.AtomicInteger();
+        private final java.util.concurrent.atomic.AtomicInteger closeCount =
+            new java.util.concurrent.atomic.AtomicInteger();
+        private volatile ExecutionResourceAccess.ResourceHandle resource;
+
+        @Subscribe
+        public void onSessionStarted(SessionStartedEvent event) {
+            resource = event.getSession().getContext().getResourceAccess().registerSessionResource(
+                "test/session-resource", abortCount::incrementAndGet, closeCount::incrementAndGet);
+        }
+    }
+
+    private static class CreatedEventCounter {
+        private final AtomicInteger count = new AtomicInteger();
+
+        @Subscribe
+        public void onCreated(SessionCreatedEvent event) {
+            count.incrementAndGet();
+        }
+    }
+
+    private static class CreatedEventAdmissionProbe {
+        private final AtomicInteger count = new AtomicInteger();
+        private final AtomicBoolean lockAcquired = new AtomicBoolean();
+        private final CountDownLatch probeCompleted = new CountDownLatch(1);
+        private volatile Object admissionLock;
+
+        @Subscribe
+        public void onCreated(SessionCreatedEvent event) {
+            count.incrementAndGet();
+            Thread probe = new Thread(() -> {
+                synchronized (admissionLock) {
+                    lockAcquired.set(true);
+                    probeCompleted.countDown();
+                }
+            }, "session-created-admission-lock-probe");
+            probe.start();
+            try {
+                if (!probeCompleted.await(5, TimeUnit.SECONDS)) {
+                    throw new AssertionError("SessionCreatedEvent subscriber ran while admissionLock was held");
+                }
+                probe.join(5000);
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+                throw new AssertionError("Interrupted while probing admissionLock", interrupted);
+            }
         }
     }
 
@@ -623,6 +1769,34 @@ public class WebHarvestServiceExecutionLifecycleTest {
         }
     }
 
+    private static class BlockSecondSubmitExecutorService extends DelegatingExecutorService {
+        private final AtomicInteger submissions = new AtomicInteger();
+        private final CountDownLatch secondEntered;
+        private final CountDownLatch releaseSecond;
+
+        private BlockSecondSubmitExecutorService(ExecutorService delegate,
+                                                 CountDownLatch secondEntered,
+                                                 CountDownLatch releaseSecond) {
+            super(delegate);
+            this.secondEntered = secondEntered;
+            this.releaseSecond = releaseSecond;
+        }
+
+        @Override
+        public void execute(Runnable command) {
+            if (submissions.incrementAndGet() == 2) {
+                secondEntered.countDown();
+                try {
+                    releaseSecond.await();
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                    throw new RejectedExecutionException("Second submission gate interrupted", interrupted);
+                }
+            }
+            super.execute(command);
+        }
+    }
+
     private static class FirstWaitTimesOutExecutorService extends DelegatingExecutorService {
         private boolean firstWait = true;
 
@@ -637,6 +1811,48 @@ public class WebHarvestServiceExecutionLifecycleTest {
                 return false;
             }
             return super.awaitTermination(timeout, unit);
+        }
+    }
+
+    private static class WorkerInitiatedShutdownListener {
+        private final WebHarvestService service;
+        private final boolean immediate;
+        private final CountDownLatch shutdownReturned = new CountDownLatch(1);
+        private final CountDownLatch abortStarted = new CountDownLatch(1);
+        private final CountDownLatch releaseAbort = new CountDownLatch(1);
+        private final AtomicInteger resourceCloseCount = new AtomicInteger();
+        private final AtomicReference<Throwable> shutdownFailure = new AtomicReference<>();
+
+        private WorkerInitiatedShutdownListener(WebHarvestService service, boolean immediate) {
+            this.service = service;
+            this.immediate = immediate;
+        }
+
+        @Subscribe
+        public void onStarted(SessionStartedEvent event) {
+            try {
+                if (immediate) {
+                    event.getSession().getContext().getResourceAccess().registerSessionResource(
+                        "test/worker-initiated-shutdown",
+                        () -> {
+                            abortStarted.countDown();
+                            try {
+                                releaseAbort.await();
+                            } catch (InterruptedException interrupted) {
+                                Thread.currentThread().interrupt();
+                                throw new IllegalStateException("Abort callback interrupted", interrupted);
+                            }
+                        },
+                        resourceCloseCount::incrementAndGet);
+                    service.shutdownNow();
+                } else {
+                    service.shutdown();
+                }
+            } catch (Throwable failure) {
+                shutdownFailure.set(failure);
+            } finally {
+                shutdownReturned.countDown();
+            }
         }
     }
 

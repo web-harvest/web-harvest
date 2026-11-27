@@ -34,55 +34,81 @@
 package org.webharvest.plugin.services;
 
 import java.io.IOException;
+import java.net.URI;
+import java.time.Duration;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
 
-import org.apache.hc.client5.http.classic.methods.HttpGet;
-import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.client5.http.classic.methods.HttpUriRequestBase;
+import org.apache.hc.client5.http.config.ConnectionConfig;
 import org.apache.hc.client5.http.config.RequestConfig;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
 import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder;
 import org.apache.hc.core5.http.ClassicHttpRequest;
 import org.apache.hc.core5.http.Header;
 import org.apache.hc.core5.http.HttpEntity;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.http.io.entity.StringEntity;
+import org.apache.hc.core5.util.Timeout;
+import com.google.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.webharvest.runtime.resource.ExecutionResourceAccess;
+import org.webharvest.runtime.resource.RuntimeResourceManager;
 
 /**
  * Default implementation of {@link HttpService} using Apache HttpClient 5.x
- * 
+ *
  * <p>Migrated from HttpClient 4.5.14 to 5.5.1 in October 2025 for:</p>
  * <ul>
  *   <li>Latest security updates</li>
  *   <li>Improved performance</li>
  *   <li>Modern Java support</li>
  * </ul>
- * 
+ *
  * <h2>Bug #36: Redirect Header Preservation (v2.2.0)</h2>
  * <p>Added support for:</p>
  * <ul>
  *   <li><code>followRedirects</code> - control redirect behavior</li>
  *   <li><code>preserveHeaders</code> - maintain headers across redirects</li>
  * </ul>
- * 
+ *
  * @author Robert Bala
  * @since 2.2.0
  * @version 2.2.0
  */
-public class HttpServiceImpl implements HttpService, AutoCloseable {
-    
+public class HttpServiceImpl implements ExecutionAwareHttpService, AutoCloseable {
+
     private static final Logger LOGGER = LoggerFactory.getLogger(HttpServiceImpl.class);
-    
+
+    private static final Duration DEFAULT_RESPONSE_TIMEOUT = Duration.ofSeconds(30);
+    private static final Timeout DEFAULT_CONNECT_TIMEOUT = Timeout.ofSeconds(30);
+
     private final CloseableHttpClient httpClient;
-    
+    private final boolean followRedirects;
+    private final boolean configurePerRequestTimeouts;
+
+    /**
+     * Creates the default Guice-managed HTTP service and registers its shared
+     * client for runtime retirement.
+     *
+     * @param runtimeResources runtime-owned resource manager
+     */
+    @Inject
+    public HttpServiceImpl(RuntimeResourceManager runtimeResources) {
+        this();
+        Objects.requireNonNull(runtimeResources, "Runtime resource manager cannot be null")
+            .register("http-client", this);
+    }
+
     /**
      * Creates a new HttpServiceImpl with a default HttpClient.
-     * 
+     *
      * <p>Default behavior:</p>
      * <ul>
      *   <li>Redirects: ENABLED (follows 301/302)</li>
@@ -90,116 +116,162 @@ public class HttpServiceImpl implements HttpService, AutoCloseable {
      * </ul>
      */
     public HttpServiceImpl() {
-        this.httpClient = HttpClients.createDefault();
+        this.httpClient = createHttpClientBuilder().build();
+        this.followRedirects = true;
+        this.configurePerRequestTimeouts = true;
     }
-    
+
     /**
      * Creates a new HttpServiceImpl with custom HttpClient.
-     * 
-     * @param httpClient the HTTP client to use
+     *
+     * @param httpClient the HTTP client to use; its request configuration is preserved
      */
     public HttpServiceImpl(CloseableHttpClient httpClient) {
-        this.httpClient = httpClient;
+        this.httpClient = Objects.requireNonNull(httpClient, "HTTP client cannot be null");
+        this.followRedirects = true;
+        this.configurePerRequestTimeouts = false;
     }
-    
+
     /**
      * Creates HttpServiceImpl with redirect configuration.
-     * 
+     *
      * <p><strong>Bug #36 Fix:</strong> This constructor enables control over
      * redirect behavior and header preservation.</p>
-     * 
+     *
      * @param followRedirects whether to follow HTTP redirects (301/302)
-     * 
+     *
      * @since 2.2.0
      */
     public HttpServiceImpl(boolean followRedirects) {
         this(followRedirects, new HashMap<>());
     }
-    
+
     /**
      * Creates HttpServiceImpl with redirect and header preservation.
-     * 
+     *
      * <p><strong>Bug #36 Fix:</strong> This constructor solves the problem of
      * headers being lost during redirects (e.g., login → redirect → logout).</p>
-     * 
+     *
      * <h4>Use Cases:</h4>
      * <ul>
      *   <li><strong>Login workflows:</strong> Preserve Cookie, Referer on redirect</li>
      *   <li><strong>API auth:</strong> Preserve X-API-Key, Authorization headers</li>
      *   <li><strong>Custom headers:</strong> Maintain any custom headers across redirects</li>
      * </ul>
-     * 
+     *
      * @param followRedirects whether to follow HTTP redirects
      * @param defaultHeaders headers to add to ALL requests (initial + redirects)
-     * 
+     *
      * @since 2.2.0
      */
     public HttpServiceImpl(boolean followRedirects, Map<String, String> defaultHeaders) {
-        LOGGER.debug("Creating HttpServiceImpl: followRedirects={}, defaultHeaders={}", 
+        LOGGER.debug("Creating HttpServiceImpl: followRedirects={}, defaultHeaders={}",
             followRedirects, defaultHeaders != null ? defaultHeaders.size() : 0);
-        
-        HttpClientBuilder builder = HttpClients.custom();
-        
+
+        HttpClientBuilder builder = createHttpClientBuilder();
+
         // Configure redirect behavior
         RequestConfig requestConfig = RequestConfig.custom()
             .setRedirectsEnabled(followRedirects)
             .build();
         builder.setDefaultRequestConfig(requestConfig);
-        
+
         // Add header preservation interceptor if needed
         if (defaultHeaders != null && !defaultHeaders.isEmpty()) {
             HeaderPreservingInterceptor interceptor = new HeaderPreservingInterceptor(defaultHeaders);
             builder.addRequestInterceptorFirst(interceptor);
-            
-            LOGGER.info("HTTP client configured with {} default headers for redirect preservation", 
+
+            LOGGER.info("HTTP client configured with {} default headers for redirect preservation",
                 defaultHeaders.size());
         }
-        
+
         this.httpClient = builder.build();
+        this.followRedirects = followRedirects;
+        this.configurePerRequestTimeouts = true;
     }
-    
+
     @Override
     public HttpResponse get(String url, Map<String, String> headers) throws HttpServiceException {
-        LOGGER.debug("Executing GET request to: {}", url);
-        HttpGet httpGet = new HttpGet(url);
-        addHeaders(httpGet, headers);
-        return executeRequest(httpGet);
+        return request("GET", url, null, headers, DEFAULT_RESPONSE_TIMEOUT, null);
     }
-    
+
     @Override
     public HttpResponse post(String url, String body, Map<String, String> headers) throws HttpServiceException {
-        LOGGER.debug("Executing POST request to: {}", url);
-        HttpPost httpPost = new HttpPost(url);
-        addHeaders(httpPost, headers);
-        
-        if (body != null && !body.isEmpty()) {
-            try {
-                StringEntity entity = new StringEntity(body);
-                httpPost.setEntity(entity);
-            } catch (Exception e) {
-                throw new HttpServiceException("Failed to set request body: " + e.getMessage(), e);
-            }
-        }
-        
-        return executeRequest(httpPost);
+        return request("POST", url, body, headers, DEFAULT_RESPONSE_TIMEOUT, null);
     }
-    
+
     @Override
-    public HttpResponse request(String method, String url, String body, Map<String, String> headers) throws HttpServiceException {
-        LOGGER.debug("Executing {} request to: {}", method, url);
-        
-        if ("GET".equalsIgnoreCase(method)) {
-            return get(url, headers);
-        } else if ("POST".equalsIgnoreCase(method)) {
-            return post(url, body, headers);
-        } else {
-            throw new HttpServiceException("Unsupported HTTP method: " + method);
+    public HttpResponse request(String method, String url, String body, Map<String, String> headers)
+            throws HttpServiceException {
+        return request(method, url, body, headers, DEFAULT_RESPONSE_TIMEOUT, null);
+    }
+
+    @Override
+    public HttpResponse request(String method, String url, String body, Map<String, String> headers,
+                                Duration timeout, ExecutionResourceAccess resourceAccess)
+            throws HttpServiceException {
+        if (method == null || method.isBlank()) {
+            throw new HttpServiceException("HTTP method is required");
+        }
+        if (timeout == null || timeout.isZero() || timeout.isNegative()) {
+            throw new HttpServiceException("HTTP request timeout must be positive");
+        }
+
+        final long timeoutMillis;
+        try {
+            timeoutMillis = timeout.toMillis();
+        } catch (ArithmeticException overflow) {
+            throw new HttpServiceException("HTTP request timeout is too large", overflow);
+        }
+        if (timeoutMillis <= 0) {
+            throw new HttpServiceException("HTTP request timeout must be at least one millisecond");
+        }
+
+        String normalizedMethod = method.trim().toUpperCase(java.util.Locale.ROOT);
+        LOGGER.debug("Executing {} request to: {}", normalizedMethod, url);
+        HttpUriRequestBase request = new HttpUriRequestBase(normalizedMethod, URI.create(url));
+        addHeaders(request, headers);
+        if (body != null && !body.isEmpty()
+                && !"GET".equals(normalizedMethod) && !"HEAD".equals(normalizedMethod)) {
+            request.setEntity(new StringEntity(body));
+        }
+
+        if (configurePerRequestTimeouts) {
+            RequestConfig requestConfig = RequestConfig.custom()
+                .setRedirectsEnabled(followRedirects)
+                .setResponseTimeout(Timeout.ofMilliseconds(timeoutMillis))
+                .setConnectionRequestTimeout(Timeout.ofMilliseconds(timeoutMillis))
+                .setHardCancellationEnabled(true)
+                .build();
+            request.setConfig(requestConfig);
+        }
+
+        if (resourceAccess == null) {
+            return executeRequest(request);
+        }
+
+        // The operation handle owns only this request. It must never close the
+        // runtime-wide pooled client, which may be serving other executions.
+        try (ExecutionResourceAccess.OperationResource operation =
+                 resourceAccess.registerOperationResource(
+                     "http-request-" + UUID.randomUUID(), request::cancel, () -> { });
+             ExecutionResourceAccess.Lease lease = operation.acquire()) {
+            return executeRequest(request);
         }
     }
-    
+
+    private static HttpClientBuilder createHttpClientBuilder() {
+        return HttpClients.custom().setConnectionManager(
+            PoolingHttpClientConnectionManagerBuilder.create()
+                .setDefaultConnectionConfig(ConnectionConfig.custom()
+                    .setConnectTimeout(DEFAULT_CONNECT_TIMEOUT)
+                    .build())
+                .build());
+    }
+
     /**
      * Adds headers to the HTTP request.
-     * 
+     *
      * @param request the HTTP request
      * @param headers the headers to add
      */
@@ -210,13 +282,13 @@ public class HttpServiceImpl implements HttpService, AutoCloseable {
             }
         }
     }
-    
+
     /**
      * Executes an HTTP request and returns the response.
-     * 
+     *
      * <p>Bug #39 Fix: Now reads response as binary data (byte[]) to support
      * images and other binary content without String conversion corruption.</p>
-     * 
+     *
      * @param request the HTTP request to execute
      * @return the HTTP response
      * @throws HttpServiceException if the request fails
@@ -224,7 +296,7 @@ public class HttpServiceImpl implements HttpService, AutoCloseable {
     private HttpResponse executeRequest(ClassicHttpRequest request) throws HttpServiceException {
         try (CloseableHttpResponse response = httpClient.execute(request)) {
             int statusCode = response.getCode();
-            
+
             // Bug #39 Fix: Get response body as BINARY first
             // This prevents corruption of image/PDF/video data
             byte[] binaryData = new byte[0];
@@ -232,24 +304,24 @@ public class HttpServiceImpl implements HttpService, AutoCloseable {
             if (entity != null) {
                 binaryData = EntityUtils.toByteArray(entity);
             }
-            
-            // Get response headers  
+
+            // Get response headers
             Map<String, String> responseHeaders = new HashMap<>();
             for (Header header : response.getHeaders()) {
                 responseHeaders.put(header.getName(), header.getValue());
             }
-            
-            LOGGER.debug("HTTP request completed with status code: {}, body size: {} bytes", 
+
+            LOGGER.debug("HTTP request completed with status code: {}, body size: {} bytes",
                 statusCode, binaryData.length);
-            
+
             return new HttpResponseImpl(statusCode, binaryData, responseHeaders);
-            
+
         } catch (IOException e) {
             LOGGER.error("HTTP request failed: {}", e.getMessage(), e);
             throw new HttpServiceException("HTTP request failed: " + e.getMessage(), e);
         }
     }
-    
+
     /**
      * Closes the underlying HTTP client and releases its connection resources.
      *
@@ -262,50 +334,50 @@ public class HttpServiceImpl implements HttpService, AutoCloseable {
 
     /**
      * Simple implementation of {@link HttpResponse}.
-     * 
+     *
      * Bug #39 Fix: Stores response as byte[] to support binary content
      * without corruption.
      */
     private static class HttpResponseImpl implements HttpResponse {
-        
+
         private final int statusCode;
         private final byte[] binaryData;  // Bug #39: Store as binary
         private final Map<String, String> headers;
-        
+
         public HttpResponseImpl(int statusCode, byte[] binaryData, Map<String, String> headers) {
             this.statusCode = statusCode;
             this.binaryData = binaryData;
             this.headers = headers;
         }
-        
+
         @Override
         public int getStatusCode() {
             return statusCode;
         }
-        
+
         @Override
         public String getBody() {
             // Convert binary to String (for text content)
             if (binaryData == null || binaryData.length == 0) {
                 return "";
             }
-            
+
             // Use UTF-8 by default for String conversion
             // (HttpPlugin can use charset from Content-Type if needed)
             return new String(binaryData, java.nio.charset.StandardCharsets.UTF_8);
         }
-        
+
         @Override
         public byte[] getBodyAsBinary() {
             // Bug #39 Fix: Return binary data directly (no String conversion)
             return binaryData != null ? binaryData : new byte[0];
         }
-        
+
         @Override
         public Map<String, String> getHeaders() {
             return headers;
         }
-        
+
         @Override
         public String getHeader(String name) {
             if (name == null) {
@@ -318,12 +390,12 @@ public class HttpServiceImpl implements HttpService, AutoCloseable {
             }
             return null;
         }
-        
+
         @Override
         public String getContentType() {
             return getHeader("Content-Type");
         }
-        
+
         @Override
         public String getCharset() {
             String contentType = getContentType();

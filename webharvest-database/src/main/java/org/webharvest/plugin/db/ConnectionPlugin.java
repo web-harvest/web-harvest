@@ -35,7 +35,6 @@ package org.webharvest.plugin.db;
 
 import java.sql.Connection;
 
-import com.google.common.eventbus.EventBus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.webharvest.plugin.AbstractPlugin;
@@ -47,6 +46,7 @@ import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.plugin.exceptions.PluginValidationException;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.database.StandaloneConnectionPool;
+import org.webharvest.runtime.resource.ExecutionResourceAccess;
 import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.NodeVariable;
 import org.webharvest.runtime.variables.Variable;
@@ -102,14 +102,21 @@ public class ConnectionPlugin extends AbstractPlugin {
         try {
             // Create connection factory for this connection
             StandaloneConnectionPool connectionFactory = new StandaloneConnectionPool();
-            EventBus eventBus = context.getEventBus();
-            if (eventBus != null) {
-                connectionFactory.registerForSession(eventBus);
+            ExecutionResourceAccess resourceAccess = context.getResourceAccess();
+            ExecutionResourceAccess.ResourceHandle resourceHandle = null;
+            if (resourceAccess != null) {
+                resourceHandle = resourceAccess.registerSessionResource(
+                    "jdbc/named/" + id, null, connectionFactory::closeAllConnections);
+            } else if (context.getEventBus() != null && context.getSession() != null) {
+                // Compatibility for contexts created outside the managed service.
+                connectionFactory.registerForSession(
+                    context.getEventBus(), context.getSession().getSessionId());
             }
 
-            // Store the session-owned factory in context for later use.
+            // Store the session-owned factory and its lease token for later use.
             String factoryKey = CONNECTION_FACTORY_KEY_PREFIX + id;
-            context.setLocalVar(factoryKey, new ConnectionFactoryVariable(connectionFactory, driver, url, username, password));
+            context.setLocalVar(factoryKey, new ConnectionFactoryVariable(
+                connectionFactory, driver, url, username, password, resourceHandle));
             
             LOGGER.info("Connection '" + id + "' registered successfully");
             
@@ -246,29 +253,91 @@ public class ConnectionPlugin extends AbstractPlugin {
         private final String url;
         private final String username;
         private final String password;
-        
-        public ConnectionFactoryVariable(StandaloneConnectionPool factory, String driver, 
-                                        String url, String username, String password) {
+        private final ExecutionResourceAccess.ResourceHandle resourceHandle;
+
+        public ConnectionFactoryVariable(StandaloneConnectionPool factory, String driver,
+                                         String url, String username, String password,
+                                         ExecutionResourceAccess.ResourceHandle resourceHandle) {
             super("Connection[" + url + "]");
             this.factory = factory;
             this.driver = driver;
             this.url = url;
             this.username = username;
             this.password = password;
+            this.resourceHandle = resourceHandle;
         }
-        
+
         public Connection getConnection() throws Exception {
+            if (resourceHandle != null) {
+                throw new IllegalStateException(
+                    "Managed JDBC connections must be acquired with a resource lease");
+            }
+            return createConnection();
+        }
+
+        private Connection createConnection() throws Exception {
             return factory.getConnection(driver, url, username, password);
         }
 
+        public NamedConnectionLease acquireConnection() throws Exception {
+            ExecutionResourceAccess.Lease lease =
+                resourceHandle == null ? null : resourceHandle.acquire();
+            try {
+                return new NamedConnectionLease(createConnection(), lease);
+            } catch (Exception | Error failure) {
+                if (lease != null) {
+                    try {
+                        lease.close();
+                    } catch (RuntimeException | Error cleanupFailure) {
+                        if (failure != cleanupFailure) {
+                            failure.addSuppressed(cleanupFailure);
+                        }
+                    }
+                }
+                throw failure;
+            }
+        }
+
         public void close() {
+            if (resourceHandle != null) {
+                throw new IllegalStateException(
+                    "Managed JDBC pools are closed by their execution resource owner");
+            }
             factory.closeAllConnections();
+        }
+    }
+
+    /** A named JDBC connection protected by its owning session resource lease. */
+    public static final class NamedConnectionLease implements AutoCloseable {
+        private final Connection connection;
+        private final ExecutionResourceAccess.Lease lease;
+        private final java.util.concurrent.atomic.AtomicBoolean closed =
+            new java.util.concurrent.atomic.AtomicBoolean();
+
+        private NamedConnectionLease(Connection connection, ExecutionResourceAccess.Lease lease) {
+            this.connection = connection;
+            this.lease = lease;
+        }
+
+        public Connection getConnection() {
+            return connection;
+        }
+
+        @Override
+        public void close() {
+            if (closed.compareAndSet(false, true) && lease != null) {
+                lease.close();
+            }
         }
     }
     
     /**
-     * Helper method to get named connection from context.
+     * Legacy unleased connection lookup. Managed execution should use
+     * {@link #acquireNamedConnection(DynamicScopeContext, String)}.
+     *
+     * @deprecated does not hold a resource lease while the connection is used
      */
+    @Deprecated
     public static Connection getNamedConnection(DynamicScopeContext context, String connectionId) throws Exception {
         String factoryKey = CONNECTION_FACTORY_KEY_PREFIX + connectionId;
         Variable var = context.getVar(factoryKey);
@@ -286,9 +355,25 @@ public class ConnectionPlugin extends AbstractPlugin {
     }
 
     /**
-     * Releases a named connection pool when the context has no session EventBus
-     * to own its lifecycle (legacy standalone execution mode).
+     * Acquires a named connection together with its execution-scoped resource lease.
      */
+    public static NamedConnectionLease acquireNamedConnection(
+        DynamicScopeContext context, String connectionId) throws Exception {
+        String factoryKey = CONNECTION_FACTORY_KEY_PREFIX + connectionId;
+        Variable var = context.getVar(factoryKey);
+        if (!(var instanceof ConnectionFactoryVariable)) {
+            throw new RuntimeException("Connection '" + connectionId + "' is not registered");
+        }
+        return ((ConnectionFactoryVariable) var).acquireConnection();
+    }
+
+    /**
+     * Releases a named connection pool only for legacy contexts without the
+     * execution resource access capability.
+     *
+     * @deprecated managed execution owns the pool through its resource ledger
+     */
+    @Deprecated
     public static void closeNamedConnection(DynamicScopeContext context, String connectionId) {
         String factoryKey = CONNECTION_FACTORY_KEY_PREFIX + connectionId;
         Variable var = context.getVar(factoryKey);

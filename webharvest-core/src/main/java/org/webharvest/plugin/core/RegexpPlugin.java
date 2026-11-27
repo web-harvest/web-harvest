@@ -428,6 +428,9 @@ public class RegexpPlugin extends AbstractPlugin {
             LOGGER.debug("RegexpPlugin: Regexp executed successfully, returning ListVariable with {} results", resultList.size());
             return new ListVariable(resultList);
 
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            throw interrupted;
         } catch (Exception e) {
             LOGGER.error("Error executing regexp plugin: " + e.getMessage(), e);
             return new ListVariable();
@@ -438,7 +441,7 @@ public class RegexpPlugin extends AbstractPlugin {
      * Process the result template, replacing var elements with variable values.
      * This provides full regression compatibility with the old RegexpProcessor.
      */
-    private String processResultTemplate(String template, DynamicScopeContext context) {
+    private String processResultTemplate(String template, DynamicScopeContext context) throws InterruptedException {
         if (template == null || template.isEmpty()) {
             return template;
         }
@@ -466,6 +469,9 @@ public class RegexpPlugin extends AbstractPlugin {
             // Fallback to simple regex processing
             return processSimpleTemplate(template, context);
             
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            throw interrupted;
         } catch (Exception e) {
             LOGGER.warn("Error processing result template: " + e.getMessage(), e);
             return template;

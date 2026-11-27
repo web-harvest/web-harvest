@@ -204,6 +204,29 @@ mvn test
 Copyright (c) 2006-2025 the original author or authors. See LICENSE file for details.
 
 
+## Execution lifecycle and SMTP timeouts
 
+Each mail invocation creates an execution-local socket factory and places that
+factory instance in the JavaMail Session properties before sending. The
+operation-scoped resource is registered before `Email.send()`; owner abort
+closes the underlying SMTP socket, and final cleanup closes any remaining
+sockets after the operation lease drains. The factory permanently rejects late
+socket creation after abort, covering the race where cancellation arrives just
+before JavaMail opens its connection.
 
+The current defaults are finite:
 
+| Timeout | Default |
+|---------|---------|
+| SMTP connection timeout | 10 seconds |
+| SMTP read timeout | 30 seconds |
+| SMTP write timeout | 30 seconds |
+
+These values replace Commons Email's 60-second socket defaults. They are
+module defaults rather than new XML attributes.
+
+Closing the SMTP socket is not proof that the message was not accepted. If the
+connection is lost while the client is waiting for the final SMTP response
+after DATA, the server may already have accepted or queued the message. The
+operation outcome is therefore unknown; automatic retry may create duplicates
+and is not performed by this plugin.

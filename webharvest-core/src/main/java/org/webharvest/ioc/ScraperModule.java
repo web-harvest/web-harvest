@@ -63,7 +63,10 @@ import org.webharvest.runtime.Scraper;
 import org.webharvest.runtime.ScraperContext;
 import org.webharvest.runtime.ScrapingHarvester;
 import org.webharvest.runtime.StatusHolder;
+import org.webharvest.runtime.resource.RuntimeResourceManager;
 import org.webharvest.runtime.WebScraper;
+import org.webharvest.runtime.service.WebHarvestService;
+import org.webharvest.runtime.service.WebHarvestServiceImpl;
 // Database imports moved to DatabaseModule in webharvest-database
 import org.webharvest.runtime.scripting.ScriptEngineFactory;
 import org.webharvest.runtime.scripting.jsr.JSRScriptEngineFactory;
@@ -75,6 +78,7 @@ import com.google.common.eventbus.EventBus;
 import com.google.common.util.concurrent.Monitor;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
+import com.google.inject.Injector;
 import com.google.inject.Provider;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
@@ -91,7 +95,7 @@ import com.google.inject.name.Names;
  */
 public final class ScraperModule extends AbstractModule {
 
-    private static final ScraperScope SCRAPER_SCOPE = new ScraperScope();
+    private final ScraperScope scraperScope = new ScraperScope();
 
     private final String workingDir;
 
@@ -152,6 +156,8 @@ public final class ScraperModule extends AbstractModule {
         //         ));
 
         bind(ScrapingAwareHelper.class).toInstance(new ScrapingAwareHelper());
+        bind(RuntimeRegistrationCoordinator.class).in(Singleton.class);
+        bind(RuntimeResourceManager.class).in(Singleton.class);
         bindListener(Matchers.any(), new PostConstructListener());
         bind(ElementsRegistry.class).to(ElementsRegistryImpl.class);
         
@@ -164,19 +170,23 @@ public final class ScraperModule extends AbstractModule {
         bind(Harvest.class).to(DefaultHarvest.class).in(Singleton.class);
         bind(HandlerHolder.class).to(DefaultHandlerHolder.class).in(Singleton.class);
         
+        // Runtime session service shares this injector's EventBus instance.
+        bind(WebHarvestService.class).to(WebHarvestServiceImpl.class).in(Singleton.class);
+
         // Plugin services
         bind(HttpService.class).to(HttpServiceImpl.class).in(Singleton.class);
     }
     
     private void bindScopes() {
-        bindScope(ScrapingScope.class, SCRAPER_SCOPE);
-        bind(ScraperScope.class).toInstance(SCRAPER_SCOPE);
+        bindScope(ScrapingScope.class, scraperScope);
+        bind(ScraperScope.class).toInstance(scraperScope);
         
         bindListener(TypeMatchers.subclassesOf(ScrapingAware.class),
                 new ScrapingAwareTypeListener());
         bindListener(Matchers.any(), new EventBusTypeListener());
         
-        bind(EventBus.class).in(ScrapingScope.class);
+        // One shared event bus per injector/runtime, not one bus per scraping session.
+        bind(EventBus.class).in(Singleton.class);
         bind(EventSink.class).to(HarvesterEventSink.class).in(Singleton.class);
     }
     
@@ -187,7 +197,7 @@ public final class ScraperModule extends AbstractModule {
     
     private void bindInterceptors() {
         bindInterceptor(Matchers.any(), Matchers.annotatedWith(Scraping.class),
-                new ScrapingInterceptor());
+                new ScrapingInterceptor(getProvider(Injector.class)));
     }
     
     private void bindAdvancedFeatures() {

@@ -36,14 +36,11 @@ package org.webharvest.events;
 import org.webharvest.Harvester;
 
 /**
- * Represent an event object that is either addressed to particular
- * {@link Harvester} instance or represents state change that happened
- * on it. By default events of this type are automatically dispatched
- * to event bus that is associated with scraping scope bound with certain
- * {@link Harvester} object. This prevents leakage of events between
- * different scraping threads.
- * Currently it is not possible to send events of any type that will be received
- * by all scope bound event busses.
+ * Represents an event object addressed to a particular {@link Harvester}
+ * instance or a state change that happened on it. Events are published on the
+ * runtime-shared EventBus. The active Harvester-to-runtime route is checked by
+ * {@link HarvesterEventSink}, and {@link DefaultHandlerHolder} dispatches
+ * registered handlers only while that Harvester's route remains active.
  *
  * @author Robert Bala
  * @since 2.1.0-SNAPSHOT
