@@ -575,3 +575,25 @@ The new registry/generation system should publish at least two related but disti
 - **XML dialect descriptors:** QName-scoped element/attribute grammar, aliases, parent-child relationships, content model, deprecation/version metadata and mapping to executable descriptors where applicable.
 
 The XML dialect adapter owns compatibility parsing and translation. Core runtime dispatch must consume normalized semantic configuration and must not infer executable capability from the mere presence of an XML element name.
+
+## 19. IDE metadata and visual XML paths are separate compatibility surfaces — source inspection (2026-11-27)
+
+A targeted source inspection of the current IDE path identifies three distinct mechanisms that must not be conflated with Core runtime dispatch:
+
+1. **Runtime metadata catalog:** `PluginMetadataCatalog` dynamically scans plugin classes and projects `PluginMetadata`, resolved semantic metadata, UI hints and configuration schema into `PluginDescriptor` values. It is not the XML grammar registry and is not proof that a plugin element is registered in `CorePluginRegistry`. Its descriptor currently includes an `elementName`, class name, namespace in extension metadata and configuration schema, but does not model a versioned XML dialect grammar or per-attribute expanded QName identity.
+2. **IDE metadata endpoint:** `PluginMetadataServlet` tries `PluginMetadataCatalog` first and falls back to `CorePluginRegistry` only if catalog generation throws. The fallback iterates a hard-coded candidate element-name list and checks Core registration. The two paths therefore have different discovery semantics and can expose different metadata sets. The servlet's documented endpoint is consumed by the Visual Designer palette/property panels; it is a metadata projection, not the execution resolver.
+3. **Frontend visual XML parser/generator:** `webharvest-ide/frontend/src/visual/XMLParser.ts` parses with browser `DOMParser`, uses `element.tagName` as the element identity, and copies attributes into `Record<string,string>` using `attr.name`. `XMLGenerator.ts` serializes those string keys. This representation does not normalize element identity to expanded QName and does not provide a collision-safe semantic representation for namespaced attributes. The frontend path therefore has its own namespace/round-trip compatibility risk, independent of the Core SAX parser.
+
+### Evidence and limits
+
+- `PluginMetadataCatalog` builds descriptors by scanning plugin classes, instantiating each class and reading `PluginMetadata`; it is class-discovery metadata, not the active 44-name Core registrar mapping.
+- `PluginMetadataServlet` explicitly implements catalog-first / Core-registry-fallback behavior.
+- The frontend parser/generator uses string tag and attribute names; its current visual-node model is not a namespace-aware XML AST.
+- The inspected Core fixtures `03_var_plugin_example.xml`, `04_def_plugin_example.xml` and `20_setvar_plugin_example.xml` use the canonical Core default namespace and ordinary unqualified attributes. The first fixture recreates the old `var` example using `def`; the set-var fixture exercises the legacy unqualified `name` attribute. The inspected XQuery parameter integration test uses child element `xq-param` with a `type` attribute; this is parent-consumed typed XML configuration, not evidence for the old `p:*` attribute reference syntax.
+- `ElementInfoContractTest` verifies that the legacy metadata parser recognizes `p:*` and `v:*` declaration tokens and maps them to `XMLNS_PARAM` and `XMLNS_VAR`. It does not test a real XML document containing either namespace family, nor runtime resolution of such attributes.
+- This is a targeted inspection of the named files and fixtures, not an exhaustive search of all IDE, module, historical or external XML assets. Exact historical `p:`/`v:` reference semantics remain unproven.
+
+### Required architecture consequence
+
+Treat IDE metadata discovery, Core executable registration and XML dialect grammar as three different projections with explicit contracts. The future XML dialect adapter must preserve expanded element and attribute names in both Core and IDE import/export paths until compatibility translation is complete. A metadata catalog may consume the immutable descriptor generation, but it must not independently invent executable availability or flatten namespace identity. Add cross-layer fixtures that parse, normalize, display and regenerate the same namespace-sensitive configuration before claiming IDE round-trip compatibility.
+
