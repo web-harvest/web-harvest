@@ -734,3 +734,17 @@ Call-site inspection at the current branch head confirms that the TypeScript par
 2. Add integration tests for XML → Visual → XML via App.switchViewMode(), file import in Visual mode, tab switching in Visual mode, VisualDesigner.generateXML(), and generateXMLForNode(). Assert expanded-name semantics, not just string presence or local-name structure.
 3. Determine whether VisualNode is intended as a lossy visual editing projection or a round-trip-capable semantic model. If lossy, the UI must warn/refuse round-trip when unsupported namespace constructs are present; if round-trip-capable, it must retain expanded names and namespace declarations.
 4. Search the legacy webapp entry points and script loading order to establish whether SimpleXMLParser remains reachable. Until then, classify its reachability as unknown rather than dead code.
+
+## 26. Legacy SimpleXMLParser is wired into alternate IDE HTML entrypoints
+
+Further inspection resolves part of the reachability question from section 24:
+
+- webharvest-ide/src/main/resources/webapp/index-unified.html explicitly loads static/js/simple-xml-parser.js, followed by visual-renderer.js and unified-app.js.
+- unified-app.js constructs SimpleXMLParser for XML import and SimpleXMLGenerator for export.
+- webharvest-ide/src/main/resources/webapp/index-old.html loads static/js/app.js. That script constructs SimpleXMLGenerator and SimpleXMLParser; its XML load path explicitly checks that SimpleXMLParser is defined before parsing.
+- webharvest-ide/src/main/resources/webapp/index.html is a different entrypoint and loads the compiled dist/assets/main.js bundle; it does not directly load simple-xml-parser.js. The source TypeScript App.ts path is therefore separate from the two legacy/alternate HTML entrypoints.
+- The repository contains these entrypoint files and their direct script references. This proves that the legacy parser is wired into those pages, but not which entrypoint the deployed IDE route currently serves or whether the alternate pages are externally reachable in a given distribution.
+
+### Updated classification
+
+SimpleXMLParser is not safely classifiable as dead code: it is directly loaded by index-unified.html and used by unified-app.js, and index-old.html loads app.js which calls it. Keep the implementation and its users in the migration inventory until deployment routing and supported entrypoints are confirmed. The parser's namespace-lossy behavior applies to those legacy UI paths as well.
