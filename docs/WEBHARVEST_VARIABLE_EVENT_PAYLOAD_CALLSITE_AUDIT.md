@@ -407,6 +407,9 @@ A deeper trace of the flags used by `CallPlugin` and `ReturnPlugin` found a seco
 
 **DESIGN CONSEQUENCE —** Separate execution-local `Variable` objects from event payload contracts. If plugin completion events are intended for durable audit/replay, publish an immutable, bounded snapshot/descriptor with explicit value kind, provenance, truncation policy and redaction rules; do not retain arbitrary `NodeVariable` wrapped objects or resource handles. If the event is only an in-process notification, document that scope and avoid promising replay semantics. A future durable event log remains a separate contract.
 
+**TEST GAP —** `PluginExecutionCompletedEventBug24Test` checks that the event returns the supplied `Variable` result (and permits a null result), but it does not test defensive copying, mutation after publication, redaction, or serialization. `SessionEventsTest` exercises lifecycle event delivery through a Guava EventBus, not durable persistence or replay. No inspected test establishes immutable event-payload semantics.
+
+
 
 ### 3.3 Optional integration modules
 
