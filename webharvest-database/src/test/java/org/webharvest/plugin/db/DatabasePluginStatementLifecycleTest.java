@@ -63,13 +63,19 @@ public class DatabasePluginStatementLifecycleTest {
 
         TrackingResourceAccess access = new TrackingResourceAccess();
         ExecutorService executor = Executors.newFixedThreadPool(2);
+        AtomicReference<Thread> workerThread = new AtomicReference<>();
+        java.util.concurrent.atomic.AtomicBoolean interruptedAfterCleanup =
+            new java.util.concurrent.atomic.AtomicBoolean();
         try {
             Future<Throwable> execution = executor.submit(() -> {
+                workerThread.set(Thread.currentThread());
                 try {
                     invokeExecuteSql(connection, "UPDATE sample SET value = 1", 0, access);
                     return null;
                 } catch (Throwable failure) {
                     return failure;
+                } finally {
+                    interruptedAfterCleanup.set(Thread.currentThread().isInterrupted());
                 }
             });
 
@@ -90,6 +96,7 @@ public class DatabasePluginStatementLifecycleTest {
                 "The connection-owning worker must wait while the abort callback is still active");
             org.mockito.Mockito.verify(statement, org.mockito.Mockito.never()).close();
 
+            workerThread.get().interrupt();
             releaseCancel.countDown();
             abort.get(3, TimeUnit.SECONDS);
             Throwable failure = execution.get(5, TimeUnit.SECONDS);
@@ -101,6 +108,8 @@ public class DatabasePluginStatementLifecycleTest {
             assertTrue(access.operationClosed.get(), "The statement resource must be closed");
             assertTrue(access.leaseCloseOrder.get() < access.operationCloseOrder.get(),
                 "Final statement close must happen after its active operation lease is released");
+            assertTrue(interruptedAfterCleanup.get(),
+                "The statement-close wait must restore interruption after asynchronous abort quiescence");
         } finally {
             releaseCancel.countDown();
             executor.shutdownNow();
