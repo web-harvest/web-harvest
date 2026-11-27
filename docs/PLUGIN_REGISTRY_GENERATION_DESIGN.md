@@ -779,3 +779,16 @@ The two failed jobs were inspected from their job logs:
 - The diagnostics artifact confirms the CLI/IDE package audits had no built JARs because the reactor never reached packaging; those missing artifacts are consequences of the dependency-resolution failure, not independent packaging findings.
 
 **Status interpretation:** lockfile and documentation checks are green. OSV vulnerability comparison and Java 17 reactor verification remain **unverified**, not passed and not source-failed. Retry these workflows when Maven Central rate limiting has subsided; do not weaken the gates or interpret the fail-closed OSV comparison as a vulnerability finding.
+
+
+## 29. IDE distribution packages three XML UI entrypoints; Jetty serves the webapp resource tree
+
+Inspection of the IDE packaging and server bootstrap narrows the deployment question:
+
+- `webharvest-ide/pom.xml` copies `src/main/resources` into the application output and builds the frontend during `generate-resources`; the shaded executable JAR therefore contains the webapp resource tree, including `index.html`, `index-old.html`, and `index-unified.html`.
+- `WebHarvestServer` obtains `/webapp` from the classpath, sets it as Jetty's static base resource, registers API servlets, and finally registers Jetty's `DefaultServlet` at `/`.
+- The current `index.html` loads the compiled Vite bundle at `dist/assets/main.js`; it is the modern frontend entrypoint in the packaged resource tree.
+- `index-old.html` and `index-unified.html` are also packaged static resources and load their legacy JavaScript entrypoints. They are distinct URL paths in the same static resource tree, not aliases of the modern TypeScript application.
+- The source confirms that the modern index is the intended current UI artifact and that the legacy entrypoints are shipped. It does not by itself establish whether external deployments document or rely on direct access to those alternate paths, nor does it prove the exact root welcome-file resolution for every Jetty/runtime configuration.
+
+**Migration implication:** treat all three entrypoints as compatibility surfaces until a release-level decision explicitly removes the legacy pages. Add packaging smoke tests that request `/`, `/index.html`, `/index-old.html`, and `/index-unified.html` from the built JAR, and record which entrypoints are supported in the distribution contract. Do not remove `SimpleXMLParser` merely because the modern root page does not load it.
