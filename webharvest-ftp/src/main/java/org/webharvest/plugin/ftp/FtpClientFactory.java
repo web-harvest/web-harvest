@@ -40,7 +40,7 @@ final class FtpClientFactory {
      * that a blocked data read/write is released, so retain every opened data
      * socket until this one-operation client is disconnected.
      */
-    private static final class ManagedFtpClient extends FTPClient {
+    static final class ManagedFtpClient extends FTPClient {
 
         private final Set<Socket> activeDataSockets = ConcurrentHashMap.newKeySet();
 
@@ -48,9 +48,15 @@ final class FtpClientFactory {
         protected Socket _openDataConnection_(String command, String argument) throws IOException {
             Socket socket = super._openDataConnection_(command, argument);
             if (socket != null) {
-                activeDataSockets.add(socket);
+                trackDataSocket(socket);
             }
             return socket;
+        }
+
+        void trackDataSocket(Socket socket) {
+            if (socket != null) {
+                activeDataSockets.add(socket);
+            }
         }
 
         @Override
@@ -72,11 +78,10 @@ final class FtpClientFactory {
             try {
                 super.disconnect();
             } catch (IOException disconnectFailure) {
-                if (failure == null) {
-                    failure = disconnectFailure;
-                } else if (failure != disconnectFailure) {
-                    failure.addSuppressed(disconnectFailure);
+                if (failure != null && failure != disconnectFailure) {
+                    disconnectFailure.addSuppressed(failure);
                 }
+                throw disconnectFailure;
             }
             if (failure != null) {
                 throw failure;
