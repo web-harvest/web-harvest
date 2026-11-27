@@ -40,7 +40,7 @@ import static org.testng.Assert.assertTrue;
 public class FtpClientResourceTest {
 
     @Test
-    public void managedClientIsRegisteredAndLeasePrecedesOperationClose() {
+    public void managedClientIsRegisteredAndLeasePrecedesOperationClose() throws Exception {
         DynamicScopeContext context = mock(DynamicScopeContext.class);
         ExecutionResourceAccess access = mock(ExecutionResourceAccess.class);
         ExecutionResourceAccess.OperationResource operation =
@@ -67,6 +67,7 @@ public class FtpClientResourceTest {
         verify(access).registerOperationResource(anyString(), abort.capture(), close.capture());
         assertNotNull(abort.getValue(), "Managed FTP operations require an abort action");
         assertNotNull(close.getValue(), "Managed FTP operations require a final close action");
+        close.getValue().close();
 
         resource.close();
 
