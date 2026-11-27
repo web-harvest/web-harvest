@@ -6,6 +6,7 @@ package org.webharvest.plugin.mail;
 
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketException;
 import java.util.ArrayList;
@@ -37,24 +38,45 @@ final class TrackingSmtpSocketFactory extends SocketFactory {
 
     @Override
     public Socket createSocket(String host, int port) throws IOException {
-        return register(SocketFactory.getDefault().createSocket(host, port));
+        return createAndConnect(new InetSocketAddress(host, port), null);
     }
 
     @Override
     public Socket createSocket(String host, int port, InetAddress localAddress, int localPort)
             throws IOException {
-        return register(SocketFactory.getDefault().createSocket(host, port, localAddress, localPort));
+        return createAndConnect(new InetSocketAddress(host, port),
+            new InetSocketAddress(localAddress, localPort));
     }
 
     @Override
     public Socket createSocket(InetAddress host, int port) throws IOException {
-        return register(SocketFactory.getDefault().createSocket(host, port));
+        return createAndConnect(new InetSocketAddress(host, port), null);
     }
 
     @Override
     public Socket createSocket(InetAddress address, int port, InetAddress localAddress, int localPort)
             throws IOException {
-        return register(SocketFactory.getDefault().createSocket(address, port, localAddress, localPort));
+        return createAndConnect(new InetSocketAddress(address, port),
+            new InetSocketAddress(localAddress, localPort));
+    }
+
+    private Socket createAndConnect(InetSocketAddress remoteAddress,
+                                     InetSocketAddress localAddress) throws IOException {
+        Socket socket = register(new Socket());
+        try {
+            if (localAddress != null) {
+                socket.bind(localAddress);
+            }
+            socket.connect(remoteAddress);
+            return socket;
+        } catch (IOException connectionFailure) {
+            try {
+                socket.close();
+            } catch (IOException closeFailure) {
+                connectionFailure.addSuppressed(closeFailure);
+            }
+            throw connectionFailure;
+        }
     }
 
     private Socket register(Socket socket) throws IOException {
