@@ -5,6 +5,8 @@ import org.apache.commons.net.ftp.FTPClient;
 import java.io.IOException;
 import java.net.Socket;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -43,6 +45,8 @@ final class FtpClientFactory {
     static final class ManagedFtpClient extends FTPClient {
 
         private final Set<Socket> activeDataSockets = ConcurrentHashMap.newKeySet();
+        private final Object dataSocketLock = new Object();
+        private boolean disconnecting;
 
         @Override
         protected Socket _openDataConnection_(String command, String argument) throws IOException {
@@ -53,16 +57,33 @@ final class FtpClientFactory {
             return socket;
         }
 
-        void trackDataSocket(Socket socket) {
-            if (socket != null) {
-                activeDataSockets.add(socket);
+        void trackDataSocket(Socket socket) throws IOException {
+            if (socket == null) {
+                return;
             }
+            synchronized (dataSocketLock) {
+                if (!disconnecting) {
+                    activeDataSockets.add(socket);
+                    return;
+                }
+            }
+            // A data socket returned concurrently with owner abort must not
+            // escape the disconnect snapshot and remain live after retirement.
+            socket.close();
+            throw new IOException("FTP client is already disconnecting");
         }
 
         @Override
         public void disconnect() throws IOException {
+            List<Socket> socketsToClose;
+            synchronized (dataSocketLock) {
+                disconnecting = true;
+                socketsToClose = new ArrayList<>(activeDataSockets);
+                activeDataSockets.clear();
+            }
+
             IOException failure = null;
-            for (Socket socket : activeDataSockets) {
+            for (Socket socket : socketsToClose) {
                 try {
                     socket.close();
                 } catch (IOException closeFailure) {
@@ -73,7 +94,6 @@ final class FtpClientFactory {
                     }
                 }
             }
-            activeDataSockets.clear();
 
             try {
                 super.disconnect();
