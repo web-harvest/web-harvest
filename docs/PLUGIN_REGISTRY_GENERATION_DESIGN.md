@@ -8,10 +8,10 @@
 
 WebHarvest must have **one runtime-owned plugin registry authority**. It publishes immutable generations. Every execution captures exactly one generation and resolves every plugin through that captured generation.
 
-The candidate direction is to evolve the existing `PluginRegistry` contract rather than introduce a parallel registry family. This choice must be reconciled with the approved descriptor/SPI and Core inventory under #93/#94 before implementation; this document is a review proposal, not permission to bypass those architecture gates:
+The canonical runtime publication API must be designed from generation semantics rather than assumed to be an extension of either legacy registry. The exact public type names remain subject to the approved descriptor/SPI and Core inventory under #93/#94; this document is a review proposal, not permission to bypass those architecture gates:
 
-- `PluginRegistry` becomes the runtime-facing registry/publication API.
-- `DefaultPluginRegistry` becomes its implementation, with mutable registration confined to a builder/staging phase and immutable published snapshots.
+- A new runtime-owned publication contract becomes the sole authority for building and publishing immutable registry generations; it must not coexist with another mutable runtime registry.
+- The existing `PluginRegistry` / `DefaultPluginRegistry` pair is treated as a legacy instance-management API and migrated behind temporary compatibility adapters only where evidence requires.
 - `CorePluginsRegistrar` becomes a deterministic contributor of built-in registrations to a registry builder; it must not mutate a process-global singleton.
 - `PluginFactory` remains a construction service, not a registry or source of plugin identity. Its runtime resolution methods must operate against a captured generation.
 - `PluginMetadataCatalog` remains a read-only metadata projection. It must consume a generation snapshot and must never independently discover or instantiate a second plugin universe.
@@ -30,9 +30,9 @@ Inspection of `main` found multiple competing mechanisms with different responsi
 | `CorePluginRegistry` | Process-wide singleton mapping XML element names to plugin classes; mutable map; `clear()` | **Actual XML dispatch registry today** |
 | `CorePluginsRegistrar` | Static synchronized registration into `CorePluginRegistry.getInstance()`; one static `initialized` flag; invoked from `ScraperModule.configure()` | Global bootstrap mutator, not a runtime-owned publication |
 | `PluginPackageScanner` | Opt-in package scanner that also mutates a supplied `CorePluginRegistry`; not wired by default `ScraperModule` | Optional registration path into the same global dispatch registry, not an independent publication lifecycle |
-| `PluginRegistry` / `DefaultPluginRegistry` | Separate registration API and mutable maps for plugin instances, classes, metadata, namespace/element lookup | Parallel registry API; not the core XML dispatch authority |
+| `PluginRegistry` / `DefaultPluginRegistry` | Mutable instance-management API; stores live plugin instances alongside classes and metadata; exposes register/unregister/clear/refresh | Legacy management API; unsuitable as the canonical immutable-generation publisher without semantic redesign |
 | `PluginRegistryHolder` | Separate process-global singleton; classpath scans and registers annotated core plugins into `DefaultPluginRegistry` | Second global bootstrap path |
-| `PluginFactory` / `DefaultPluginFactory` | Constructs plugin instances; ID/namespace lookup is delegated to injected `PluginRegistry` | Construction facade coupled to the parallel registry |
+| `PluginFactory` / `DefaultPluginFactory` | Factory lookup is delegated to injected `PluginRegistry`; implementation can return registry-owned plugin instances | Legacy construction facade; not yet a generation-bound per-invocation factory |
 | `PluginMetadataCatalog` | Static initialization scans classes and instantiates plugins to build descriptors | Independent metadata discovery/projection; not a runtime registry |
 | `StreamingXmlParser` | Creates `PluginConfigurationTree` nodes with `pluginClass == null`; resolver lookup is commented out | Parser currently does not bind a plugin registry generation |
 | `DefaultPluginBodyExecutor.createChildPlugin()` | Looks up the class from global `CorePluginRegistry`, then obtains instances through static `InjectorHelper.getInjector()` (reflection fallback) | **Actual execution-time dispatch and construction path** |
@@ -182,8 +182,8 @@ Required race outcomes:
 
 | Existing component | Target treatment |
 |---|---|
-| `PluginRegistry` | Evolve as the one canonical runtime registry/publication API |
-| `DefaultPluginRegistry` | Implement candidate building and immutable generation publication; mutable maps never escape a build/published snapshot |
+| Runtime publication contract (new design) | Own candidate building, validation, atomic publication, immutable generation capture and retirement |
+| `PluginRegistry` / `DefaultPluginRegistry` | Temporary compatibility adapters only where public or external consumers require them; do not make their mutable instance-management semantics canonical |
 | `CorePluginRegistry` | Remove process-global ownership; temporary compatibility facade delegates to an explicitly supplied generation/runtime registry |
 | `CorePluginsRegistrar` | Register built-ins into the canonical builder; remove static initialized flag and singleton mutation |
 | `PluginPackageScanner` | Convert discovery output into candidate contributions to the canonical builder; discovery must not publish/mutate a live generation directly |
@@ -852,3 +852,41 @@ The implementation of `CorePluginRegistry.registerMapping(processorClass, plugin
 - `CorePluginRegistry.clear()` is public and clears the map, but does not reset `CorePluginsRegistrar.initialized`. Calling `clear()` directly after core registration leaves the registrar believing initialization is complete; a subsequent `registerCorePlugins()` returns early and the registry remains empty. Only the separate registrar `reset()` method clears both pieces of state.
 
 This is another reason not to extend the singleton map into a canonical registry. A future generation builder should reject duplicate expanded element identities by default, require an explicit compatibility/override declaration for aliases or intentional replacement, retain origin/provenance, and publish atomically only after all conflicts and dependencies validate. Reset should be a lifecycle operation on one host/runtime instance, not a pair of unrelated static methods.
+
+
+## 30. Reassessment of the existing registry API and generation identity primitive
+
+A deeper source inspection changes one earlier design preference: **do not assume that the existing `PluginRegistry` interface should become the canonical runtime registry by extension**. The earlier suggestion to evolve it was a candidate, not an accepted decision.
+
+### 30.1 Existing `PluginRegistry` is an instance-management API, not a generation publisher
+
+Source inspection of `PluginRegistry`, `DefaultPluginRegistry`, `PluginRegistryHolder`, `PluginFactory`, and `DefaultPluginFactory` establishes these properties:
+
+- `PluginRegistry` exposes mutable `registerPlugin`, `unregisterPlugin`, `clear`, and `refresh` operations; it has no candidate-build, immutable-snapshot, atomic-publication, capture, pin, or retirement contract.
+- Its primary lookup returns live `Plugin` instances by ID or namespace/element. `DefaultPluginRegistry` stores those instances in concurrent maps and separately stores plugin classes and metadata. This is not a class/factory descriptor index with execution-scoped instance creation.
+- `registerPlugin(Class)` instantiates the class using deprecated `Class.newInstance()`. `PluginRegistryHolder` also scans classes and registers them through this path, thereby constructing registry-owned plugin instances.
+- `PluginFactory` is coupled to this registry. `DefaultPluginFactory` first looks up existing plugin instances and may return them, so it is not inherently a generation-bound per-invocation construction seam.
+- Category, search, statistics, refresh, and namespace-listing methods combine management/discovery concerns with runtime lookup. They do not form a minimal publication API.
+
+Consequently, directly evolving this interface risks carrying its instance-sharing, mutable-management, and discovery semantics into the runtime architecture. Thread-safe maps do not make a registry immutable or provide generation consistency.
+
+**Revised direction:** design the runtime publication and immutable-generation contracts from the required semantics, not from either legacy registry API. The new design must be the sole runtime authority, not a parallel live registry. Existing `PluginRegistry`, `DefaultPluginRegistry`, `PluginRegistryHolder`, and `DefaultPluginFactory` should become temporary compatibility adapters where required, then be deprecated/retired after call-site and external API evidence. Do not name the new abstraction `PluginRegistryV2` merely to preserve old semantics. The exact public type names remain undecided pending the SPI/API review.
+
+### 30.2 Existing `RegistryGenerationId` is only an identity value object
+
+The source tree already contains `org.webharvest.runtime.registry.RegistryGenerationId`. It is a final value object with two non-empty strings: `runtimeId` and `value`. Equality and hash code use both fields. Its Javadoc correctly distinguishes registry-generation identity from execution/task generation and states that equal snapshot content may still need distinct identities when provider/loader lifetimes differ.
+
+The inspected repository tree contains this one production type under `runtime/registry`; no companion generation, builder, publisher, snapshot, pin, or retirement implementation, and no dedicated `RegistryGenerationId` test were found in the tree. GitHub code search returned no matches but marked the result incomplete, so this is a bounded finding, not proof that no external caller exists.
+
+The class itself does not issue IDs, guarantee uniqueness, bind an ID to a generation, or manage lifecycle. Its constructor accepts caller-supplied values. It is therefore a useful primitive and a source of intended semantics, **not evidence that registry generations are implemented**. Before reusing it, add focused contract tests for runtime scoping, value validation, equality/hash behavior, and identity uniqueness at the publisher boundary. Consider whether its public constructor should remain public once ID issuance becomes runtime-owned; callers should not be able to fabricate identities that the runtime treats as published generations.
+
+### 30.3 Updated migration rule
+
+The target should have three distinct seams:
+
+1. A runtime-owned registry publisher/builder that validates contributions and atomically publishes immutable generations.
+2. A generation-scoped resolver/factory that creates plugin instances through the host's dependency-resolution mechanism and never returns a mutable registry-owned singleton by accident.
+3. Read-only projections (metadata catalog, IDE palette, XML dialect descriptors) derived from that exact generation.
+
+Legacy registries and scanners may feed a migration adapter during transition, but classpath discovery, metadata projection, XML grammar, plugin construction, and live publication must not be collapsed into one mutable registry object. This is a revised design recommendation; no production API has been changed.
+
