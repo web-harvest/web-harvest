@@ -221,6 +221,21 @@ public class FtpPluginBehaviorTest {
     }
 
     @Test
+    public void containerPropagatesInterruptedBodyExecution() throws Exception {
+        InterruptedBodyFtpPlugin plugin = new InterruptedBodyFtpPlugin();
+        plugin.initialize(configuration(containerProperties("put", "/data/interrupted.txt", PASSWORD, true), "ftp"));
+        try {
+            plugin.execute(context);
+            fail("Expected body interruption to propagate through the FTP plugin");
+        } catch (InterruptedException expected) {
+            assertTrue(Thread.currentThread().isInterrupted(),
+                    "The FTP plugin must restore the interrupt flag before propagating interruption");
+        } finally {
+            Thread.interrupted();
+        }
+    }
+
+    @Test
     public void containerRejectsInvalidAction() throws Exception {
         RuntimeException failure = executeContainerExpectingFailure("unknown", "/data/download.txt", PASSWORD);
 
@@ -552,6 +567,13 @@ public class FtpPluginBehaviorTest {
         @Override
         protected Variable executeBody(DynamicScopeContext context) {
             return body;
+        }
+    }
+
+    private static final class InterruptedBodyFtpPlugin extends FtpPlugin {
+        @Override
+        protected Variable executeBody(DynamicScopeContext context) throws InterruptedException {
+            throw new InterruptedException("simulated body cancellation");
         }
     }
 
