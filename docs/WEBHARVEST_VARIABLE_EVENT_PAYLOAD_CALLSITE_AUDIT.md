@@ -161,6 +161,25 @@ These are current implementation facts on the inspected revision. They justify a
 
 These tests encode current behavior, not necessarily a desirable semantic contract. Any cleanup must first replace accidental path-dependent behavior with an explicit, reviewed contract and a characterization matrix.
 
+**REQUIRED CHARACTERIZATION MATRIX — before implementation**
+
+| Input / construction path | Current observed behavior | Required decision/test |
+|---|---|---|
+| `new NodeVariable(null)` | Preserves null; empty string/binary form; numeric conversions return zero. | Decide whether this is explicit null or missing; strict conversion must not silently manufacture zero. |
+| `EmptyVariable.INSTANCE` | Wrapped object is empty String; numeric conversion throws `NumberFormatException`. | Define whether this represents absent value, empty text, or a legacy combined state. |
+| `new NodeVariable("")` | Distinct wrapped String; `isEmpty()` true; numeric conversion throws. | Decide whether empty text is valid data distinct from absence. |
+| `CommonUtil.createVariable(null/"")` | Both become the same EmptyVariable singleton. | Decide whether factory normalization is retained or split into explicit null and empty states. |
+| Numeric zero (`0`, `0L`, `0d`, `"0"`) | Present numeric/string values convert to zero. | Must remain distinguishable from all absent/empty states. |
+| `new NodeVariable(new byte[0])` | `isEmpty()` false, although `toString()` is empty; numeric parsing fails. | Define empty binary payload semantics independently of null/missing. |
+| `new ListVariable(iterable)` containing empty members | Constructor drops members for which `isEmpty()` is true. | Decide whether empty members are data and whether constructor filtering is intentional. |
+| `list.addVariable(null)` | Retains one EmptyVariable member; list itself reports empty. | Align or explicitly document this behavior against iterable construction. |
+| One-element numeric ListVariable | Inherited numeric conversion parses its joined string and succeeds. | Preserve only if list-to-scalar conversion is an intentional public contract. |
+| Multi-element numeric ListVariable | Joined text contains delimiters/newlines and ordinarily fails scalar parsing. | Specify scalar conversion behavior for collections; do not infer first/last/sum. |
+| Malformed non-empty text | JDK parsing exception. | Preserve distinction between invalid data and absent data. |
+| Boolean and Number inputs | Boolean maps to 1/0; Number uses Java narrowing/conversion semantics. | Treat as separate compatibility decisions; do not change as collateral cleanup. |
+
+This matrix is a test-design requirement, not an approval to change the current API. It should be implemented as characterization tests before any production refactor, including factory, constructor, collection, scripting and optional-module paths.
+
 **FACT —** The inspected production files `CommonUtil`, `JSRScriptEngineAdapter`, `ScriptPlugin`, `BaseTemplater`, `IfPlugin`, `CallPlugin`, `WhilePlugin`, `SleepPlugin`, `HttpPlugin`, `FilePlugin`, `LoopPlugin`, `FunctionPlugin`, `CasePlugin`, `XPathPlugin` and `ListPlugin` did not show direct calls to `Variable.toInt()`, `toLong()` or `toDouble()`. This is a representative inspection, not an exhaustive call-site proof. GitHub code-search requests for these symbols returned empty/incomplete results, so they cannot establish absence of other call sites.
 
 **INFERENCE —** The first correction should be to define a consistent distinction between *no numeric value* and the numeric value zero. It should not be implemented by changing only the three null branches while leaving the factory-normalized EmptyVariable path undocumented.
