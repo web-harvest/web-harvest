@@ -9,6 +9,7 @@ import java.util.UUID;
 import org.testng.annotations.Test;
 import org.webharvest.definition.CorePluginsRegistrar;
 import org.webharvest.plugin.DefaultPluginConfiguration;
+import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.runtime.ScraperContext;
 
 import static org.testng.Assert.assertFalse;
@@ -34,7 +35,7 @@ public class FilePluginInterruptionTest {
 
         DefaultPluginConfiguration sleep = new DefaultPluginConfiguration("sleep", CORE_NAMESPACE, "sleep");
         sleep.setProperty("milliseconds", "5000");
-        file.setChildren(Collections.singletonList(sleep));
+        file.setChildren(Collections.<PluginConfiguration>singletonList(sleep));
 
         FilePlugin plugin = new FilePlugin();
         plugin.initialize(file);
