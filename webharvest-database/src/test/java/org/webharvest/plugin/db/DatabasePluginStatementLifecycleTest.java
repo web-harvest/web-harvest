@@ -206,6 +206,8 @@ public class DatabasePluginStatementLifecycleTest {
         private final AtomicReference<AbortAction> abortAction = new AtomicReference<>();
         private final CountDownLatch abortCompleted = new CountDownLatch(1);
         private final CountDownLatch operationCloseRequested = new CountDownLatch(1);
+        private final java.util.concurrent.atomic.AtomicBoolean abortStarted =
+            new java.util.concurrent.atomic.AtomicBoolean();
         private final AtomicInteger sequence = new AtomicInteger();
         private final AtomicInteger leaseCloseOrder = new AtomicInteger();
         private final AtomicInteger operationCloseOrder = new AtomicInteger();
@@ -252,7 +254,9 @@ public class DatabasePluginStatementLifecycleTest {
                     if (!leaseReleased.get()) {
                         throw new IllegalStateException("Cannot close a statement with an active lease");
                     }
-                    awaitAbortCompletion();
+                    if (abortStarted.get()) {
+                        awaitAbortCompletion();
+                    }
                     try {
                         close.close();
                         state = ResourceState.CLOSED;
@@ -273,6 +277,7 @@ public class DatabasePluginStatementLifecycleTest {
             if (action == null) {
                 throw new IllegalStateException("Statement abort action has not been registered");
             }
+            abortStarted.set(true);
             try {
                 action.abort();
             } finally {
