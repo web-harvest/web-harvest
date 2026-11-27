@@ -597,3 +597,28 @@ A targeted source inspection of the current IDE path identifies three distinct m
 
 Treat IDE metadata discovery, Core executable registration and XML dialect grammar as three different projections with explicit contracts. The future XML dialect adapter must preserve expanded element and attribute names in both Core and IDE import/export paths until compatibility translation is complete. A metadata catalog may consume the immutable descriptor generation, but it must not independently invent executable availability or flatten namespace identity. Add cross-layer fixtures that parse, normalize, display and regenerate the same namespace-sensitive configuration before claiming IDE round-trip compatibility.
 
+## 20. Plugin discovery and registration currently have multiple independent paths — direct source inspection (2026-11-27)
+
+The IDE metadata audit exposed another distinction that must remain explicit during registry unification. The current source contains at least four different mechanisms; their names and annotation use do not make them interchangeable:
+
+| Mechanism | What it discovers or stores | Scope and behavior | Architectural classification |
+|---|---|---|---|
+| `CorePluginRegistry` | Element-name to plugin-class mappings | Static singleton; populated explicitly by `CorePluginsRegistrar`; 44 current Core XML mappings | Current Core XML execution dispatch authority in the inspected execution path |
+| `PluginRegistryHolder` + `DefaultPluginRegistry` | Plugin instances, IDs, metadata, namespace/element and category indexes | Lazy singleton; independently scans only `org.webharvest.plugin.core` for `@CorePlugin` classes and instantiates/registers them | Separate instance-oriented registry/discovery path; consumer/lifecycle map still required |
+| `PluginClassScanner` + `PluginMetadataCatalog` | Plugin class names and generated `PluginDescriptor` metadata | Scans Core plus optional FTP, mail, DB, ZIP and webbrowser packages; successful scan is cached; a complete fallback class list is used after scan failure | Metadata/catalog discovery, not execution registration |
+| `PluginMetadataServlet` | JSON metadata and generated XSD for the IDE | Uses the semantic catalog first; falls back to a hard-coded candidate list checked against `CorePluginRegistry` only if catalog generation throws | IDE-facing projection; must not define runtime capability |
+
+### Source-backed observations
+
+- `PluginClassScanner` scans six configured packages and filters concrete `Plugin` classes annotated with `@CorePlugin`. It accepts absent optional packages, requires at least one Core class, sorts and caches successful discovery, and returns a complete static fallback after scan failure without caching that fallback.
+- `PluginRegistryHolder` does not use `PluginClassScanner`. It creates a new `DefaultPluginRegistry`, independently scans only `org.webharvest.plugin.core`, instantiates discovered plugin classes and registers plugin instances. On initialization failure it returns an empty registry.
+- `DefaultPluginRegistry` stores plugin instances and indexes them by plugin ID, namespace plus element name, category and namespace. This is materially different from `CorePluginRegistry`, which maps XML local element names to plugin classes for the currently inspected executor.
+- `PluginMetadataCatalog` consumes the class-name discovery path and instantiates plugin classes to construct metadata descriptors. This can make a class visible to the IDE/catalog even when that class is not in the 44-name Core XML mapping set.
+- `PluginMetadataServlet` uses the catalog-first/fallback behavior described in section 19. A successful but incomplete catalog does not trigger the Core registry fallback; fallback is exception-driven, not a set-reconciliation step.
+
+### Decision guardrail
+
+Do not choose a canonical registry by renaming or merging one of these classes in isolation. Before implementation, complete a call-site and lifecycle map for all four paths: who initializes them, which modules consume them, whether plugins are represented as classes/factories/instances, whether namespace-aware lookup is used, how optional modules enter, and whether execution state is shared or per-run. The target architecture should then have one authoritative runtime registration/generation model, with metadata and XML-dialect projections derived from it rather than independently scanning and inventing availability.
+
+This section records direct source behavior, not a conclusion that every mechanism is actively used by the same runtime or that any one of the secondary mechanisms is safe to delete. The full all-module call-site and external integration audit remains open.
+
