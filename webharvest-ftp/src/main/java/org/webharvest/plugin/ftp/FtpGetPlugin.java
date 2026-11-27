@@ -292,9 +292,6 @@ public class FtpGetPlugin extends AbstractPlugin {
             }
             return new NodeVariable(new String(fileData, charset));
             
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw e;
         } catch (IOException e) {
             LOGGER.error("FTP Get Plugin - IOException", e);
             throw new RuntimeException("FTP Get failed: " + e.getMessage(), e);
