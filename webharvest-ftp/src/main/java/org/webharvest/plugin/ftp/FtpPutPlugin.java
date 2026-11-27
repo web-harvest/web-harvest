@@ -263,10 +263,9 @@ public class FtpPutPlugin extends AbstractPlugin {
         
         LOGGER.debug("FTP Put Plugin - Host: " + host + ":" + port + ", User: " + username + ", Path: " + path);
         
-        FTPClient ftpClient = null;
-        try {
+        try (FtpClientResource ftpResource = FtpClientResource.open(context)) {
             // Create FTP connection
-            ftpClient = FtpClientFactory.create();
+            FTPClient ftpClient = ftpResource.getClient();
             ftpClient.connect(host, port);
             
             if (!ftpClient.login(username, password)) {
@@ -292,21 +291,15 @@ public class FtpPutPlugin extends AbstractPlugin {
             
             return new NodeVariable("File uploaded successfully to " + path);
             
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw e;
         } catch (IOException e) {
             LOGGER.error("FTP Put Plugin - IOException", e);
             throw new RuntimeException("FTP Put failed: " + e.getMessage(), e);
         } catch (Exception e) {
             LOGGER.error("FTP Put Plugin - Unexpected error", e);
             throw new RuntimeException("FTP Put failed: " + e.getMessage(), e);
-        } finally {
-            if (ftpClient != null && ftpClient.isConnected()) {
-                try {
-                    ftpClient.logout();
-                    ftpClient.disconnect();
-                } catch (IOException e) {
-                    LOGGER.warn("Failed to close FTP connection", e);
-                }
-            }
         }
     }
 
