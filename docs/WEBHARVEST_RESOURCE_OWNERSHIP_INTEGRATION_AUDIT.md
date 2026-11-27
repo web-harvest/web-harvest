@@ -190,6 +190,33 @@ Therefore, `SessionCancelledEvent` is a cancellation notification, not proof tha
 
 This needs a deterministic cancellation race test with a blocked/in-flight JDBC operation before changing behavior. Do not silently delay cancellation abort if that would break responsiveness; separate abort from final close.
 
+### 5.1 Browser resources and existing worker-exit tests
+
+**FACT —** `WebBrowserPlugin.BrowserSessionState` registers itself directly on the context EventBus and closes all owned HtmlUnit `WebClient` instances on completed, failed and cancelled session events. It unregisters itself and removes the session entry after close.
+
+**FACT —** `WebBrowserPluginLifecycleTest.browserPagesAreIsolatedAndCleanedUpPerSession()` verifies session isolation and cleanup on successful completion. It does not exercise cancellation while a browser request/script is active.
+
+**FACT —** `WebHarvestServiceExecutionLifecycleTest.testCancellationBeforeFutureAttachmentInterruptsActiveWorker()` explicitly asserts that the worker remains active after the session is already CANCELLED; it only reports execution completion after a controlled callback is released. The grace-escalation and shutdown tests likewise assert that an unresponsive worker is not EXITED until it actually returns.
+
+**BOUNDARY —** These service tests establish the worker-exit distinction, but they do not register a JDBC/browser resource in the same test and assert its abort/close ordering. The existing database and browser tests separately prove terminal-event cleanup, not safe cleanup during an in-flight operation.
+
+**FACT —** The standard `WebHarvestServiceImpl` shares one injected-or-constructed Guava EventBus across its sessions and passes it to each `ScraperSessionImpl` and `ScraperContext`. The IDE's `ExecutionManager.createSessionForContext()` instead creates a separate EventBus per IDE job and shares it between that job's session and context. Resource subscribers must filter by session ID because the standard service bus is shared across sessions.
+
+**FACT —** The IDE stop path calls `ExecutionJob.stop()` (which interrupts its execution thread) and then `ScraperSession.cancel()`, which posts `SessionCancelledEvent`. The inspected IDE path does not use `ExecutionTrackedSession` or expose an equivalent confirmed worker-exit wait at this call site. Its stop/cleanup ordering therefore needs a separate characterization; do not assume the standard service's worker tracking protects IDE-owned executions.
+
+### 5.2 Event delivery is not a resource lifecycle protocol
+
+The current Guava EventBus is synchronous in-process notification. In the standard service, `ScraperSessionImpl.cancel()` invokes the task cancellation callback and posts the terminal event before the worker's `SessionTask.run()` finally block calls `markExecutionExited()`. The event callback can therefore run on the cancelling thread while the worker is still unwinding.
+
+A safe provider lifecycle needs separate signals/actions:
+- stop admitting new operations;
+- request abort of active I/O when responsiveness requires it;
+- observe actual worker exit;
+- drain active resource leases;
+- perform final close and unregister.
+
+A single terminal event cannot safely represent all five transitions. Keep terminal events for observers and business/session status; make ResourceLedger/host lifecycle the authority for abort, quiescence, drain and close.
+
 ## 6. Recommended integration direction (proposal, not implementation)
 
 1. **One ledger per runtime.** The runtime/service that owns `runtimeId` should own the corresponding ResourceLedger; avoid global/static ownership.
