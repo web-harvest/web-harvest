@@ -5,6 +5,7 @@ import org.testng.annotations.Test;
 
 import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertTrue;
+import static org.testng.Assert.assertEquals;
 
 public class FtpClientFactoryTest {
 
@@ -30,4 +31,13 @@ public class FtpClientFactoryTest {
             }
         }
     }
+    @Test
+    public void factoryConfiguresFiniteTransportTimeouts() {
+        FTPClient client = FtpClientFactory.create();
+
+        assertEquals(client.getConnectTimeout(), FtpClientFactory.CONNECT_TIMEOUT_MILLIS);
+        assertEquals(client.getDefaultTimeout(), FtpClientFactory.CONTROL_TIMEOUT_MILLIS);
+        assertEquals(client.getDataTimeout().toMillis(), (long) FtpClientFactory.DATA_TIMEOUT_MILLIS);
+    }
+
 }
