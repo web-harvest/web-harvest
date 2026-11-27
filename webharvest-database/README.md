@@ -62,6 +62,7 @@ This does not change the default 44 Core mappings. The registration API is delib
 | `database` | `driver`, `url` | inline mode | JDBC driver class and URL; both required together |
 | `database` | `username`, `password` | inline mode | Optional JDBC credentials |
 | `database` | `sql` | optional | SQL statement; alternatively provide element body |
+| `database` | `queryTimeout` | optional, default `0` | JDBC statement timeout in seconds; positive values call `PreparedStatement.setQueryTimeout()`, while `0` leaves the driver default unchanged |
 
 ## Runtime behavior and limits
 
@@ -69,6 +70,8 @@ This does not change the default 44 Core mappings. The registration API is delib
 - `StandaloneConnectionPool` reuses a single connection for a given driver/URL/username within its factory and releases it at session completion, failure, or cancellation. It is not a configurable multi-connection pool and is not thread-safe.
 - The legacy `poolSize` attribute is accepted but has no effect. Do not rely on it for concurrency or throughput control.
 - SELECT results are returned as `<results><row>...</row></results>`; text values are XML-escaped. Non-query statements return `Rows affected: N`.
+- `queryTimeout` is an opt-in JDBC statement timeout measured in seconds. Omitted, blank, or `0` values do not call the driver timeout API. Positive integer values are applied before statement execution. Negative or non-integer values are rejected.
+- Driver cancellation through `Statement.cancel()` is best-effort. It does not guarantee transaction rollback or undo a mutating statement already accepted by the database. A driver that ignores cancellation may keep the execution resource quarantined until the operation actually exits.
 - This module's tests use H2 only as a test-scoped embedded JDBC fixture. H2 is not a runtime dependency.
 
 ## Build and test
