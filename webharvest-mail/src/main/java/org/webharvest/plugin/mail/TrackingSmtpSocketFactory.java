@@ -44,8 +44,8 @@ final class TrackingSmtpSocketFactory extends SocketFactory {
     @Override
     public Socket createSocket(String host, int port, InetAddress localAddress, int localPort)
             throws IOException {
-        return createAndConnect(new InetSocketAddress(host, port),
-            new InetSocketAddress(localAddress, localPort));
+        InetSocketAddress local = localAddress == null ? null : new InetSocketAddress(localAddress, localPort);
+        return createAndConnect(new InetSocketAddress(host, port), local);
     }
 
     @Override
@@ -56,8 +56,8 @@ final class TrackingSmtpSocketFactory extends SocketFactory {
     @Override
     public Socket createSocket(InetAddress address, int port, InetAddress localAddress, int localPort)
             throws IOException {
-        return createAndConnect(new InetSocketAddress(address, port),
-            new InetSocketAddress(localAddress, localPort));
+        InetSocketAddress local = localAddress == null ? null : new InetSocketAddress(localAddress, localPort);
+        return createAndConnect(new InetSocketAddress(address, port), local);
     }
 
     private Socket createAndConnect(InetSocketAddress remoteAddress,
