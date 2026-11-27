@@ -661,6 +661,78 @@ jobs:
               raise SystemExit(f"IDE has {ide_jetty['unmapped_class_count']} unmapped Jetty classes")
           print("Validated exact CLI/IDE archive hashes, complete CLI/IDE Jetty class attribution, 12 CLI upstream module/license records and byte-identical Jetty 12.1.15 NOTICE preservation in both shaded archives.")
           PY
+      - name: Validate and scan shaded CLI/IDE CycloneDX BOMs
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          results="target/shaded-provenance/osv-results"
+          reports="target/shaded-provenance/reports"
+          mkdir -p "${results}"
+
+          # Pin the official CycloneDX CLI release asset and verify its immutable digest.
+          cyclonedx_cli="${RUNNER_TEMP}/cyclonedx"
+          curl --fail --silent --show-error --location \
+            "https://github.com/CycloneDX/cyclonedx-cli/releases/download/v0.33.1/cyclonedx-linux-x64" \
+            --output "${cyclonedx_cli}"
+          echo "bfc8b2538da86fe239bc53658bbb63c1c8c510a293c1e6891aa5bea5d3c58746  ${cyclonedx_cli}" | sha256sum --check
+          chmod +x "${cyclonedx_cli}"
+          "${cyclonedx_cli}" --version
+
+          # Keep project-specific fail-closed structure/PURL checks in addition to the official schema validator.
+          python3 -m unittest discover -s tools/ci -p 'test_osv_sbom.py' -v
+          for distribution in cli ide; do
+            bom="${reports}/${distribution}-distribution-bom.json"
+            python3 tools/ci/osv_sbom.py validate-sbom "${bom}"
+            "${cyclonedx_cli}" validate \
+              --input-file "${bom}" \
+              --input-format json \
+              --input-version v1_6 \
+              --fail-on-errors
+          done
+
+          printf '%s\n' \
+            "CycloneDX CLI v0.33.1" \
+            "CycloneDX CLI linux-x64 SHA-256: bfc8b2538da86fe239bc53658bbb63c1c8c510a293c1e6891aa5bea5d3c58746" \
+            "OSV-Scanner image: ghcr.io/google/osv-scanner@sha256:a70ffffc2bfd33482953e5d6b64c6fcdb30239717a07b0f0d3ab2859ce3e4cde" \
+            > "${results}/toolchain.txt"
+
+          osv_image="ghcr.io/google/osv-scanner@sha256:a70ffffc2bfd33482953e5d6b64c6fcdb30239717a07b0f0d3ab2859ce3e4cde"
+          docker pull "${osv_image}"
+
+          scan_sbom() {
+            local label="$1"
+            local sbom="$2"
+            local output="${results}/${label}.json"
+            local log="${results}/${label}.stderr.log"
+            local scan_input="${sbom%.json}.cdx.json"
+            local status
+
+            # OSV-Scanner v2 auto-detects CycloneDX by the *.cdx.json filename.
+            cp "${sbom}" "${scan_input}"
+            set +e
+            local sbom_dir
+            sbom_dir="$(cd "$(dirname "${sbom}")" && pwd)"
+            docker run --rm \
+              --volume "${sbom_dir}:/sbom:ro" \
+              "${osv_image}" \
+              scan source --format=json --all-packages --lockfile="/sbom/$(basename "${scan_input}")" \
+              > "${output}" 2> "${log}"
+            status=$?
+            set -e
+
+            printf '%s\n' "${status}" > "${output}.exit-code"
+            python3 tools/ci/osv_sbom.py validate-scan "${output}" \
+              --exit-code "${status}" --sbom "${sbom}"
+
+            if [[ "${status}" -ne 0 ]]; then
+              echo "::error::OSV found vulnerabilities in the shaded ${label} distribution BOM."
+              return 1
+            fi
+          }
+
+          scan_sbom cli "${reports}/cli-distribution-bom.json"
+          scan_sbom ide "${reports}/ide-distribution-bom.json"
       - name: Upload Maven diagnostics
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

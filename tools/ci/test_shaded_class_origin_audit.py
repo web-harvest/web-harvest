@@ -27,16 +27,20 @@ def maven_properties(group: str, artifact: str, version: str) -> bytes:
 
 
 class ShadedClassOriginAuditTests(unittest.TestCase):
-    def run_audit(self, root: Path, distribution: str = "ide") -> dict:
+    def run_audit(self, root: Path, distribution: str = "ide",
+                  maven_repository: Path | None = None) -> dict:
         archive = root / "distribution.jar"
         output = root / "report.json"
-        subprocess.run([
+        command = [
             sys.executable, str(SCRIPT),
             "--archive", str(archive),
             "--dependency-dir", str(root / "dependencies"),
             "--distribution", distribution,
             "--output", str(output),
-        ], check=True, capture_output=True, text=True)
+        ]
+        if maven_repository is not None:
+            command.extend(["--maven-repository", str(maven_repository)])
+        subprocess.run(command, check=True, capture_output=True, text=True)
         return json.loads(output.read_text(encoding="utf-8"))
 
     def test_exact_byte_match_and_metadata_only_coordinate_are_distinct(self):
@@ -62,6 +66,42 @@ class ShadedClassOriginAuditTests(unittest.TestCase):
             self.assertEqual(exact["unique_exact_byte_match_count"], 1)
             metadata = next(x for x in report["components"] if x["coordinate"] == "example:metadata-only:1.0:jar")
             self.assertTrue(metadata["metadata_only_or_unmatched"])
+
+    def test_resolved_parent_pom_license_is_recorded_with_full_hash_chain(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            repository = root / "m2"
+            child = repository / "example" / "child" / "1.0" / "child-1.0.pom"
+            parent = repository / "example" / "parent" / "2.0" / "parent-2.0.pom"
+            child.parent.mkdir(parents=True)
+            parent.parent.mkdir(parents=True)
+            child.write_text(
+                "<project><parent><groupId>example</groupId><artifactId>parent</artifactId>"
+                "<version>2.0</version></parent><artifactId>child</artifactId></project>",
+                encoding="utf-8",
+            )
+            parent.write_text(
+                "<project><licenses><license><name>Apache-2.0</name></license></licenses></project>",
+                encoding="utf-8",
+            )
+            write_jar(root / "distribution.jar", {"com/example/Type.class": b"same"})
+            write_jar(root / "dependencies/example/child/1.0/child-1.0.jar", {
+                "com/example/Type.class": b"same",
+            })
+            report = self.run_audit(root, maven_repository=repository)
+            component = next(
+                x for x in report["components"]
+                if x["coordinate"] == "example:child:1.0:jar"
+            )
+            evidence = component["resolved_maven_pom_license_evidence"]
+            self.assertEqual(len(evidence), 1)
+            self.assertEqual(evidence[0]["licenses"], ["Apache-2.0"])
+            self.assertIn("parent POM chain", evidence[0]["evidence_scope"])
+            self.assertEqual(
+                [x["coordinate"] for x in evidence[0]["inheritance_chain"]],
+                ["example:child:1.0:pom", "example:parent:2.0:pom"],
+            )
+            self.assertTrue(all(len(x["pom_sha256"]) == 64 for x in evidence[0]["inheritance_chain"]))
 
     def test_unique_path_with_different_bytes_is_not_an_exact_match(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -184,6 +224,34 @@ class ShadedClassOriginAuditTests(unittest.TestCase):
             component = next(x for x in report["components"]
                              if x["coordinate"] == "example:library:1.0:dom:jar")
             self.assertEqual(component["dependency_class_count"], 1)
+
+    def test_resolved_maven_repository_pom_license_is_preserved_when_jar_has_no_embedded_pom(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            write_jar(root / "distribution.jar", {
+                "com/example/Library.class": b"same-class-bytes",
+            })
+            write_jar(root / "dependencies/example/library/1.0/library-1.0.jar", {
+                "com/example/Library.class": b"same-class-bytes",
+            })
+            repository = root / "maven-repository"
+            pom = repository / "example/library/1.0/library-1.0.pom"
+            pom.parent.mkdir(parents=True, exist_ok=True)
+            pom.write_text(
+                "<project><licenses><license><name>Example License</name>"
+                "<url>https://example.invalid/license</url></license></licenses></project>",
+                encoding="utf-8",
+            )
+            report = self.run_audit(root, maven_repository=repository)
+            component = next(x for x in report["components"]
+                             if x["coordinate"] == "example:library:1.0:jar")
+            evidence = component["resolved_maven_pom_license_evidence"]
+            self.assertEqual(len(evidence), 1)
+            self.assertEqual(evidence[0]["licenses"], ["Example License"])
+            self.assertEqual(evidence[0]["pom_path"], "example/library/1.0/library-1.0.pom")
+            self.assertEqual(len(evidence[0]["pom_sha256"]), 64)
+            self.assertIn("direct license declarations", evidence[0]["evidence_scope"])
+            self.assertNotIn("parent POM chain", evidence[0]["evidence_scope"])
 
 
 if __name__ == "__main__":

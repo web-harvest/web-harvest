@@ -19,6 +19,15 @@ class DistributionSbomTests(unittest.TestCase):
             provenance = {
                 "distribution": "cli",
                 "archive": {"file": "webharvest-cli.jar", "sha256": "a" * 64},
+                "legal_resources": [
+                    {"archive_entry": "META-INF/LICENSE", "sha256": "f" * 64, "size_bytes": 128},
+                    {"archive_entry": "META-INF/NOTICE", "sha256": "1" * 64, "size_bytes": 64},
+                ],
+                "jetty_notice_audit": {
+                    "content_level_reconciliation": "open",
+                    "upstream_notice_source": "https://example.invalid/jetty/NOTICE.txt",
+                    "upstream_notice_git_blob_sha": "2" * 40,
+                },
                 "components": [
                     {
                         "group": "example", "name": "metadata-only", "version": "1.0",
@@ -57,12 +66,21 @@ class DistributionSbomTests(unittest.TestCase):
                         "matched_archive_class_count": 1,
                         "unmatched_dependency_class_count": 0,
                         "metadata_only_or_unmatched": False,
-                        "dependency_jar_pom_license_evidence": [{
+                        "resolved_maven_pom_license_evidence": [{
                             "dependency_jar": "example/byte-match/2.0/byte-match-2.0.jar",
                             "dependency_jar_sha256": "c" * 64,
-                            "pom_entry": "META-INF/maven/example/byte-match/pom.xml",
+                            "pom_path": "example/byte-match/2.0/byte-match-2.0.pom",
                             "pom_sha256": "d" * 64,
                             "licenses": ["MIT"],
+                            "evidence_scope": "license declarations in the resolved Maven parent POM chain; the source POM and every traversed parent POM are SHA-256 recorded",
+                            "inheritance_chain": [
+                                {"coordinate": "example:byte-match:2.0:pom",
+                                 "pom_path": "example/byte-match/2.0/byte-match-2.0.pom",
+                                 "pom_sha256": "d" * 64},
+                                {"coordinate": "example:parent:1.0:pom",
+                                 "pom_path": "example/parent/1.0/parent-1.0.pom",
+                                 "pom_sha256": "e" * 64},
+                            ],
                         }],
                     },
                     {
@@ -112,6 +130,27 @@ class DistributionSbomTests(unittest.TestCase):
             ])
             self.assertEqual(by_name["byte-match"]["hashes"][0]["content"], "c" * 64)
             self.assertEqual(by_name["byte-match"]["licenses"], [{"license": {"name": "MIT"}}])
+            self.assertEqual(
+                next(x["value"] for x in by_name["byte-match"]["properties"]
+                     if x["name"].endswith("license-source")),
+                "resolved_maven_repository_parent_pom_chain",
+            )
+            self.assertIn(
+                "example/byte-match/2.0/byte-match-2.0.pom",
+                [x["value"] for x in by_name["byte-match"]["properties"]
+                 if x["name"].endswith("resolved-maven-pom-source:0")],
+            )
+            chain_properties = {
+                item["name"]: item["value"] for item in by_name["byte-match"]["properties"]
+            }
+            self.assertEqual(
+                chain_properties["webharvest:evidence:resolved-maven-pom-chain:0:1:coordinate"],
+                "example:parent:1.0:pom",
+            )
+            self.assertEqual(
+                chain_properties["webharvest:evidence:resolved-maven-pom-chain:0:1:sha256"],
+                "e" * 64,
+            )
             self.assertEqual(by_name["classified"]["purl"],
                              "pkg:maven/example/classified@1.0?classifier=dom&type=jar")
             self.assertEqual(by_name["classified"]["scope"], "optional")
@@ -143,6 +182,20 @@ class DistributionSbomTests(unittest.TestCase):
             self.assertEqual(bom["metadata"]["component"]["hashes"][0]["content"], "a" * 64)
             self.assertEqual(bom["metadata"]["component"]["purl"],
                              "pkg:maven/org.webharvest/webharvest-cli@2.3.1?type=jar")
+            root_properties = {
+                item["name"]: item["value"]
+                for item in bom["metadata"]["component"]["properties"]
+            }
+            self.assertEqual(root_properties["webharvest:evidence:legal-resource-count"], "2")
+            self.assertEqual(root_properties["webharvest:evidence:legal-resource:0:archive-entry"],
+                             "META-INF/LICENSE")
+            self.assertEqual(root_properties["webharvest:evidence:legal-resource:0:sha256"], "f" * 64)
+            self.assertEqual(root_properties["webharvest:evidence:jetty-notice-content-reconciliation"],
+                             "open")
+            self.assertEqual(root_properties["webharvest:evidence:jetty-upstream-notice-git-blob-sha"],
+                             "2" * 40)
+            self.assertEqual(delta["legal_resources"][1]["archive_entry"], "META-INF/NOTICE")
+            self.assertEqual(delta["jetty_notice_audit"]["content_level_reconciliation"], "open")
             self.assertTrue(out.exists())
             self.assertTrue(delta_out.exists())
 

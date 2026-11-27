@@ -70,10 +70,77 @@ def embedded_pom_license_names(data: bytes) -> list[str]:
     return licenses
 
 
-def inspect_dependency_jar(path: Path, root: Path) -> dict:
+def pom_parent_coordinates(data: bytes) -> tuple[str, str, str] | None:
+    try:
+        root = ET.fromstring(data)
+    except ET.ParseError:
+        return None
+    parent = next((node for node in root if node.tag.rsplit("}", 1)[-1] == "parent"), None)
+    if parent is None:
+        return None
+
+    def child_text(node: ET.Element, name: str) -> str | None:
+        child = next((item for item in node if item.tag.rsplit("}", 1)[-1] == name), None)
+        return child.text.strip() if child is not None and child.text else None
+
+    group = child_text(parent, "groupId")
+    artifact = child_text(parent, "artifactId")
+    version = child_text(parent, "version")
+    if not group or not artifact or not version or "$" in (group + artifact + version):
+        return None
+    return group, artifact, version
+
+
+def resolved_maven_pom(path: Path, root: Path, repository: Path) -> dict | None:
+    coordinate = coordinates_from_repository_path(path, root)
+    if not coordinate:
+        return None
+    parts = coordinate.split(":")
+    if len(parts) not in (4, 5):
+        return None
+    group, artifact, version = parts[:3]
+    current = (group, artifact, version)
+    visited: set[tuple[str, str, str]] = set()
+    chain: list[dict[str, str]] = []
+
+    while current and current not in visited:
+        visited.add(current)
+        group_id, artifact_id, version_id = current
+        pom_path = repository / group_id.replace(".", "/") / artifact_id / version_id / f"{artifact_id}-{version_id}.pom"
+        if not pom_path.is_file():
+            return None
+        payload = pom_path.read_bytes()
+        chain.append({
+            "coordinate": f"{group_id}:{artifact_id}:{version_id}:pom",
+            "pom_path": pom_path.relative_to(repository).as_posix(),
+            "pom_sha256": sha256(payload),
+        })
+        licenses = embedded_pom_license_names(payload)
+        if licenses:
+            source = chain[-1]
+            inherited = len(chain) > 1
+            return {
+                "pom_path": source["pom_path"],
+                "pom_sha256": source["pom_sha256"],
+                "licenses": licenses,
+                "evidence_scope": (
+                    "license declarations in the resolved Maven parent POM chain; "
+                    "the source POM and every traversed parent POM are SHA-256 recorded"
+                    if inherited else
+                    "direct license declarations in the resolved Maven repository POM"
+                ),
+                "inheritance_chain": chain,
+            }
+        current = pom_parent_coordinates(payload)
+
+    return None
+
+
+def inspect_dependency_jar(path: Path, root: Path, maven_repository: Path) -> dict:
     digest = sha256(path.read_bytes())
     embedded_coordinates: set[str] = set()
     embedded_pom_license_evidence = []
+    resolved_pom_license_evidence = resolved_maven_pom(path, root, maven_repository)
     classes: dict[str, str] = {}
     with zipfile.ZipFile(path) as jar:
         names = sorted(set(jar.namelist()))
@@ -106,6 +173,7 @@ def inspect_dependency_jar(path: Path, root: Path) -> dict:
         "path_coordinate": path_coordinate,
         "embedded_coordinates": coordinates,
         "embedded_pom_license_evidence": embedded_pom_license_evidence,
+        "resolved_maven_pom_license_evidence": resolved_pom_license_evidence,
         "class_count": len(classes),
         "classes": classes,
     }
@@ -131,9 +199,11 @@ def archive_coordinates(archive: zipfile.ZipFile) -> set[str]:
     return found
 
 
-def audit(archive_path: Path, dependency_dir: Path, distribution: str) -> dict:
+def audit(archive_path: Path, dependency_dir: Path, distribution: str,
+         maven_repository: Path | None = None) -> dict:
+    maven_repository = maven_repository or (Path.home() / ".m2" / "repository")
     dependencies = [
-        inspect_dependency_jar(path, dependency_dir)
+        inspect_dependency_jar(path, dependency_dir, maven_repository)
         for path in sorted(dependency_dir.rglob("*.jar"))
         if path.is_file()
     ]
@@ -150,6 +220,7 @@ def audit(archive_path: Path, dependency_dir: Path, distribution: str) -> dict:
             "dependency_jars": [],
             "dependency_jar_sha256": [],
             "dependency_jar_pom_license_evidence": [],
+            "resolved_maven_pom_license_evidence": [],
             "dependency_class_count": 0,
             "matched_archive_class_count": 0,
             "unique_exact_byte_match_count": 0,
@@ -166,6 +237,13 @@ def audit(archive_path: Path, dependency_dir: Path, distribution: str) -> dict:
                     "dependency_jar_sha256": dependency["sha256"],
                     **pom_evidence,
                 })
+        resolved_pom = dependency.get("resolved_maven_pom_license_evidence")
+        if resolved_pom:
+            component["resolved_maven_pom_license_evidence"].append({
+                "dependency_jar": dependency["path"],
+                "dependency_jar_sha256": dependency["sha256"],
+                **resolved_pom,
+            })
         component["dependency_class_count"] += dependency["class_count"]
         for class_path, class_sha in dependency["classes"].items():
             dependency_class_paths[coordinate].add(class_path)
@@ -260,6 +338,7 @@ def audit(archive_path: Path, dependency_dir: Path, distribution: str) -> dict:
                 "dependency_jars": [],
                 "dependency_jar_sha256": [],
                 "dependency_jar_pom_license_evidence": [],
+                "resolved_maven_pom_license_evidence": [],
                 "dependency_class_count": 0,
                 "matched_archive_class_count": 0,
                 "unique_exact_byte_match_count": 0,
@@ -336,9 +415,11 @@ def main() -> int:
     parser.add_argument("--archive", required=True, type=Path)
     parser.add_argument("--dependency-dir", required=True, type=Path)
     parser.add_argument("--distribution", required=True, choices=("cli", "ide"))
+    parser.add_argument("--maven-repository", type=Path,
+                        default=Path.home() / ".m2" / "repository")
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
-    report = audit(args.archive, args.dependency_dir, args.distribution)
+    report = audit(args.archive, args.dependency_dir, args.distribution, args.maven_repository)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(
