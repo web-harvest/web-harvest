@@ -175,3 +175,47 @@ Do not infer that existing `p:` and `v:` XML namespaces already provide the full
 - Defining a public configuration file syntax before existing XML/configuration semantics are inventoried.
 
 This document defines design requirements only. Production implementation requires a completed source inventory, reviewed contracts and focused migration tests.
+
+
+## 9. Current implementation baseline — source findings (2026-11-27)
+
+This is an initial source characterization, not a complete call-site inventory or a claim that the target model exists.
+
+### 9.1 Plugin configuration is currently string-based and mutable
+
+- `PluginConfiguration` exposes property values as `String` and also exposes mutable child configuration through `setChildren()`.
+- `DefaultPluginConfiguration` stores properties in a mutable `HashMap<String, String>`; it supports `setProperty`, `removeProperty` and `clear`.
+- Its `getAllProperties()` and `getProperties()` return copies, and its children getter returns an unmodifiable list, but the configuration object itself remains mutable.
+- `DefaultPluginConfiguration.toString()` includes the complete properties map. If a sensitive value is ever stored there, routine diagnostic/string conversion can expose it.
+- `PluginConfigurationSchema.AttributeDefinition` already describes basic types (STRING, INTEGER, LONG, DOUBLE, BOOLEAN, ENUM, URL, FILE_PATH, REGEX), requiredness, defaults, allowed values and numeric/pattern constraints. However, the current configuration value API remains string-oriented; a schema type does not itself provide a typed, secret-safe runtime value.
+
+The future design should distinguish immutable validated configuration from mutable XML/parse builders. A secret reference must not be represented as a plaintext string and then passed through the current `toString()` behavior.
+
+### 9.2 Runtime variables are a separate execution mechanism
+
+- `DynamicScopeContext` exposes runtime variable reads/writes, replacement, existence checks and nested-context execution.
+- `ScraperContext` maintains a central name-to-stack table and a stack of scope frames. Nested execution pushes a frame, records newly created/overridden variables and restores them in a `finally` block.
+- `DefPlugin` and `SetVarPlugin` write execution variables; `set-var` remains a historical XML mapping. These values are dynamic execution data, not a global parameter context.
+- The `<config>` plugin documentation calls top-level variables global because they are visible to child processors. That visibility is still within the execution context; it is not a host/application-wide reusable Parameter Context.
+
+The new design must preserve these runtime semantics independently of global parameter binding.
+
+### 9.3 Secret logging risk must be resolved before secret support
+
+The current `BaseTemplater` implementation logs both the input template source and the evaluated result at DEBUG level. Since template evaluation can resolve runtime variables, a credential interpolated into a URL, header or body can appear in the evaluated result log. The current `DefaultPluginConfiguration.toString()` also prints all property values.
+
+These are concrete source-level exposure paths. They do not prove that every deployment enables DEBUG logging, but they make it unsafe to assume that secret values can be passed through the current string/template/configuration path without additional controls.
+
+Before enabling secret references in plugin configuration or runtime expressions:
+
+- redact or remove sensitive template source/result logging;
+- provide sensitivity metadata that survives parameter binding and expression evaluation;
+- ensure `toString()`, exception messages, debug dumps and diagnostics are redacted by default;
+- avoid materializing secret values into general-purpose runtime variables unless an explicit, reviewed capability requires it;
+- add tests that place sentinel secret values through configuration, interpolation, exceptions and logging and assert that the sentinel never appears.
+
+### 9.4 Existing XML namespace conventions are not a Parameter Context implementation
+
+Historical `p:*` and `v:*` namespace-family attributes appear in `ElementInfo` metadata and must be characterized for XML compatibility. They must not be assumed to provide the required global parameter-context ownership, revisioning, binding, access control or secret-provider semantics.
+
+The source inventory must trace their actual parser/runtime consumers before any mapping to the new parameter model is proposed.
