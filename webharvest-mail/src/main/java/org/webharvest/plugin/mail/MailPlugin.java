@@ -391,6 +391,9 @@ public class MailPlugin extends AbstractPlugin {
             
             return new NodeVariable("Email sent successfully. Message ID: " + messageId);
             
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            throw interrupted;
         } catch (EmailException e) {
             LOGGER.error("Failed to send email", e);
             throw new RuntimeException("Failed to send email: " + e.getMessage(), e);
