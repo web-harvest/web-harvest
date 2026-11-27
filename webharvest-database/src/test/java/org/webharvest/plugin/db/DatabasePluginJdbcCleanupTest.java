@@ -181,10 +181,11 @@ public class DatabasePluginJdbcCleanupTest {
 
     private static Object invokeExecuteSql(Connection connection, String sql) throws Throwable {
         Method method = DatabasePlugin.class.getDeclaredMethod(
-            "executeSql", Connection.class, String.class);
+            "executeSql", Connection.class, String.class, int.class,
+            org.webharvest.runtime.resource.ExecutionResourceAccess.class);
         method.setAccessible(true);
         try {
-            return method.invoke(new DatabasePlugin(), connection, sql);
+            return method.invoke(new DatabasePlugin(), connection, sql, 0, null);
         } catch (InvocationTargetException failure) {
             throw failure.getCause();
         }
