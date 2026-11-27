@@ -266,6 +266,40 @@ The null/empty audit also needs to distinguish the predicates used by individual
 
 **IMPLICATION —** Do not globally redefine `isEmpty()`, route every consumer through `toBoolean()`, or normalize all empty results at the body-executor boundary as part of numeric-conversion cleanup. First specify separate contracts for payload emptiness, missing binding, DSL truthiness, loop filtering, child-result aggregation and function return normalization.
 
+### 3.2.3 Compatibility matrix: value states at API and DSL boundaries
+
+This matrix records current behavior separately from the proposed direction. It is a characterization and migration input, **not an approved breaking-change contract**.
+
+| Input / state | Current representation or boundary behavior | Current numeric conversion / consumer behavior | Compatibility implication |
+|---|---|---|---|
+| Undefined context binding | `ScraperContext.getVar(name)` returns Java `null`; `containsVar(name)` is implemented as `getVar(name) != null`. | There is no Variable instance to convert. `<get var="..."/>` throws when lookup returns null. | Preserve “not bound” as distinct from a defined empty value. A future Optional API must not silently turn undefined into numeric zero. |
+| Java null passed to context setter | `setLocalVar(String, Variable)` stores `EmptyVariable.INSTANCE`; the Object overload also routes through `CommonUtil.createVariable(null)`. | `EmptyVariable` wraps an empty String, so `toInt()/toLong()/toDouble()` attempt to parse empty text and throw `NumberFormatException`. | Context setter null is not represented as `NodeVariable(null)`; overload selection and direct construction matter. |
+| Direct `new NodeVariable(null)` | Retains a null wrapped object; `isEmpty()` is true; `toString()` is empty. Passing this Variable overload to `setLocalVar` retains that NodeVariable instance. | The three numeric methods return zero because their null-wrapped-object branch is explicit. | This is the specific silent-null-to-zero path. Replacing it with strict conversion is behavior-breaking for direct Java API consumers. |
+| Empty String via `CommonUtil.createVariable("")` | Normalized to `EmptyVariable.INSTANCE`. | Numeric conversions parse empty text and throw. | Factory normalization makes the same conceptual “empty” value behave differently from direct `NodeVariable(null)` for numeric conversion. |
+| Direct `new NodeVariable("")` | Retains a String-backed NodeVariable; `isEmpty()` is true. | Numeric conversions parse empty text and throw. | Do not assume every empty NodeVariable was normalized by the factory. |
+| Whitespace-only String | Factory retains it as NodeVariable because factory checks zero-length String, not trimmed emptiness. `NodeVariable.isEmpty()` is false. | Numeric conversion trims first; whitespace-only input then throws. Loop `empty="true"` does not filter it. | Whitespace is present text at the value boundary, even if a particular parser rejects it. |
+| Empty `byte[]` | Factory retains it as NodeVariable; `NodeVariable.isEmpty()` is false. | `toString()` is empty, while binary payload length is zero. | String emptiness cannot stand in for binary payload emptiness. |
+| Empty `Object[]` / empty Collection | Factory creates an empty `ListVariable`; its `isEmpty()` is true. Direct `NodeVariable(new Object[0])` is not empty by `NodeVariable.isEmpty()`. | List conversion/normalization depends on whether the value is represented as ListVariable or NodeVariable-wrapped collection. | Factory and direct-constructor paths are observably different. |
+| Numeric zero | A present Number or numeric text remains a value. | Numeric conversion returns zero; Optional conversion must therefore distinguish present zero from absent/empty. | Never use numeric zero as the representation of absence. |
+| Boolean false / true | Boolean remains a typed wrapped object unless normalized elsewhere. | Numeric conversion maps false/true to 0/1. | Preserve Boolean coercion if introducing strict/optional APIs; do not silently replace it with text-only parsing. |
+| Malformed non-empty numeric text | Remains a non-empty NodeVariable. | Numeric conversion throws the relevant JDK parse exception. | A defaulting API should not swallow malformed input unless explicitly named/documented as a lenient parse. |
+
+**FACT —** The two `ScraperContext.setLocalVar` overloads are not equivalent for every input. The Object overload always invokes `CommonUtil.createVariable`; the Variable overload stores the supplied Variable, except Java null is replaced by EmptyVariable. Thus direct `NodeVariable(null)` survives the Variable overload, while passing Java null does not create that representation.
+
+**FACT —** The current `GetVarPluginTest.testGetVarPluginNonExistentVariable` does not execute `GetVarPlugin`. It calls `context.getVar("nonexistent")` directly and accepts either null or empty. The production plugin's `doExecute()` explicitly throws when the lookup is null. The existing test therefore does not characterize the public `<get>` behavior and should not be used as evidence that the plugin returns empty for missing variables.
+
+**TEST GAP —** The inspected `ReturnPluginTest` verifies that the plugin returns EmptyVariable, but does not assert that it stores an explicit empty return value and sets the return flag. The inspected `CallPluginTest` is mostly metadata/configuration and smoke coverage; it does not prove the end-to-end distinction between no `<return>`, `<return/>`, and a non-empty explicit return. These are compatibility-critical because CallPlugin uses the flag to distinguish explicit empty return from absence of an explicit return.
+
+**PROPOSED DIRECTION — NOT YET APPROVED:**
+
+1. Keep binding presence separate from Variable payload state. Do not introduce a numeric sentinel for missing.
+2. Keep the existing conversion methods' behavior during a compatibility phase, or introduce clearly named strict methods rather than silently changing `toInt()/toLong()/toDouble()`.
+3. If Optional conversions are added, empty/missing conversion should be represented as absence, while an actual numeric zero remains present zero. Malformed non-empty values should still report conversion failure.
+4. Add explicit defaulting methods only when their contract says whether the default applies to absent/empty values, malformed values, or both. Prefer separate method names for strict parse versus lenient fallback.
+5. Do not introduce `NullVariable` solely to fix numeric conversion. It is justified only if public contracts must preserve distinctions currently collapsed by `CommonUtil.createVariable()` or context setters (for example, Java null versus empty String). That decision needs a separate compatibility analysis.
+
+**REMAINING UNKNOWN —** The repository tests characterize several implementation details but do not establish the downstream Java/API and external XML consumer population relying on zero-for-null, factory normalization, missing-`<get>` failure, or explicit empty function returns. No downstream compatibility claim can be made from this repository-only evidence.
+
 ### 3.3 Optional integration modules
 
 The bounded source scan also inspected the in-tree Database, FTP, Mail, WebBrowser and ZIP module implementations. These are optional modules, not evidence that the same capabilities belong in Core.
