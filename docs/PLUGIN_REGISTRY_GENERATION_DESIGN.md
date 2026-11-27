@@ -26,6 +26,7 @@ Inspection of `main` found multiple competing mechanisms with different responsi
 
 | Mechanism | Current behavior | Architectural classification |
 |---|---|---|
+| `ElementsRegistry` / `ElementsRegistryImpl` | Legacy `ElementName -> ElementInfo` metadata registry; no active production registration/lookup call site found in targeted Core source inspection | Orphaned XML metadata infrastructure; retire after repository-wide and external-usage audit, do not treat as executable dispatch |
 | `CorePluginRegistry` | Process-wide singleton mapping XML element names to plugin classes; mutable map; `clear()` | **Actual XML dispatch registry today** |
 | `CorePluginsRegistrar` | Static synchronized registration into `CorePluginRegistry.getInstance()`; one static `initialized` flag; invoked from `ScraperModule.configure()` | Global bootstrap mutator, not a runtime-owned publication |
 | `PluginPackageScanner` | Opt-in package scanner that also mutates a supplied `CorePluginRegistry`; not wired by default `ScraperModule` | Optional registration path into the same global dispatch registry, not an independent publication lifecycle |
