@@ -83,7 +83,7 @@ Preserve legacy XML compatibility—including the `<set-var>` alias—unless an 
 - **Third-party plugins:** independently maintained artifacts built against published Core APIs.
 - **IDE:** human-facing Control Plane client consuming Core semantic/runtime contracts; separate product distribution from Core.
 - **CLI:** one headless Data Plane interface for execution/automation, consuming Core; separate product distribution from Core and IDE.
-- **Official Packs/Kits:** curated compatible groupings of extension artifacts, with explicit manifests/compatibility metadata; pack composition does not erase individual extension artifact boundaries.
+- **Technical distribution profiles / extension bundles:** curated compatible groupings of extension Modules/artifacts, with explicit manifests and compatibility metadata. These are installation/delivery units, not functional Packs or scenario Kits.
 
 The public Plugin Author Guide describes the target experience. Existing `Plugin` / `AbstractPlugin` classes and registration mechanisms are evidence to inspect, not proof that a stable independent SPI is already published.
 
@@ -140,23 +140,23 @@ The website repository must not become a Maven reactor peer or a second source o
 - [Canonical roadmap issue](https://github.com/web-harvest/web-harvest/issues/1)
 
 
-## 10. Product-surface and pack policy — 2026-11-23
+## 10. Product-surface and distribution policy — 2026-11-23
 
 The maintainer has clarified the target product roles:
 
 - **Core** is the embeddable semantic execution runtime. The format-independent model, polymorphic capability contracts and controlled dynamic loading are the basis for agent-composed configurations, including future runtime-time configuration changes. This is a target; safe live reconfiguration and the complete public semantic/SPI contract are not claimed as implemented.
 - **IDE** is intended to become the human-facing Control Plane: understand, design, inspect, configure, supervise and observe Core execution. It remains a client and must not become the owner of workflow semantics or plugin identity.
 - **CLI** is one headless Data Plane interface for scripts, pipelines, automation and integrations. Other programmatic/API or agent-facing interfaces may also expose Data Plane capabilities. CLI is a separate distribution, not a parallel human control plane.
-- **Official extensions** should be curated into compatible Packs/Kits. Packs group independently identifiable extension artifacts and carry compatibility/dependency metadata; they need not be monolithic JARs.
+- **Official extensions** may be curated into technical distribution profiles or extension bundles. Each Module and Plugin retains its own identity and lifecycle. These groupings do not define functional Packs or scenario Kits.
 
 ### Current dependency fact
 
 The current CLI POM directly depends on Core and all five extension modules. Therefore its current shaded distribution includes Database, FTP, Mail, WebBrowser and ZIP. The POM-level inspection found each extension module directly depends on Core and no direct dependency between the five extension modules. This is evidence from declared Maven dependencies only; it does not prove the absence of reflection, descriptor, resource or transitive runtime coupling.
 
-### Candidate kit taxonomy — proposal only
+### Candidate technical distribution profiles — proposal only
 
 - Data Integration Kit: Database, FTP, Mail.
 - Web Automation Kit: WebBrowser.
 - ZIP/Archive capability: candidate standalone pack or shared capability within broader kits.
 
-Do not create/publish packs until workflows, registration/discovery, runtime footprint, security/trust and compatibility are verified. Retain monorepo until the existing extraction gates pass. CLI and IDE repository extraction are separate later decisions; separate product distributions do not require separate repositories.
+Do not create/publish distribution profiles until workflows, registration/discovery, runtime footprint, security/trust and compatibility are verified. Functional Pack and Kit definitions are governed by [Cross-Application Semantic and Functional Architecture](CROSS_APPLICATION_SEMANTIC_ARCHITECTURE.md). Retain monorepo until the existing extraction gates pass. CLI and IDE repository extraction are separate later decisions; separate product distributions do not require separate repositories.
