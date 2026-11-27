@@ -4,11 +4,11 @@
  */
 package org.webharvest.plugin.mail;
 
-import org.webharvest.runtime.DynamicScopeContext;
-import org.webharvest.runtime.resource.ExecutionResourceAccess;
-
 import java.io.IOException;
 import java.util.UUID;
+
+import org.webharvest.runtime.DynamicScopeContext;
+import org.webharvest.runtime.resource.ExecutionResourceAccess;
 
 /**
  * Binds one SMTP socket factory to the lifetime of a single mail send.
