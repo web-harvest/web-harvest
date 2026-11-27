@@ -198,7 +198,7 @@ The following order distinguishes release obligations from the longer-term platf
 | **P2 — semantic execution proof** | Demonstrate one end-to-end adaptive data operation | Load a saved definition; acquire from at least two materially different source categories; parse/validate/transform; deliver to a destination; encounter a condition; propose and validate a bounded route change; finish, evaluate, save and reload. First prove with a deterministic planner and without LLM/MCP/IDE/Guice dependencies. | [#342](https://github.com/web-harvest/web-harvest/issues/342) |
 | **P2 — agent adaptation** | Add policy-constrained runtime-time adaptation | Add agent/planner adapters only after the deterministic proposal/validation/apply path is stable. Preserve immutable generations, safe points, audit/replay and resource ownership. | [#342](https://github.com/web-harvest/web-harvest/issues/342) |
 | **P3 — portable DSL and adapters** | Persist and reuse semantic definitions | Define DSL only after semantic contracts; prove XML and DSL converge on the same model. Add optional MCP, CLI and IDE adapters without making any one of them mandatory. | [#342](https://github.com/web-harvest/web-harvest/issues/342) |
-| **P3 — ecosystem and distribution** | Curate optional capability sets | Establish compatibility metadata and optional Packs/Kits after SPI and out-of-tree proof. Keep individual plugin identities and avoid premature repository splits. | [#342](https://github.com/web-harvest/web-harvest/issues/342), [MONOREPO.md](MONOREPO.md) |
+| **P3 — ecosystem and distribution** | Curate optional capability sets | Establish compatibility metadata and curated technical distribution profiles/extension bundles after SPI and out-of-tree proof. Keep individual Module and Plugin identities; do not overload functional Pack/Kit terminology or split repositories prematurely. | [#342](https://github.com/web-harvest/web-harvest/issues/342), [MONOREPO.md](MONOREPO.md) |
 
 ### Immediate next sequence
 
@@ -430,7 +430,7 @@ The cross-application meanings of **Pack** and **Kit** are defined separately in
 - Keep the current monorepo. Repository extraction is governed by the objective gates in [MONOREPO.md](MONOREPO.md).
 - Keep Core as the independently consumable library contract.
 - Distribute IDE and CLI separately from the Core library and from each other. A coordinated version number may be used initially, but artifact scope and release decisions must be explicit.
-- Keep extension-level artifact boundaries; compose official extensions into Packs/Kits above those artifacts.
+- Keep extension-level artifact boundaries; compose selected extensions into technical distribution profiles above those artifacts. Functional Packs and scenario Kits remain separate concepts.
 - Do not publish every Maven reactor module merely because it exists in the reactor.
 - Do not infer Central bundle membership from reactor membership or from the current CLI's shaded dependency graph.
 
