@@ -89,6 +89,17 @@ Exception classes are not counted as user-facing plugin implementations.
 
 **Membership review direction (2026-11-27):** FTP and Mail are outside Core and should be delivered as opt-in integrations. Their current `@CorePlugin` annotations are not product-boundary decisions. WebBrowser remains deliberately unresolved; evaluate whether browser automation is a generally required platform capability or an integration with optional HtmlUnit dependency and independently managed browser/client lifecycle. Until that review is complete, do not classify it as Core or auto-activate it by classpath scanning.
 
+### Current descriptor and dependency-contract findings (2026-11-27)
+
+- `@CorePlugin` exposes one `elementName` and one namespace. `PluginMetadata` also exposes one namespace/element-name pair. Neither is sufficient to describe multiple XML aliases for one executable plugin as an explicit first-class binding set.
+- `PluginMetadata` has a `String[] getDependencies()`, but this is not a module dependency manifest. The inspected FTP, Mail and WebBrowser metadata implementations all return an empty array while reporting `isCorePlugin() == true`; their Maven POMs independently declare third-party dependencies.
+- `PluginMetadataCatalog.collectDependencies()` combines metadata dependencies with `PluginConfigurationSchema.getRequiredParents()` and semantic required-parent types. This projects XML nesting constraints into the same `dependencies` list, conflating grammar constraints with dependency resolution.
+- `PluginClassScanner` filters on `@CorePlugin` and its fallback class list includes optional modules. `PluginPackageScanner` uses the same annotation as its opt-in discovery filter. Neither scanner represents product membership or an explicit host activation decision.
+- `PluginMetadataCatalog` loads discovered classes with `Class.forName(className)` and constructs plugin instances to read metadata. It is a metadata projection with reflective class initialization/instantiation, not a side-effect-free module manifest or runtime generation.
+- `DefaultPluginFactory` uses a mutable legacy `PluginRegistry` as its class lookup path, then reflectively creates a fresh instance. Its fallback metadata is inferred from the Java class name and supplies no declared module/capability requirements.
+
+These findings support a clean separation between module requirements, runtime capability requirements, plugin-composition dependencies, XML content constraints, and Maven/package dependencies. Do not repair the ambiguity by merely renaming the existing `dependencies` field.
+
 ## 3. Discovery and metadata discrepancies
 
 [PluginClassScanner.java](https://github.com/web-harvest/web-harvest/blob/main/webharvest-core/src/main/java/org/webharvest/plugin/metadata/PluginClassScanner.java) declares six scan roots: Core, FTP, mail, database, ZIP and webbrowser. Its fallback list contains 53 class names: 43 Core-package names and 10 optional-module names.
