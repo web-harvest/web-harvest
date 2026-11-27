@@ -219,3 +219,12 @@ Before enabling secret references in plugin configuration or runtime expressions
 Historical `p:*` and `v:*` namespace-family attributes appear in `ElementInfo` metadata and must be characterized for XML compatibility. They must not be assumed to provide the required global parameter-context ownership, revisioning, binding, access control or secret-provider semantics.
 
 The source inventory must trace their actual parser/runtime consumers before any mapping to the new parameter model is proposed.
+
+
+## 10. XML parameter/variable namespace boundary — current parser does not preserve it (2026-11-27)
+
+Core declares distinct XML namespace URIs for parameter attributes (`WHConstants.XMLNS_PARAM`) and variable attributes (`WHConstants.XMLNS_VAR`). The legacy `ElementInfo` vocabulary recognizes `p:*` and `v:*` as separate allowed namespace families.
+
+However, `StreamingXmlParser.extractAttributes()` currently stores only SAX `getLocalName()` and value in a `Map<String,String>`; it discards the attribute namespace URI and qualified name. Consequently, the current `PluginConfiguration` representation cannot distinguish a parameter attribute from a variable attribute when they share a local name, and a same-local-name collision can overwrite one value.
+
+This is a concrete compatibility and configuration-model boundary. The future model must preserve an expanded attribute identity and represent parameter/variable references as typed values before flattening or interpolation. Do not assume the existing parser already provides a working global parameter context merely because the old namespace constants and `ElementInfo` markers exist.
