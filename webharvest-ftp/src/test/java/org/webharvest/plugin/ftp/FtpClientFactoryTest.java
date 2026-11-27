@@ -13,6 +13,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertTrue;
 
@@ -53,10 +54,6 @@ public class FtpClientFactoryTest {
             mock(ExecutionResourceAccess.OperationResource.class);
         ExecutionResourceAccess.Lease lease = mock(ExecutionResourceAccess.Lease.class);
         when(context.getResourceAccess()).thenReturn(access);
-        when(access.registerOperationResource(anyString(),
-                org.mockito.ArgumentMatchers.any(ExecutionResourceAccess.AbortAction.class),
-                org.mockito.ArgumentMatchers.any(ExecutionResourceAccess.CloseAction.class)))
-            .thenReturn(resource);
         when(resource.acquire()).thenReturn(lease);
 
         ArgumentCaptor<ExecutionResourceAccess.AbortAction> abort =
