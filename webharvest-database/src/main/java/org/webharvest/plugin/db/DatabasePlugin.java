@@ -451,10 +451,6 @@ public class DatabasePlugin extends AbstractPlugin {
         return primary;
     }
 
-    private Variable executeSql(Connection connection, String sql) throws SQLException {
-        return executeSql(connection, sql, 0, null);
-    }
-
     private Variable executeSql(Connection connection, String sql, int queryTimeoutSeconds,
                                  ExecutionResourceAccess resourceAccess) throws SQLException {
         PreparedStatement statement = null;
