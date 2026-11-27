@@ -979,7 +979,7 @@ The inspected discovery and registry paths are not unload-safe:
 - The scanner registers `Class` objects into the process-wide `CorePluginRegistry` singleton. That registry retains implementation classes with no module ownership or retirement operation.
 - `DefaultPluginFactory` caches constructors keyed by `Class`, which also retains the defining loader while entries remain.
 - `PluginMetadataCatalog` is a static catalog assembled by classpath scanning and reflective instantiation. It is a metadata projection, not a generation-scoped loader or executable registry.
-- `Plugin.cleanup()` is an instance lifecycle callback. It is not a module shutdown callback and does not by itself establish that every instance, thread, event listener, static resource or classloader owned by a module has been released.
+- `Plugin.cleanup()` is documented as an unload callback, but `AbstractPlugin.execute()` calls `doCleanup()` in its per-execution `finally` block, while `AbstractPlugin.cleanup()` calls `doCleanup()` again when initialized and then resets initialization state. This is an instance-level lifecycle with potentially surprising repeated cleanup semantics, not a module shutdown callback; it does not establish that every instance, thread, event listener, static resource or classloader owned by a module has been released.
 - `RegistryGenerationId` is only a value object. It does not publish generations, pin them to executions, track active users, or retire provider/classloader resources.
 
 **Required runtime semantics:**
