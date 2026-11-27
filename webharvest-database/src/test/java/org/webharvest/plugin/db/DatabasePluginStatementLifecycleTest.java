@@ -38,7 +38,9 @@ public class DatabasePluginStatementLifecycleTest {
         Connection connection = mock(Connection.class);
         PreparedStatement statement = mock(PreparedStatement.class);
         CountDownLatch executeStarted = new CountDownLatch(1);
+        CountDownLatch cancelStarted = new CountDownLatch(1);
         CountDownLatch cancelled = new CountDownLatch(1);
+        CountDownLatch releaseCancel = new CountDownLatch(1);
         when(connection.prepareStatement(anyString())).thenReturn(statement);
         when(statement.executeUpdate()).thenAnswer(invocation -> {
             executeStarted.countDown();
@@ -48,12 +50,16 @@ public class DatabasePluginStatementLifecycleTest {
             throw new SQLException("Statement cancelled");
         });
         doAnswer(invocation -> {
+            cancelStarted.countDown();
             cancelled.countDown();
+            if (!releaseCancel.await(5, TimeUnit.SECONDS)) {
+                throw new SQLException("Test did not release the simulated slow cancel callback");
+            }
             return null;
         }).when(statement).cancel();
 
-        TrackingResourceAccess access = new TrackingResourceAccess(statement);
-        ExecutorService executor = Executors.newSingleThreadExecutor();
+        TrackingResourceAccess access = new TrackingResourceAccess();
+        ExecutorService executor = Executors.newFixedThreadPool(2);
         try {
             Future<Throwable> execution = executor.submit(() -> {
                 try {
@@ -66,8 +72,23 @@ public class DatabasePluginStatementLifecycleTest {
 
             assertTrue(executeStarted.await(3, TimeUnit.SECONDS),
                 "The statement must enter executeUpdate before cancellation");
-            access.abort();
+            Future<?> abort = executor.submit(() -> {
+                try {
+                    access.abort();
+                } catch (Exception failure) {
+                    throw new IllegalStateException(failure);
+                }
+            });
+            assertTrue(cancelStarted.await(3, TimeUnit.SECONDS),
+                "The asynchronous owner abort callback must enter Statement.cancel()");
+            assertTrue(access.operationCloseRequested.await(3, TimeUnit.SECONDS),
+                "The worker must request operation close after releasing its statement lease");
+            assertTrue(!execution.isDone(),
+                "The connection-owning worker must wait while the abort callback is still active");
+            org.mockito.Mockito.verify(statement, org.mockito.Mockito.never()).close();
 
+            releaseCancel.countDown();
+            abort.get(3, TimeUnit.SECONDS);
             Throwable failure = execution.get(5, TimeUnit.SECONDS);
             assertNotNull(failure, "A cancelled SQL operation must fail");
             assertTrue(failure instanceof SQLException,
@@ -78,6 +99,7 @@ public class DatabasePluginStatementLifecycleTest {
             assertTrue(access.leaseCloseOrder.get() < access.operationCloseOrder.get(),
                 "Final statement close must happen after its active operation lease is released");
         } finally {
+            releaseCancel.countDown();
             executor.shutdownNow();
             executor.awaitTermination(3, TimeUnit.SECONDS);
         }
@@ -170,9 +192,11 @@ public class DatabasePluginStatementLifecycleTest {
                 @Override public Throwable getAbortFailure() { return null; }
                 @Override public Throwable getCloseFailure() { return closeFailure; }
                 @Override public void close() {
+                    operationCloseRequested.countDown();
                     if (!leaseReleased.get()) {
                         throw new IllegalStateException("Cannot close a statement with an active lease");
                     }
+                    awaitAbortCompletion();
                     try {
                         close.close();
                         state = ResourceState.CLOSED;
@@ -193,7 +217,26 @@ public class DatabasePluginStatementLifecycleTest {
             if (action == null) {
                 throw new IllegalStateException("Statement abort action has not been registered");
             }
-            action.abort();
+            try {
+                action.abort();
+            } finally {
+                abortCompleted.countDown();
+            }
+        }
+
+        private void awaitAbortCompletion() {
+            boolean interrupted = false;
+            while (true) {
+                try {
+                    abortCompleted.await();
+                    break;
+                } catch (InterruptedException interruption) {
+                    interrupted = true;
+                }
+            }
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+            }
         }
     }
 }
