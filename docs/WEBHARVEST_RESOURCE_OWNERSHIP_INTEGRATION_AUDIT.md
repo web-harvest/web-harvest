@@ -113,6 +113,7 @@ The ledger is a strong foundation, but the following points need explicit design
 - **No ledger-level shutdown/drain-all operation:** the public API has registration-level `drainAndClose()`, `size()` and generation-pin operations, but no public snapshot of registrations or runtime-wide `shutdown()/drainAll()`. The integration must define who retains each Registration token and how runtime shutdown drains every resource, including resources whose plugin/provider owner has disappeared.
 - **Diagnostics surface:** outstanding leases and close/abort failures are visible through each Registration/DrainResult, but the ledger has no public aggregate diagnostic snapshot. The host needs a way to report all quarantined/failed resources without exposing mutable internal entries.
 - **Registration-token discipline:** `Registration.close()` retires only an already-CLOSED entry. Providers must retain the token until drain succeeds; losing the token can leave an entry retained, which is safer than premature close but needs host-level diagnostics/recovery.
+- **Close-failure recovery:** `drainAndClose()` returns immediately for `CLOSE_FAILED`; there is no retry/reset transition for the same registration. This may be intentional fail-safe behavior, but the host needs an explicit manual recovery/replacement policy rather than assuming a second drain retries the close.
 
 These are review questions, not evidence that the tested ledger state machine is incorrect.
 
