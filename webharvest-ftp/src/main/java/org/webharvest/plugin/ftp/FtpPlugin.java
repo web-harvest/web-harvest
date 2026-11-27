@@ -340,9 +340,8 @@ public class FtpPlugin extends AbstractPlugin {
         
         LOGGER.debug("FTP Plugin - Host: {}, Port: {}, Username: {}, Action: {}", host + ":" + port + " " + username + " " + action);
         
-        FTPClient ftpClient = FtpClientFactory.create();
-        
-        try {
+        try (FtpClientResource ftpResource = FtpClientResource.open(context)) {
+            FTPClient ftpClient = ftpResource.getClient();
             // Connect to FTP server
             ftpClient.connect(host, port);
             int replyCode = ftpClient.getReplyCode();
@@ -379,15 +378,6 @@ public class FtpPlugin extends AbstractPlugin {
         } catch (Exception e) {
             LOGGER.error("Unexpected error in FTP plugin", e);
             throw new RuntimeException("Unexpected error in FTP plugin: " + e.getMessage(), e);
-        } finally {
-            try {
-                if (ftpClient.isConnected()) {
-                    ftpClient.logout();
-                    ftpClient.disconnect();
-                }
-            } catch (IOException e) {
-                LOGGER.warn("Error closing FTP connection", e);
-            }
         }
     }
 

@@ -150,6 +150,38 @@ List files in FTP directory.
 </ftp>
 ```
 
+
+## Execution lifecycle and transport timeouts
+
+Each FTP plugin invocation owns a separate Commons Net client. In service-managed
+executions the client is registered as an operation-scoped resource before the
+first network call, and the operation holds a resource lease through connection,
+authentication and transfer/list processing.
+
+When the owning execution is cancelled, the abort callback closes the active
+control socket and every data socket opened by that client. Final cleanup runs
+after the operation lease drains; it attempts both `logout()` and
+`disconnect()`, even when logout fails. Legacy contexts without execution
+resource access continue to use local cleanup.
+
+The current transport bounds are finite and intentionally conservative:
+
+| Timeout | Default |
+|---------|---------|
+| Connect timeout | 10 seconds |
+| Control-channel read timeout | 30 seconds |
+| Data-channel read timeout | 30 seconds |
+
+These defaults replace the previous unbounded socket waits. They are currently
+module defaults rather than per-plugin attributes; unusually slow servers may
+require a future configuration surface.
+
+Disconnecting an FTP client is not rollback. A cancelled download may have
+produced partial local data, and an upload or remote mutation may have been
+partially or fully applied before the connection was lost. The runtime must
+not infer that an interrupted FTP mutation is safe to retry without remote
+state reconciliation or an idempotent transfer protocol.
+
 ## Supported FTP Servers
 
 - **Pure-FTPd**
