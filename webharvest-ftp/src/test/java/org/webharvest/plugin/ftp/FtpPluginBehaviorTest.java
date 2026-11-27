@@ -122,6 +122,42 @@ public class FtpPluginBehaviorTest {
     }
 
     @Test
+    public void containerPutPropagatesInterruptedBodyExecution() throws Exception {
+        InterruptedException interruption = new InterruptedException("container body interrupted");
+        FtpPlugin plugin = new InterruptingBodyFtpPlugin(interruption);
+        plugin.initialize(configuration(
+                containerProperties("put", "/data/interrupted-container.txt", PASSWORD, true), "ftp"));
+
+        try {
+            plugin.execute(context);
+            fail("Expected the nested body interruption to propagate");
+        } catch (InterruptedException actual) {
+            assertTrue(actual == interruption, "The original interruption must be preserved");
+            assertTrue(Thread.currentThread().isInterrupted(), "The interrupt flag must be restored");
+        } finally {
+            Thread.interrupted();
+        }
+    }
+
+    @Test
+    public void standalonePutPropagatesInterruptedBodyExecution() throws Exception {
+        InterruptedException interruption = new InterruptedException("standalone body interrupted");
+        FtpPutPlugin plugin = new InterruptingBodyFtpPutPlugin(interruption);
+        plugin.initialize(configuration(standaloneProperties("/data/interrupted-standalone.txt", PASSWORD),
+                "ftp-put"));
+
+        try {
+            plugin.execute(context);
+            fail("Expected the nested body interruption to propagate");
+        } catch (InterruptedException actual) {
+            assertTrue(actual == interruption, "The original interruption must be preserved");
+            assertTrue(Thread.currentThread().isInterrupted(), "The interrupt flag must be restored");
+        } finally {
+            Thread.interrupted();
+        }
+    }
+
+    @Test
     public void containerListReturnsRemoteNames() throws Exception {
         Variable result = executeContainer("list", "/data", PASSWORD, true, null);
 
@@ -540,6 +576,32 @@ public class FtpPluginBehaviorTest {
             current = current.getCause();
         }
         return messages.toString();
+    }
+
+    private static final class InterruptingBodyFtpPlugin extends FtpPlugin {
+        private final InterruptedException interruption;
+
+        private InterruptingBodyFtpPlugin(InterruptedException interruption) {
+            this.interruption = interruption;
+        }
+
+        @Override
+        protected Variable executeBody(DynamicScopeContext context) throws InterruptedException {
+            throw interruption;
+        }
+    }
+
+    private static final class InterruptingBodyFtpPutPlugin extends FtpPutPlugin {
+        private final InterruptedException interruption;
+
+        private InterruptingBodyFtpPutPlugin(InterruptedException interruption) {
+            this.interruption = interruption;
+        }
+
+        @Override
+        protected Variable executeBody(DynamicScopeContext context) throws InterruptedException {
+            throw interruption;
+        }
     }
 
     private static final class BodyFtpPlugin extends FtpPlugin {
