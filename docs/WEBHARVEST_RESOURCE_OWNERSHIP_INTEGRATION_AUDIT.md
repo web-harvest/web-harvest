@@ -133,6 +133,14 @@ The production ResourceLedger source path and its dedicated test path exist, but
 
 **INFERENCE —** ResourceLedger currently behaves as a tested runtime utility without a built-in runtime owner or plugin/provider integration contract. It cannot yet protect actual plugin resources merely by existing in Core.
 
+### 4.1 Shared HTTP client lifetime
+
+**FACT —** `webharvest-core/src/main/java/org/webharvest/ioc/ScraperModule.java` binds `HttpService` to `HttpServiceImpl` in Guice `Singleton` scope.
+
+**FACT —** `HttpServiceImpl` implements `AutoCloseable`; its `close()` closes the underlying Apache `CloseableHttpClient`. The `HttpService` interface itself does not extend `AutoCloseable` or expose a close operation.
+
+**UNKNOWN —** The inspected `ScraperModule` and `WebHarvestServiceImpl` paths do not show an explicit owner invoking `HttpServiceImpl.close()`. The actual injector lifetime and any external host shutdown hook must be traced before calling this a leak. It is nevertheless a shared runtime resource whose owner and close boundary need to be explicit in the integration design.
+
 ## 5. Cancellation ordering hazard: database pool
 
 **FACT —** `ScraperSessionImpl.cancel()`
