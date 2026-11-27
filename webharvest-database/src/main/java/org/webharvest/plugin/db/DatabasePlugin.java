@@ -589,9 +589,6 @@ public class DatabasePlugin extends AbstractPlugin {
     }
 
     private void awaitStatementClose(CountDownLatch completed) {
-        if (completed == null) {
-            return;
-        }
         boolean interrupted = false;
         while (true) {
             try {
