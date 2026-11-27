@@ -38,7 +38,7 @@ optional plugin modules ──────▶ webharvest-core
 webharvest-core ──────────────X optional modules / IDE
 ```
 
-Core owns the stable semantic and capability contracts. Clients and extensions consume those contracts. There must be no reverse dependency from Core to an optional integration, client UI, source vendor or destination technology. **Current-state caveat:** `webharvest-core` still declares a Guice dependency and contains historical XML-shaped runtime paths. Container neutrality and the final format-independent semantic model are targets; do not describe them as achieved until dependency and call-site evidence proves it.
+Core provides stable, domain-neutral runtime and Capability contracts. Shared cross-application domain semantics remain in independently governed, versioned contracts; Core is not the authority for every application's domain vocabulary. Clients and extensions consume the applicable contracts. There must be no reverse dependency from Core to an optional integration, client UI, source vendor or destination technology. **Current-state caveat:** `webharvest-core` still declares a Guice dependency and contains historical XML-shaped runtime paths. Container neutrality and the final format-independent semantic model are targets; do not describe them as achieved until dependency and call-site evidence proves it.
 
 ## 3.1 Product capability boundary
 
@@ -58,7 +58,7 @@ These are target capability families. Existing modules are not yet a complete im
 
 The Core contract must be usable through explicit/manual Java composition, an embedding host, or an optional IoC adapter. Guice is a current implementation dependency, not an architectural requirement. Keep framework/runtime lifecycle, execution lifecycle and composition/bootstrap adapters separate. An IoC container shutdown must not be treated as proof that active executions, workers or resources have quiesced.
 
-Java API composition, XML compatibility, future DSL authoring, CLI, IDE, deterministic planners, agent integrations and optional MCP adapters must converge on the same Core semantic and capability contracts. None is the owner of the platform's semantic truth.
+Java API composition, XML compatibility, future DSL authoring, CLI, IDE, deterministic planners, agent integrations and optional MCP adapters must converge on the same runtime contracts and applicable shared semantic contracts. None of these surfaces is the owner of semantic truth.
 
 ## 4. Plugin classification policy
 
