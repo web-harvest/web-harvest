@@ -656,7 +656,7 @@ This confirms that `CorePluginRegistry` is the current Core XML dispatch authori
 - The existing `PluginRegistryHolder`, `DefaultPluginRegistry`, `PluginMetadataJsonGenerator`, and `PluginPackageScanner` should be evaluated as standalone/legacy utilities after all external and test consumers are inventoried; this evidence does not authorize deleting them yet.
 - Keep the Core `SemanticModel` inspection API distinct from the IDE's frontend-managed model cache; integrate them deliberately if a unified editor validation pipeline is desired.
 
-### Evidence boundary
+### Evidence boundary — registry call-site inventory
 
 The above is based on direct inspection of the named production classes and related focused tests at this commit. GitHub code search returned no usable indexed matches for the registry symbols, so this is not yet a proven exhaustive all-module call-site inventory. The retirement gate for legacy types, utility APIs, serialized data and external consumers remains open.
 
@@ -680,7 +680,7 @@ A historical source snapshot at commit `92171846a490d92905bf5ca45b41e96f110e85c8
 4. The old `XmlNode` stored attributes as namespace-URI → local-name → value maps, and `DefinitionResolver.validate()` checked the attribute namespace URI. The current `StreamingXmlParser.extractAttributes()` flattens attributes to string keys, so a compatibility adapter must recover expanded-name identity before it can preserve the old behavior.
 5. Add characterization fixtures for at least: an XPath element with one `v:` attribute, multiple `v:` attributes, a same-local-name unqualified/`v:` collision, an unknown `p:` attribute, and a plugin-specific `p:` declaration if one can be recovered. Verify both the parsed semantic representation and the resulting runtime variable scope.
 
-### Evidence boundary
+### Evidence boundary — historical namespace behavior
 
 This is direct historical source evidence for the 2012 built-in XPath behavior and the old grammar validator. It does not establish that all old external plugins or public XML examples used `p:`, nor does it prove that current code still supports the historical behavior. The all-fixture and external-plugin audit remains open.
 
@@ -713,7 +713,7 @@ The IDE frontend has its own XML parser and generator. This path is independent 
 4. Add IDE characterization tests for default namespace, prefixed element namespace, p: and v: attributes, same-local-name attributes from different namespaces, namespace declaration on root vs nested scope, and parse → edit/no-op → generate → parse semantic equality.
 5. Inventory all call sites of XMLParser, XMLGenerator, and SimpleXMLParser before changing or retiring either implementation. The findings here establish implementation behavior, not reachability or external API usage.
 
-### Evidence boundary
+### Evidence boundary — IDE XML parser paths
 
 This section is based on direct inspection of the named frontend sources and focused tests at the PR head. It does not establish that every IDE import/export path uses these classes, nor that the legacy simple parser is still reachable in production. Those call-site and deployment questions remain open.
 
@@ -807,7 +807,7 @@ The repository tree and module sources show three different extension states:
 
 **Conclusion:** optional extension activation is inconsistent and host-specific today. Database and ZIP have explicit singleton-mutating registrars; FTP/Mail/WebBrowser rely on other possible discovery/embedding paths; metadata discovery is a separate classpath scan. The future host composition API must make activation explicit and uniform: a host selects extension modules, supplies dependency-resolution capabilities, and builds one immutable runtime generation. Artifact presence, annotation presence, metadata visibility and runtime executability must be represented as distinct facts.
 
-### Evidence boundary
+### Evidence boundary — optional extension activation
 
 This is based on root and module POMs, the IDE POM, the named registrar classes, `PluginClassScanner`, `PluginMetadataCatalog` and `ScraperModule`. It does not claim that no external embedding application has its own registration code.
 
