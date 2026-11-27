@@ -339,6 +339,26 @@ A deeper trace of the flags used by `CallPlugin` and `ReturnPlugin` found a seco
 **TEST GAP —** Add a characterization case in which an outer function executes `<return>` and a later sibling invokes an inner function that has no explicit return. Assert separately whether the later sibling should execute (control-flow contract) and whether the inner function returns its own last expression (flag isolation). Also test a nested function that does execute its own `<return>`, plus recursive/re-entrant calls. These cases should distinguish body termination from return-value selection.
 
 **SCOPE —** This is a function-scope/control-flow issue, not a numeric-conversion or general Variable emptiness issue. Do not repair it by changing `Variable.isEmpty()` or global body aggregation. The likely contract is per-invocation return state, but the exact mechanism should be selected only after the characterization tests establish legacy expectations.
+### 3.2.6 Function return is not scraper exit: propagation and event boundaries
+
+**FACT —** `ExitPlugin` posts `ScraperExecutionExitEvent` and throws `ScraperExecutionExitException`. Its documentation explicitly describes `<exit>` as terminating the scraper and distinguishes `<return>` as function-only control flow. `ReturnPlugin` does not throw this exception. Reusing `ScraperExecutionExitException` for `<return>` would therefore conflate function return with whole-scraper termination.
+
+**FACT —** The existing global-exit signal is specially recognized at several layers: `AbstractPlugin.execute()` rethrows it without wrapping it as a plugin failure; `DefaultPluginBodyExecutor` aborts the current body; `CallPlugin` propagates it; `LoopPlugin` and `WhilePlugin` propagate it out of their iteration bodies.
+
+**FACT —** A different exception used as a function-return signal would cross additional boundaries with incompatible default policies:
+
+- `AbstractPlugin.execute()` treats exceptions other than `ScraperExecutionExitException` as plugin failures, publishes `PluginExecutionFailedEvent`, and wraps them in `RuntimeException`.
+- `DefaultPluginBodyExecutor.executeChildrenInternal()` explicitly propagates only `ScraperExecutionExitException` and `InterruptedException`; ordinary exceptions can be logged and swallowed under its best-effort policy.
+- `CallPlugin` explicitly propagates `ScraperExecutionExitException`, but its general exception handler logs the failure and returns `EmptyVariable.INSTANCE`. A function-return signal must instead be consumed at the matching function-call boundary.
+- `LoopPlugin` rethrows runtime exceptions, while `IfPlugin` delegates branch execution to `DefaultPluginBodyExecutor`. The Try/Catch sibling path executes its Try child under a `try/finally` restoration boundary, but the outer body executor still applies its best-effort exception policy.
+
+**INFERENCE —** A correct function-return mechanism must be a distinct, invocation-scoped control-flow outcome. It must propagate through ordinary plugins, If/Loop/While/Try containers, bypass generic plugin-failure classification and best-effort swallowing, and be consumed by the `CallPlugin` invocation that owns it. It must not be reported as a failed plugin or terminate the whole scraper. The current Variable-plus-global-flag design does not provide these properties.
+
+**REQUIRED CHARACTERIZATION TESTS —** In addition to the sibling and nested-call tests in 3.2.4–3.2.5, cover `<return>` inside If, Loop, While and Try/Catch; assert that a sibling Catch is not run for control flow, the loop does not continue, the enclosing function returns to its caller, and the scraper continues after the `<call>`. Assert the event contract separately so a function return is not accidentally published as `PluginExecutionFailedEvent`. Keep `<exit>` tests proving whole-scraper termination unchanged.
+
+**SCOPE —** This is a separate control-flow contract and likely needs a dedicated function-invocation frame or typed return outcome. Do not reuse the global scraper-exit exception without a design proving that it is caught at the correct function boundary and cannot escape to the root runtime.
+
+
 ### 3.3 Optional integration modules
 
 The bounded source scan also inspected the in-tree Database, FTP, Mail, WebBrowser and ZIP module implementations. These are optional modules, not evidence that the same capabilities belong in Core.
