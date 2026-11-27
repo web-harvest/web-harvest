@@ -394,6 +394,21 @@ public class FtpPluginBehaviorTest {
     }
 
     @Test
+    public void standalonePutPropagatesInterruptedBodyExecution() throws Exception {
+        InterruptedBodyFtpPutPlugin plugin = new InterruptedBodyFtpPutPlugin();
+        plugin.initialize(configuration(standaloneProperties("/data/interrupted-upload.txt", PASSWORD), "ftp-put"));
+        try {
+            plugin.execute(context);
+            fail("Expected body interruption to propagate through standalone FTP upload");
+        } catch (InterruptedException expected) {
+            assertTrue(Thread.currentThread().isInterrupted(),
+                    "The standalone FTP upload must restore the interrupt flag");
+        } finally {
+            Thread.interrupted();
+        }
+    }
+
+    @Test
     public void standalonePutUploadsEmptyBody() throws Exception {
         BodyFtpPutPlugin plugin = new BodyFtpPutPlugin("");
         plugin.initialize(configuration(standaloneProperties("/data/empty-upload.txt", PASSWORD), "ftp-put"));
@@ -601,6 +616,13 @@ public class FtpPluginBehaviorTest {
         @Override
         protected Variable executeBody(DynamicScopeContext context) {
             return bodies[nextBody++];
+        }
+    }
+
+    private static final class InterruptedBodyFtpPutPlugin extends FtpPutPlugin {
+        @Override
+        protected Variable executeBody(DynamicScopeContext context) throws InterruptedException {
+            throw new InterruptedException("simulated upload body cancellation");
         }
     }
 
