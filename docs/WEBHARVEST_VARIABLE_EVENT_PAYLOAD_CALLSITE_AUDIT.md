@@ -184,9 +184,9 @@ These tests encode current behavior, not necessarily a desirable semantic contra
 
 This matrix is a test-design requirement, not an approval to change the current API. It should be implemented as characterization tests before any production refactor, including factory, constructor, collection, scripting and optional-module paths.
 
-**REPOSITORY INVENTORY LIMITATION —** The recursive Git tree for the audited `main` snapshot contains 2,123 entries, including 768 Java source/test files across the CLI, Core, Database, FTP, IDE, Mail, WebBrowser, ZIP and docs roots. This establishes the scope of the repository, not a complete symbol scan. GitHub code-search requests for the conversion and factory symbols returned empty/incomplete results. The production-file inspection recorded here remains a bounded source inspection; do not report the call-site inventory as complete until a repository-wide content scan has been run against all relevant source, test, resource and documentation files.
+**REPOSITORY INVENTORY LIMITATION —** The recursive Git tree establishes repository scope, not a complete symbol scan. The follow-up source inventory in section 4.1 fetched 65 targeted Core production Java files and all 49 non-Core module production Java files, plus the docs generator. It still does not scan every Core package, test source, resource, generated file, documentation example or downstream application.
 
-**FACT —** The inspected production files `CommonUtil`, `JSRScriptEngineAdapter`, `ScriptPlugin`, `BaseTemplater`, `IfPlugin`, `CallPlugin`, `WhilePlugin`, `SleepPlugin`, `HttpPlugin`, `FilePlugin`, `LoopPlugin`, `FunctionPlugin`, `CasePlugin`, `XPathPlugin` and `ListPlugin` did not show direct calls to `Variable.toInt()`, `toLong()` or `toDouble()`. This is a representative inspection, not an exhaustive call-site proof. GitHub code-search requests for these symbols returned empty/incomplete results, so they cannot establish absence of other call sites.
+**FACT —** The targeted production-source pass (65 Core boundary/plugin files and 49 non-Core module files) did not reveal direct production calls to `Variable.toInt()`, `toLong()` or `toDouble()` outside the methods themselves. This is bounded evidence, not proof of no call sites in the remaining Core packages, generated code, scripts, reflection paths or downstream applications.
 
 **INFERENCE —** The first correction should be to define a consistent distinction between *no numeric value* and the numeric value zero. It should not be implemented by changing only the three null branches while leaving the factory-normalized EmptyVariable path undocumented.
 
@@ -197,6 +197,14 @@ This matrix is a test-design requirement, not an approval to change the current 
 - Explicit fallback (`toIntOrDefault(defaultValue)`, etc.): use the supplied fallback only for absence/empty content, not for malformed non-empty data. This prevents a default from masking corrupt input.
 
 The current `EmptyVariable`/factory normalization means null and empty String have already been collapsed on the common path. An Optional conversion can therefore represent “no numeric value” for that combined state, but it cannot recover whether the original Java input was null or `""`. If preserving that distinction is a requirement, it needs a separate null/missing representation or a deliberate change to `CommonUtil.createVariable`; that is a broader compatibility decision and is not required merely to stop returning zero.
+
+**DESIGN ASSESSMENT —** The classic Null Object approach is not the right fix if the sentinel makes numeric conversion return zero. That would make absence look like a valid measurement and reproduce the original defect under a different class name. `EmptyVariable` is already a sentinel, but its numeric conversion currently fails rather than manufacturing zero.
+
+- Keep an undefined binding as absence from the context (`getVar(name) == null`); do not materialize it as a numeric zero or a `Variable` sentinel by default.
+- Keep a present numeric zero distinct from no numeric value.
+- Treat empty text, empty collections and empty binary payloads as separate content-shape cases; `isEmpty()` is currently too broad and inconsistent to define numeric absence by itself.
+- Add a dedicated `NullVariable` only if the public contract must preserve explicit Java null separately from empty text after factory/context normalization. If introduced, it must not pretend to be numeric zero.
+- `OptionalInt`/`OptionalLong`/`OptionalDouble` can express the result of a conversion, but they are not a replacement for the underlying value-state model. Invalid non-empty data should remain a conversion error, not become `Optional.empty()` or a fallback.
 
 **COMPATIBILITY GATE —** Before changing existing methods, obtain a complete in-repository call-site inventory (including optional modules, tests, scripts, IDE and public API examples), identify downstream embedding use where possible, and characterize direct constructors versus factory/list normalization. Existing callers may rely on the current zero fallback even though no direct production call was found in the bounded sample. Do not silently change Boolean-to-number conversion, Number narrowing/truncation, overflow, whitespace parsing or exception behavior as part of this null-semantics correction.
 
