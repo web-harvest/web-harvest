@@ -748,3 +748,34 @@ Further inspection resolves part of the reachability question from section 24:
 ### Updated classification
 
 SimpleXMLParser is not safely classifiable as dead code: it is directly loaded by index-unified.html and used by unified-app.js, and index-old.html loads app.js which calls it. Keep the implementation and its users in the migration inventory until deployment routing and supported entrypoints are confirmed. The parser's namespace-lossy behavior applies to those legacy UI paths as well.
+
+
+## 27. IDE metadata endpoint has a catalog-to-runtime fallback, not a unified descriptor source
+
+Direct inspection of `webharvest-ide/src/main/java/org/webharvest/server/api/PluginMetadataServlet.java` confirms:
+
+- `GET /api/plugins/metadata` first calls `PluginMetadataCatalog` and obtains its descriptors/schema version/catalog schema.
+- If catalog construction or projection throws, the servlet catches the exception and falls back to `getPluginMetadataFromRegistry()`, using `CorePluginRegistry` and a hard-coded schema version `2.2.0`.
+- The successful catalog path and fallback registry path are therefore two distinct metadata projections with different schema provenance. The fallback can make the endpoint return HTTP 200 while silently presenting a reduced/different plugin set after a catalog failure.
+- The frontend `PluginManager` fetches this endpoint and normalizes its result through `PluginNormalizer` / `SchemaMapper`. That frontend normalization is downstream of the servlet's source selection; it does not unify the underlying authorities.
+
+**Target requirement:** the future immutable runtime generation should be the single published source for executable plugin descriptors and XML dialect descriptors. IDE metadata should be a deterministic projection of that generation. If a projection fails, surface an explicit degraded/error state with diagnostics; do not silently substitute a second registry with potentially different contents. If backward-compatible fallback must remain temporarily, expose its provenance and degraded status in the response and test the mismatch cases.
+
+## 28. CI status at PR head 23dcb9d is blocked by Maven Central HTTP 429, not source/test failures
+
+The workflow runs associated with `23dcb9d66dec3cfeec37554b211e06a3dd47c18f` completed as follows:
+
+| Workflow | Result | Evidence |
+|---|---|---|
+| Verify GitHub Actions dependency lockfile | success | Run 46005929266 |
+| Documentation Module CI | success | Run 46005929480 |
+| OSV Scanner PR Scan | failure before SBOM generation | Run 46005929397 |
+| Java 17 Reactor Static Analysis | failure before reactor modules executed | Run 46005929331 |
+
+The two failed jobs were inspected from their job logs:
+
+- OSV's base-revision SBOM step could not resolve `org.cyclonedx:cyclonedx-maven-plugin:2.9.3` from Maven Central; the repository returned HTTP 429 Too Many Requests. The head SBOM, scanner comparison and vulnerability delta steps were skipped. This run establishes no new or existing vulnerability result for this PR head.
+- The Java 17 reactor job could not resolve `org.apache.maven.plugins:maven-pmd-plugin:3.21.2`, also because Maven Central returned HTTP 429. The reactor stopped at the root project before Core or any other module ran; no test, PMD, SpotBugs, Javadoc or packaging result was produced by this run.
+- The diagnostics artifact confirms the CLI/IDE package audits had no built JARs because the reactor never reached packaging; those missing artifacts are consequences of the dependency-resolution failure, not independent packaging findings.
+
+**Status interpretation:** lockfile and documentation checks are green. OSV vulnerability comparison and Java 17 reactor verification remain **unverified**, not passed and not source-failed. Retry these workflows when Maven Central rate limiting has subsided; do not weaken the gates or interpret the fail-closed OSV comparison as a vulnerability finding.
