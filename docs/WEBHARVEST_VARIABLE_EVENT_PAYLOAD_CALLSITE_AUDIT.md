@@ -175,10 +175,16 @@ These tests encode current behavior, not necessarily a desirable semantic contra
 | `list.addVariable(null)` | Retains one EmptyVariable member; list itself reports empty. | Align or explicitly document this behavior against iterable construction. |
 | One-element numeric ListVariable | Inherited numeric conversion parses its joined string and succeeds. | Preserve only if list-to-scalar conversion is an intentional public contract. |
 | Multi-element numeric ListVariable | Joined text contains delimiters/newlines and ordinarily fails scalar parsing. | Specify scalar conversion behavior for collections; do not infer first/last/sum. |
+| Undefined context binding | `ScraperContext.getVar(name)` returns Java `null`. | Keep missing binding distinct from a defined empty Variable. |
+| Defined binding assigned Java null | Context stores `EmptyVariable.INSTANCE`; subsequent `getVar(name)` is non-null. | Characterize this separately from an undefined binding. |
+| SetVar arithmetic with malformed/missing operand | Current addition/subtraction path substitutes zero; tests assert this. | Review as a DSL compatibility decision; do not inherit behavior accidentally from Variable conversions. |
+| Numeric-looking String copied to JSR-223 | Adapter attempts Integer/Double conversion before exposing the binding to the script engine. | Preserve/alter only through an explicit scripting-boundary contract. |
 | Malformed non-empty text | JDK parsing exception. | Preserve distinction between invalid data and absent data. |
 | Boolean and Number inputs | Boolean maps to 1/0; Number uses Java narrowing/conversion semantics. | Treat as separate compatibility decisions; do not change as collateral cleanup. |
 
 This matrix is a test-design requirement, not an approval to change the current API. It should be implemented as characterization tests before any production refactor, including factory, constructor, collection, scripting and optional-module paths.
+
+**REPOSITORY INVENTORY LIMITATION —** The recursive Git tree for the audited `main` snapshot contains 2,123 entries, including 768 Java source/test files across the CLI, Core, Database, FTP, IDE, Mail, WebBrowser, ZIP and docs roots. This establishes the scope of the repository, not a complete symbol scan. GitHub code-search requests for the conversion and factory symbols returned empty/incomplete results. The production-file inspection recorded here remains a bounded source inspection; do not report the call-site inventory as complete until a repository-wide content scan has been run against all relevant source, test, resource and documentation files.
 
 **FACT —** The inspected production files `CommonUtil`, `JSRScriptEngineAdapter`, `ScriptPlugin`, `BaseTemplater`, `IfPlugin`, `CallPlugin`, `WhilePlugin`, `SleepPlugin`, `HttpPlugin`, `FilePlugin`, `LoopPlugin`, `FunctionPlugin`, `CasePlugin`, `XPathPlugin` and `ListPlugin` did not show direct calls to `Variable.toInt()`, `toLong()` or `toDouble()`. This is a representative inspection, not an exhaustive call-site proof. GitHub code-search requests for these symbols returned empty/incomplete results, so they cannot establish absence of other call sites.
 
