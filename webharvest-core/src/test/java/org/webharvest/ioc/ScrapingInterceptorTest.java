@@ -3,14 +3,14 @@ package org.webharvest.ioc;
 import static org.mockito.Mockito.*;
 import static org.testng.Assert.*;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 import org.aopalliance.intercept.MethodInvocation;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.webharvest.Harvester;
 import org.webharvest.ScrapingAware;
 import org.webharvest.runtime.DynamicScopeContext;
-
-import java.util.concurrent.atomic.AtomicInteger;
 
 import com.google.inject.Guice;
 import com.google.inject.Injector;
