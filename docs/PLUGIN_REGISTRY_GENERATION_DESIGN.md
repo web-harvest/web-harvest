@@ -622,3 +622,41 @@ Do not choose a canonical registry by renaming or merging one of these classes i
 
 This section records direct source behavior, not a conclusion that every mechanism is actively used by the same runtime or that any one of the secondary mechanisms is safe to delete. The full all-module call-site and external integration audit remains open.
 
+## 21. Runtime authority versus catalog, utility and inspection paths — call-site characterization (2026-11-27)
+
+The source inspection now distinguishes the production execution path from several adjacent facilities that have registry-like names but do not currently own execution dispatch.
+
+### Confirmed runtime execution path
+
+1. `ScraperModule.configure()` calls `CorePluginsRegistrar.registerCorePlugins()` during Guice module configuration.
+2. `CorePluginsRegistrar` populates the singleton `CorePluginRegistry` with the fixed 44 Core XML element-name mappings, including the explicit `set-var` compatibility alias.
+3. `StreamingXmlParser` produces `PluginConfigurationTree` / plugin configuration values; it does not resolve plugin classes through the old `ElementsRegistry`.
+4. `DefaultPluginBodyExecutor.createChildPlugin()` looks up `childConfig.getElementName()` in `CorePluginRegistry`, then creates the plugin through the active Guice injector when available, otherwise via reflection, and initializes it.
+5. The inspected `RootConfigurationExecutor` delegates children to this body executor. No `DefaultPluginFactory` or `PluginRegistryHolder` dependency is present in this execution path.
+
+This confirms that `CorePluginRegistry` is the current Core XML dispatch authority in the inspected default runtime path. It is still local-name-only and does not provide the target generation/factory/schema contract.
+
+### Adjacent facilities and their observed boundaries
+
+| Facility | Observed call path / purpose | What it does not establish |
+|---|---|---|
+| `PluginRegistryHolder` + `DefaultPluginRegistry` | `PluginMetadataJsonGenerator.generate()` obtains the singleton registry. Its `main()` is a standalone metadata JSON generation entry point. The registry independently scans Core classes and instantiates plugin objects. | Not the active Core XML execution dispatch registry in the inspected runtime path. |
+| `DefaultPluginFactory` | Explicitly constructed with a `PluginRegistry`; it creates instances from classes or IDs and initializes supplied configuration. Its tests exercise the factory. | No integration with `DefaultPluginBodyExecutor` was found in the inspected runtime classes. Do not treat it as the runtime's current universal factory. |
+| `PluginPackageScanner` | Explicitly constructed with a `CorePluginRegistry`; scans supplied packages or the `webharvest.plugin.packages` system property and registers annotated classes into the Core map. Its direct observed call is in scanner tests. | It is not called by `ScraperModule` in the inspected startup path. The default 44 mapping registration remains the explicit registrar. External/embedding callers remain possible. |
+| `PluginClassScanner` + `PluginMetadataCatalog` | Catalog class discovery scans Core and optional module packages, instantiates classes to derive metadata, and creates descriptors. `PluginDescriptorIndex.fromCatalog()` consumes that catalog. | Catalog presence is not runtime dispatch registration. Optional module descriptors can exist without a matching Core registry mapping. |
+| `PluginDescriptorIndex` + `SemanticModel` | The read-only Core semantic inspection API lazily builds an index from the catalog; structural validation checks descriptor semantics and separately probes Core registry availability by local name. | This is not the XML execution parser or plugin factory. It currently reports runtime availability using a local-name-only probe. |
+| `VisualSemanticModelServlet` / WebSocket handler | The IDE endpoint serves a frontend-pushed, cached JSON model. The inspected handler updates this cache. | It does not instantiate the Core `SemanticModel` or call `PluginDescriptorIndex` in the inspected endpoint path. Do not conflate the two "semantic model" names. |
+
+### Consequences for registry unification
+
+- Keep one runtime registration authority, but do not make metadata catalog discovery a side-effect of runtime registration.
+- Make the runtime authority publish an immutable generation that includes executable factory bindings and XML dialect descriptors. Catalog, IDE palette, semantic inspection and compatibility adapters should be projections over that generation.
+- Optional extension discovery must be an explicit host/runtime composition step. A class being on the classpath or visible in a metadata catalog must not silently imply that it is executable.
+- The target factory must be the runtime's actual construction seam, with explicit host-supplied dependency resolution. The current reflection/Guice split is an implementation detail to replace behind that seam, not a second registry.
+- The existing `PluginRegistryHolder`, `DefaultPluginRegistry`, `PluginMetadataJsonGenerator`, and `PluginPackageScanner` should be evaluated as standalone/legacy utilities after all external and test consumers are inventoried; this evidence does not authorize deleting them yet.
+- Keep the Core `SemanticModel` inspection API distinct from the IDE's frontend-managed model cache; integrate them deliberately if a unified editor validation pipeline is desired.
+
+### Evidence boundary
+
+The above is based on direct inspection of the named production classes and related focused tests at this commit. GitHub code search returned no usable indexed matches for the registry symbols, so this is not yet a proven exhaustive all-module call-site inventory. The retirement gate for legacy types, utility APIs, serialized data and external consumers remains open.
+
