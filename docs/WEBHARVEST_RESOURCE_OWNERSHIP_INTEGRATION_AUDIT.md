@@ -116,6 +116,19 @@ The ledger is a strong foundation, but the following points need explicit design
 
 These are review questions, not evidence that the tested ledger state machine is incorrect.
 
+### 3.3 Do not confuse ownership, usage metering and budgets
+
+**FACT —** `runtime/tracking/ResourceType.java`, `TokenTracker.java`, `TokenTrackerImpl.java` and `TokenUsage.java` form a separate counter model. ResourceType defines names/units such as HTTP request count, HTTP bytes, CPU time and peak memory. The API stores caller-supplied counters; its documentation explicitly says the built-in runtime does not currently measure each resource automatically and that zero/default values do not prove measurement.
+
+**FACT —** `ScraperSession.java` and `SessionMetrics.java` similarly state that built-in processed-element, HTTP and plugin counters are not automatically connected to runtime events (issue #168).
+
+**INFERENCE —** Keep three separate concerns:
+- **ResourceLedger:** ownership, active use, abort, quiescence and close.
+- **TokenTracker/metrics:** measured or explicitly reported usage counters.
+- **Budget/policy:** admission limits, concurrency caps, quotas and billing policy.
+
+A resource lease is not a usage counter; a usage counter is not a quota; and neither implies a billing policy. Stream/payload limits need an explicit budget contract rather than assuming TokenTracker already enforces them.
+
 ## 4. Integration gap in the built-in runtime
 
 The following host/runtime files were inspected for ResourceLedger references and lifecycle wiring:
