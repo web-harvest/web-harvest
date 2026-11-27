@@ -57,6 +57,10 @@ The semantic definition is independent of its serialization or authoring surface
 
 Separate framework/runtime lifecycle, individual execution lifecycle and composition/bootstrap adapters. Core semantics must not depend on Guice or any other IoC container. Support explicit/manual construction and host-provided containers through adapters. Container shutdown is not proof that executions, workers or resources have quiesced. Ownership, activation, stop, asynchronous quiescence, resource disposal and failure reporting must be explicit. The current Guice dependency is a migration fact, not the desired architecture.
 
+### Data and stream contract boundaries
+
+See [WebHarvest Data, Stream and Semantic Contract Architecture](WEBHARVEST_DATA_AND_STREAM_CONTRACT_ARCHITECTURE.md) for the proposed distinction between semantic data contracts, Capability contracts, Plugin/provider descriptors, representation/transport contracts and execution lineage. It also defines the target boundaries for media streams, AI providers, agent composition and optional MCP adapters. This document refines the direction below; it does not claim those contracts or implementations are already present.
+
 ### MCP and agent interoperability
 
 MCP is an optional adapter for exposing or consuming capabilities. It is not the workflow model, scheduler, authorization authority or a Core dependency. Direct Java/API use, CLI, IDE, deterministic planners and other protocols must remain viable without MCP or an LLM.
