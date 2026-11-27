@@ -228,3 +228,53 @@ Core declares distinct XML namespace URIs for parameter attributes (`WHConstants
 However, `StreamingXmlParser.extractAttributes()` currently stores only SAX `getLocalName()` and value in a `Map<String,String>`; it discards the attribute namespace URI and qualified name. Consequently, the current `PluginConfiguration` representation cannot distinguish a parameter attribute from a variable attribute when they share a local name, and a same-local-name collision can overwrite one value.
 
 This is a concrete compatibility and configuration-model boundary. The future model must preserve an expanded attribute identity and represent parameter/variable references as typed values before flattening or interpolation. Do not assume the existing parser already provides a working global parameter context merely because the old namespace constants and `ElementInfo` markers exist.
+
+
+## 11. Runtime-variable scope and mutation semantics — current source findings (2026-11-27)
+
+### 11.1 Runtime variables belong to one execution context
+
+- `ScraperContext` stores variables in a name-to-stack table and tracks nested `ScopeFrame` objects.
+- `setLocalVar()` creates a variable in the current frame. If the name already exists in an outer frame, the new value is pushed as a shadow and the previous stack depth is recorded. Re-defining a name created in the same frame replaces that frame's current value.
+- `executeWithinNewContext()` pushes a frame and restores/removes its variables in `finally`, including on failure or interruption.
+- `RootConfigurationExecutor` applies run settings (charset and scripting language) and executes root children against the supplied context. It does not create a persistent/global parameter store or an additional nested scope. The old `ConfigPlugin` documentation's use of the word "global" means visible across children of that scraper execution, not shared across runs, applications or runtimes.
+- `DynamicScopeContext` is the current variable access contract; it also exposes framework-specific EventBus/session/configuration concerns that are separate from the variable model and are tracked in the Core decoupling work.
+
+### 11.2 Definition and assignment have different shadowing behavior
+
+- `DefPlugin` uses `context.setLocalVar()`: defining a name already visible in an outer frame shadows it for the current nested scope and restores the previous value when that scope exits.
+- Legacy `SetVarPlugin` uses `replaceExistingVar()` when a visible name exists. This replaces the top value in place, so an update to an outer variable survives nested-scope cleanup. If the name does not exist, it creates a local variable.
+- This difference is intentional in current code and is covered by variable-scope tests/compatibility behavior. A future configuration model must not conflate assignment/shadowing with parameter-context override semantics.
+
+### 11.3 There is no global parameter context today
+
+The existing runtime has execution variables, plugin configuration, root run settings and XML namespace constants. It does not currently provide a host/application-level, named, versioned parameter context with immutable snapshots, runtime binding, revision pinning or secret-aware access control. The legacy `p:` namespace is not proof of such a feature; the active parser currently discards attribute namespace identity (see section 10).
+
+## 12. Secret exposure inventory — broader than configuration and templating
+
+The source audit found value-bearing logs in several ordinary execution paths:
+
+| Path | Current behavior | Required treatment before secret support |
+|---|---|---|
+| `DefaultPluginConfiguration.toString()` | Includes the complete properties map | Redacted representation; no raw values by default |
+| `BaseTemplater` | DEBUG logs template source and evaluated result | Never log raw source/result when sensitive data may be referenced |
+| `DefPlugin` | INFO logs configuration, body results, XML text and assigned/returned variable values | Log names/types/lengths or opaque IDs only |
+| `SetVarPlugin` | DEBUG logs value attributes, body text, evaluated values and read-back values | Redact by sensitivity label; no value interpolation in diagnostics |
+| `GetVarPlugin` | DEBUG logs configuration and retrieved variable values | Do not stringify sensitive variables |
+| `TemplatePlugin` | INFO logs body/template content and evaluated results | Treat template input/output as potentially sensitive |
+| Execution events | `PluginExecutionCompletedEvent` carries a `Variable` result; `PluginExecutionFailedEvent` carries a `Throwable` | Event consumers/recorders need redaction and sensitivity metadata; exception messages/causes must not leak secrets |
+
+These are direct source-level exposure paths, not claims that every deployment enables DEBUG or has an event subscriber that persists values. They demonstrate that simply adding a Vault client or a `SecretReference` field would not make secret handling safe.
+
+### 12.1 Required secret-flow boundary
+
+Before any secret can enter a plugin execution path:
+
+- sensitivity/provenance metadata must survive parameter binding, configuration validation and expression evaluation;
+- raw secret material must not be implicitly converted to `String`, `Variable.toString()`, template output, exception text or event payloads;
+- secret resolution must be explicit, capability-scoped and as late as practical (ideally at the operation boundary);
+- plugin contracts must declare which inputs accept secret references and whether the operation requires text, bytes, a certificate/key object or another typed credential;
+- logs, events, tracing, diagnostics and error reporting must redact by default and have sentinel-value tests proving that secrets cannot leak;
+- a plugin that does not declare/receive the required secret capability must not be able to resolve the reference itself or enumerate unrelated secrets.
+
+A global parameter context may hold ordinary values and typed references to secrets. It must not become a back door for making secret material globally visible as ordinary runtime variables.
