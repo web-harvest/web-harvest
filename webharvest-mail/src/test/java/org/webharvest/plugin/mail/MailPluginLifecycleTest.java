@@ -1,12 +1,5 @@
 package org.webharvest.plugin.mail;
 
-import org.testng.annotations.Test;
-import org.webharvest.plugin.DefaultPluginConfiguration;
-import org.webharvest.runtime.DynamicScopeContext;
-import org.webharvest.runtime.resource.ExecutionResourceAccess;
-import org.webharvest.runtime.variables.NodeVariable;
-import org.webharvest.runtime.variables.Variable;
-
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.InputStreamReader;
@@ -22,6 +15,13 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+
+import org.testng.annotations.Test;
+import org.webharvest.plugin.DefaultPluginConfiguration;
+import org.webharvest.runtime.DynamicScopeContext;
+import org.webharvest.runtime.resource.ExecutionResourceAccess;
+import org.webharvest.runtime.variables.NodeVariable;
+import org.webharvest.runtime.variables.Variable;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
