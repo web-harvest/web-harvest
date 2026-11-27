@@ -105,6 +105,17 @@ The tests cover:
 
 **BOUNDARY —** These tests establish the behavior of ResourceLedger in isolation. They do not prove integration with WebHarvestService, ScraperContext, plugin construction, database pools, HTTP clients, browser drivers or classloader retirement.
 
+### 3.2 Adoption review items
+
+The ledger is a strong foundation, but the following points need explicit design decisions before it becomes the runtime authority:
+
+- **Generation tombstone retention:** `generations` is a `ConcurrentHashMap`; `generationEntry()` uses `computeIfAbsent`, and the inspected implementation never removes entries from this map. The source comment says retired entries remain as tombstones so stale IDs cannot be re-pinned. A long-lived runtime with frequent registry publications therefore retains one GenerationEntry per generation for its lifetime. Decide whether this is an accepted bounded-runtime trade-off or whether generation IDs are guaranteed never to be reused and tombstones can be safely retired.
+- **No ledger-level shutdown/drain-all operation:** the public API has registration-level `drainAndClose()`, `size()` and generation-pin operations, but no public snapshot of registrations or runtime-wide `shutdown()/drainAll()`. The integration must define who retains each Registration token and how runtime shutdown drains every resource, including resources whose plugin/provider owner has disappeared.
+- **Diagnostics surface:** outstanding leases and close/abort failures are visible through each Registration/DrainResult, but the ledger has no public aggregate diagnostic snapshot. The host needs a way to report all quarantined/failed resources without exposing mutable internal entries.
+- **Registration-token discipline:** `Registration.close()` retires only an already-CLOSED entry. Providers must retain the token until drain succeeds; losing the token can leave an entry retained, which is safer than premature close but needs host-level diagnostics/recovery.
+
+These are review questions, not evidence that the tested ledger state machine is incorrect.
+
 ## 4. Integration gap in the built-in runtime
 
 The following host/runtime files were inspected for ResourceLedger references and lifecycle wiring:
