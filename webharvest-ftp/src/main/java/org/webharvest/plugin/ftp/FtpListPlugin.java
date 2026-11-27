@@ -267,10 +267,9 @@ public class FtpListPlugin extends AbstractPlugin {
         
         LOGGER.debug("FTP List Plugin - Host: " + host + ":" + port + ", User: " + username + ", Path: " + path);
         
-        FTPClient ftpClient = null;
-        try {
+        try (FtpClientResource ftpResource = FtpClientResource.open(context)) {
             // Create FTP connection
-            ftpClient = FtpClientFactory.create();
+            FTPClient ftpClient = ftpResource.getClient();
             ftpClient.connect(host, port);
             
             if (!ftpClient.login(username, password)) {
@@ -302,21 +301,15 @@ public class FtpListPlugin extends AbstractPlugin {
             
             return new NodeVariable(result.toString());
             
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw e;
         } catch (IOException e) {
             LOGGER.error("FTP List Plugin - IOException", e);
             throw new RuntimeException("FTP List failed: " + e.getMessage(), e);
         } catch (Exception e) {
             LOGGER.error("FTP List Plugin - Unexpected error", e);
             throw new RuntimeException("FTP List failed: " + e.getMessage(), e);
-        } finally {
-            if (ftpClient != null && ftpClient.isConnected()) {
-                try {
-                    ftpClient.logout();
-                    ftpClient.disconnect();
-                } catch (IOException e) {
-                    LOGGER.warn("Failed to close FTP connection", e);
-                }
-            }
         }
     }
 
