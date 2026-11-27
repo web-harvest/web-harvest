@@ -43,6 +43,8 @@ import org.apache.commons.mail.Email;
 import org.apache.commons.mail.EmailException;
 import org.apache.commons.mail.HtmlEmail;
 import org.apache.commons.mail.SimpleEmail;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.PluginConfigurationSchema;
@@ -54,8 +56,6 @@ import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.NodeVariable;
 import org.webharvest.runtime.variables.Variable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Email sending processor - SMTP email support with HTML, attachments, and authentication.
