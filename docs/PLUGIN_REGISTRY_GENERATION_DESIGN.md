@@ -690,3 +690,29 @@ The XML files present in the inspected historical repository tree at commit `921
 
 This does not negate the historical `XPathDef` / `XPathProcessor` implementation described in section 22. It means the inspected public examples do not provide concrete serialized examples for that behavior, and provide no evidence for `p:` semantics. The compatibility fixture set must therefore be sourced from additional historical tests, plugin packages, release artifacts or external user configurations before those namespace forms can be treated as a supported public contract.
 
+## 24. IDE XML import/export is a separate, namespace-lossy compatibility path (2026-11-27 source inspection)
+
+The IDE frontend has its own XML parser and generator. This path is independent of Core's StreamingXmlParser and must be included in the XML compatibility boundary; it is not evidence that the Core runtime parser delegates to the IDE.
+
+### Direct source findings
+
+- webharvest-ide/frontend/src/visual/XMLParser.ts uses browser DOMParser and skips the document root wrapper (normally config). It reads element.tagName into VisualNode.type and each Attr.name / Attr.value into Record<string, string>.
+- The VisualNode representation produced by this parser has no explicit element QName, namespace URI, namespace-scope, or expanded-name attribute model. Prefix spelling may remain in lexical tagName / attr.name strings, but the namespace URI binding is not retained as semantic data.
+- The parser does not preserve root-wrapper attributes or namespace declarations because it only converts the root's child elements. In particular, a default namespace declared on <config> is not copied into the generated node model.
+- webharvest-ide/frontend/src/visual/XMLGenerator.ts serializes node.type and attribute record keys as strings. It does not reconstruct namespace declarations or resolve prefixes. It therefore cannot guarantee namespace-well-formed output for prefixed names/attributes whose declarations were on the skipped root.
+- XMLRoundtrip.test.ts uses a default namespace on <config> but its normalize() comparison only examines type, attributes, body, dimensions, and children. Since the parser discards namespace identity on the first pass, parse → generate → parse can pass while silently losing the input namespace semantics.
+- XMLParser.test.ts and XMLGenerator.test.ts cover ordinary unqualified names and values. The inspected tests do not characterize default/prefixed namespaces, p: / v: attributes, same-local-name collisions across namespaces, root namespace declaration retention, or QName-preserving round trips.
+- PluginManager loads /api/plugins/metadata and normalizes plugin metadata for the visual palette. This is a frontend metadata/catalog path, not runtime plugin registration or XML QName resolution.
+- The legacy SimpleXMLParser in webharvest-ide/src/main/resources/webapp/static/js/simple-xml-parser.js is another lexical-name/string-map parser. It also does not retain namespace URI identity; treat it as a separate legacy path until call sites establish whether it remains reachable.
+
+### Consequences
+
+1. The IDE XML parser/generator must not be used as the canonical semantic XML model for the new runtime generation.
+2. The future shared XML dialect model must use expanded names (namespace URI + local name) and preserve namespace bindings through import, visual editing, and export. Prefixes are serialization choices, not identity.
+3. Root wrapper metadata and namespace declarations must be retained or deterministically reconstructed from the semantic model; silently dropping them is not acceptable.
+4. Add IDE characterization tests for default namespace, prefixed element namespace, p: and v: attributes, same-local-name attributes from different namespaces, namespace declaration on root vs nested scope, and parse → edit/no-op → generate → parse semantic equality.
+5. Inventory all call sites of XMLParser, XMLGenerator, and SimpleXMLParser before changing or retiring either implementation. The findings here establish implementation behavior, not reachability or external API usage.
+
+### Evidence boundary
+
+This section is based on direct inspection of the named frontend sources and focused tests at the PR head. It does not establish that every IDE import/export path uses these classes, nor that the legacy simple parser is still reachable in production. Those call-site and deployment questions remain open.
