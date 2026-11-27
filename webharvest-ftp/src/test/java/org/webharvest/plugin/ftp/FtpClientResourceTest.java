@@ -306,6 +306,22 @@ public class FtpClientResourceTest {
         }
     }
 
+    @Test
+    public void dataSocketReturnedAfterAbortIsClosedInsteadOfEscapingTracking() throws Exception {
+        FtpClientFactory.ManagedFtpClient client = new FtpClientFactory.ManagedFtpClient();
+        client.disconnect();
+
+        Socket lateDataSocket = mock(Socket.class);
+        try {
+            client.trackDataSocket(lateDataSocket);
+            throw new AssertionError("A data socket must not be admitted after disconnect starts");
+        } catch (java.io.IOException expected) {
+            assertTrue(expected.getMessage().contains("already disconnecting"));
+        }
+
+        verify(lateDataSocket).close();
+    }
+
     private static void serveBlockedRetrieve(ServerSocket controlServer, ServerSocket dataServer,
                                              CountDownLatch dataAccepted, CountDownLatch dataClosed,
                                              AtomicReference<Throwable> serverFailure) {
