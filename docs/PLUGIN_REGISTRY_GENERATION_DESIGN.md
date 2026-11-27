@@ -1061,3 +1061,28 @@ The new design is acceptable only when all of the following are demonstrated:
 - Whether the CLI ships as one complete distribution or offers minimal and extended packaging profiles.
 - The exact public Java API names and package placement. Do not introduce a speculative `PluginRegistryV2` or publish provisional interfaces before the descriptor and lifecycle contracts are reviewed.
 
+
+
+---
+
+## 41. Cross-application semantic and functional boundaries
+
+The registry/generation design is a runtime/delivery-plane design. It must not become the authority for domain semantics or functional product organization.
+
+The cross-project vocabulary and compatibility rules are defined in [Cross-Application Semantic and Functional Architecture](CROSS_APPLICATION_SEMANTIC_ARCHITECTURE.md). The following constraints apply to this design:
+
+- **Module** is a technical delivery, dependency, activation and lifecycle unit. It is not a functional Pack.
+- **Pack** is a stable functional domain/value area. It may span multiple Modules and may own domain concepts, models, rules, workflows, integrations and UI.
+- **Kit** is a scenario-oriented composition/configuration that references Capabilities from one or more Packs. It is not a Module or binary distribution.
+- **Capability** is a stable functional contract and runtime resolution/activation unit. Its identity is independent of the Plugin class, Module, Adapter, XML QName and UI label.
+- **Adapter** translates or integrates an external system/vendor representation with a stable domain or Capability contract.
+- **Plugin** is an executable runtime extension/provider. It may implement or expose multiple Capabilities; its implementation identity is not the Capability's semantic identity.
+- **Semantic contract identity/version** must remain distinct from Module version, Plugin version, application version and XML dialect version.
+- **XML dialect descriptors** describe syntax and explicit bindings to runtime/semantic identities. They do not define domain meaning.
+- **Metadata and IDE/agent projections** must preserve these distinctions rather than flattening Module dependencies, Capability requirements, XML content constraints and semantic relationships into one generic dependency list.
+
+A Module may contribute multiple Plugins or providers; a Pack may span multiple Modules; a Kit may compose Capabilities delivered by several Modules. These are independent relationships and must be declared explicitly, not inferred from Maven topology, package names, annotations or classpath presence.
+
+For technical groupings of artifacts, use terms such as *distribution profile* or *extension bundle*. Do not use *Pack* or *Kit* for a binary grouping unless it independently satisfies the functional/scenario definitions above.
+
+This section does not introduce Pack/Kit implementation into WebHarvest. It constrains the registry architecture so that future application-level composition and cross-application semantic interoperability remain possible.
