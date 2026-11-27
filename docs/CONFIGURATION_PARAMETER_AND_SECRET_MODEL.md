@@ -344,3 +344,13 @@ The current plugin lifecycle has a validation gap relevant to typed configuratio
 - `PluginConfigurationSchema` exposes type/constraint metadata, but its `validate()` method is plugin-provided; the interface does not itself guarantee a common schema interpreter that enforces every `AttributeDefinition`.
 
 **Target requirement:** the future descriptor-bound configuration pipeline must validate centrally and deterministically before plugin construction/initialization. Plugin-specific validation may add semantic checks, but it must not be the only enforcement point for declared types, requiredness, defaults, allowed values, numeric bounds, patterns, secret-reference policy or parameter-reference policy. Tests must prove that invalid configuration is rejected before provider construction and that the same descriptor/schema produces identical results across Core, CLI, IDE and host adapters.
+
+
+### 12.2 The current value abstractions have no sensitivity boundary
+
+- `PluginConfiguration` exposes property values as `String` and `Map<String,String>`; there is no sensitivity/provenance metadata on a property.
+- The base `Variable` abstraction requires `toString()`, `toString(charset)`, `toBinary()` and `getWrappedObject()`. It has no sensitive-value marker, redacted view or capability gate.
+- `NodeVariable` stores an arbitrary object and returns its `toString()` value through the normal conversion path.
+- `GetVarPlugin` returns the original `Variable` object, while template interpolation converts values to strings.
+
+Therefore a future `SecretValue` implemented merely as another ordinary `Variable` would inherit generic string/binary conversion and would be exposed to existing plugin code and logs. A secret must instead be a distinct typed reference/handle with explicit access methods and no implicit general-purpose conversion. The configuration and variable APIs need a deliberate sensitivity/provenance design before secret values can enter them.
