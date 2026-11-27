@@ -684,3 +684,9 @@ A historical source snapshot at commit `92171846a490d92905bf5ca45b41e96f110e85c8
 
 This is direct historical source evidence for the 2012 built-in XPath behavior and the old grammar validator. It does not establish that all old external plugins or public XML examples used `p:`, nor does it prove that current code still supports the historical behavior. The all-fixture and external-plugin audit remains open.
 
+## 23. Historical public example corpus does not demonstrate `p:` or `v:` attributes (2012 fixture check)
+
+The XML files present in the inspected historical repository tree at commit `92171846a490d92905bf5ca45b41e96f110e85c8` were enumerated. The nine public workflow examples (`canon.xml`, `crawler.xml`, `expekt.xml`, `flickr.xml`, `functions.xml`, `google_images.xml`, `nytimes.xml`, `xquery.xml`, and `yahoomail.xml`) contain no `p:` or `v:` namespaced attributes.
+
+This does not negate the historical `XPathDef` / `XPathProcessor` implementation described in section 22. It means the inspected public examples do not provide concrete serialized examples for that behavior, and provide no evidence for `p:` semantics. The compatibility fixture set must therefore be sourced from additional historical tests, plugin packages, release artifacts or external user configurations before those namespace forms can be treated as a supported public contract.
+
