@@ -235,6 +235,34 @@ This distinction is important for migration: a missing binding is not the same t
 
 **REQUIRED FOLLOW-UP —** Expand the migration audit beyond the three Variable methods. At minimum, characterize SetVar arithmetic, JSR-223 binding conversion, template evaluation, and script examples independently. Do not centralize them behind one helper until their intentionally different semantics have been identified and approved.
 
+### 3.2.2 Emptiness and truthiness are consumer-specific
+
+The null/empty audit also needs to distinguish the predicates used by individual consumers. `Variable.isEmpty()` is not a universal definition of “no value”, and `Variable.toBoolean()` is not the truthiness implementation used by every DSL construct.
+
+**FACT —** `Variable.toBoolean()` and `IfPlugin.isTruthyConditionValue()` implement different string rules:
+
+- `Variable.toBoolean()` returns true for Boolean true, or case-insensitive strings `true`, `yes` and `1`; other strings (including `"2"` and `"random"`) are false.
+- `IfPlugin.isTruthyConditionValue()` handles Boolean and Number wrapped objects directly. Numeric zero and NaN are false; non-zero numbers are true. For other values it trims the string, treats empty, `false` and `null` as false, parses numeric strings so zero is false, and treats every other non-empty string as true.
+- Therefore `new NodeVariable("random").toBoolean()` is false while the same non-empty string is truthy under the If plugin's value rule. A refactor that replaces the If-specific predicate with `Variable.toBoolean()` would change DSL behavior.
+
+**FACT —** `NodeVariable.isEmpty()` is shape-dependent rather than a general emptiness test:
+
+- It recognizes null, empty CharSequence, exhausted Iterator/Iterable and empty `XmlNodeWrapper`.
+- It does not recognize zero-length arrays. In particular, direct `new NodeVariable(new byte[0])` and `new NodeVariable(new Object[0])` report non-empty. The latter can nevertheless produce an empty iterator/list through `toIterator()` / `toList()`.
+- The common factory path differs: `CommonUtil.createVariable(Object[])` converts the array to a `ListVariable`, whose constructor filters members using `isEmpty()`. Direct construction and factory construction therefore need separate characterization.
+- Whitespace-only text is non-empty because `NodeVariable.isEmpty()` checks length, not trimmed content.
+
+**FACT —** Consumers apply different policies to the same Variable state:
+
+- `LoopPlugin` skips values using `isEmpty()` only when `empty="true"`; the default is false. Its tests explicitly preserve an EmptyVariable source item under `empty="false"`, skip it under `empty="true"`, and preserve whitespace-only typed values even when skipping is enabled.
+- `DefaultPluginBodyExecutor.executeChildrenInternal()` first omits null and explicit `EmptyVariable` child results, then constructs a `ListVariable`. That constructor additionally removes every member whose `isEmpty()` is true. Thus a child returning `NodeVariable("")` is filtered during aggregation, while an empty byte-array NodeVariable is not filtered by this predicate.
+- `CallPlugin.normalizeReturnValue()` applies yet another rule: for a `ListVariable`, it returns the last non-empty item and returns EmptyVariable if none exists. This is not a generic list-to-scalar conversion.
+- `BaseTemplater.evaluateToVariable()` omits null script-engine results from its intermediate result list and then passes the joined result through `CommonUtil.createVariable()`. An all-null/empty interpolation can therefore collapse to EmptyVariable. `evaluateToString()` further maps any result for which `isEmpty()` is true to Java null.
+
+**TEST COVERAGE / GAP —** Existing tests establish parts of these contracts: `VariableTest.testToBooleanWithStringRandom`, the If plugin's false/zero/empty cases, the Loop plugin's EmptyVariable and whitespace cases, and the ListVariable constructor/addition asymmetry. The inspected tests do not establish one cross-consumer truthiness contract, nor do they characterize direct empty Object[] construction versus factory construction, empty byte[] aggregation, or null script results across both templater APIs.
+
+**IMPLICATION —** Do not globally redefine `isEmpty()`, route every consumer through `toBoolean()`, or normalize all empty results at the body-executor boundary as part of numeric-conversion cleanup. First specify separate contracts for payload emptiness, missing binding, DSL truthiness, loop filtering, child-result aggregation and function return normalization.
+
 ### 3.3 Optional integration modules
 
 The bounded source scan also inspected the in-tree Database, FTP, Mail, WebBrowser and ZIP module implementations. These are optional modules, not evidence that the same capabilities belong in Core.
