@@ -21,7 +21,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -41,10 +40,9 @@ public class MailPluginLifecycleTest {
         CountDownLatch dataReceived = new CountDownLatch(1);
         CountDownLatch clientSocketClosed = new CountDownLatch(1);
         CountDownLatch resourceRegistered = new CountDownLatch(1);
-        AtomicBoolean finalReplySent = new AtomicBoolean();
         AtomicReference<Throwable> serverFailure = new AtomicReference<>();
         Thread serverThread = new Thread(() -> serveBlockedSmtp(
-            serverSocket, dataReceived, clientSocketClosed, finalReplySent, serverFailure),
+            serverSocket, dataReceived, clientSocketClosed, serverFailure),
             "smtp-abort-test-server");
         serverThread.start();
 
@@ -97,8 +95,6 @@ public class MailPluginLifecycleTest {
             }
             assertTrue(clientSocketClosed.await(3, TimeUnit.SECONDS),
                 "Owner abort must close the actual SMTP socket");
-            assertFalse(finalReplySent.get(),
-                "The test server deliberately withholds the final 250 acknowledgement");
             close.getValue().close();
             verify(lease).close();
             verify(operation).close();
@@ -113,7 +109,7 @@ public class MailPluginLifecycleTest {
     }
 
     private static void serveBlockedSmtp(ServerSocket serverSocket, CountDownLatch dataReceived,
-                                         CountDownLatch clientSocketClosed, AtomicBoolean finalReplySent,
+                                         CountDownLatch clientSocketClosed,
                                          AtomicReference<Throwable> serverFailure) {
         try (Socket socket = serverSocket.accept();
              BufferedReader reader = new BufferedReader(new InputStreamReader(
