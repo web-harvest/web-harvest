@@ -65,6 +65,12 @@ These are current implementation facts on the inspected revision. They justify a
 
 **FACT —** `SessionEvent.java` records `Instant.now()` at event-object construction. This is event creation time, not source/capture time or ingestion time.
 
+**FACT —** The standard runtime's `WebHarvestServiceImpl` owns one EventBus instance and passes it to all sessions and execution contexts created by that service. The IDE's `ExecutionManager.createSessionForContext()` creates a separate EventBus per IDE job. `ScraperModule` also binds a Guava EventBus in `ScrapingScope`, and `EventBusTypeListener` registers Guice-created subscriber objects on the injector's scoped bus. These are composition-dependent in-process buses, not one repository-wide event transport. Plugin-owned subscribers such as the database pool and browser session state explicitly register on `context.getEventBus()`.
+
+**FACT —** The IDE's `SessionHistoryServlet` reads `ExecutionManager.getCompletedExecutions()`; the manager stores completed `ExecutionJob` instances in an in-memory map. The inspected history path is process-local retention, not a durable event log or replay facility.
+
+**BOUNDARY —** The test class name and comments use “event sourcing”, but the test's collector is only a `CopyOnWriteArrayList` registered on a test-local Guava EventBus. No inspected production subscriber persists the plugin event stream. This conclusion is bounded to the inspected event/session/history paths; it is not a claim about arbitrary external host integrations.
+
 **FACT —** `webharvest-core/src/test/java/org/webharvest/runtime/session/events/EventSourcingFullStreamBug24IntegrationTest.java` creates `new EventBus()`, registers a test collector backed by `CopyOnWriteArrayList`, executes test plugins and asserts that the collector received start/completion/failure notifications and ordering. The test does not write an event log or reconstruct execution from persisted events.
 
 **FACT —** `ScraperSession.java` explicitly documents that built-in processed-element, HTTP and plugin counters are not automatically connected to runtime events (issue #168); only timing is recorded by the built-in service.
