@@ -354,7 +354,7 @@ public class DatabasePluginTest {
         assertEquals(schema.getAttributeDefinitions().length, 0);
         assertEquals(schema.getRequiredAttributes().length, 0);
         assertEquals(schema.getOptionalAttributes(),
-                new String[]{"connection", "url", "driver", "username", "password", "sql"});
+                new String[]{"connection", "url", "driver", "username", "password", "sql", "queryTimeout"});
         assertEquals(schema.getVersion(), "2.1.0");
         assertTrue(schema.allowsBody());
         assertEquals(schema.getRequiredSubElements().length, 0);
