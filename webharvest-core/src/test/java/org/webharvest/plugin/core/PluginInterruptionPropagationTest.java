@@ -5,6 +5,7 @@ import java.util.Collections;
 import org.testng.annotations.Test;
 import org.webharvest.definition.CorePluginsRegistrar;
 import org.webharvest.plugin.DefaultPluginConfiguration;
+import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.runtime.ScraperContext;
 
 import static org.testng.Assert.assertTrue;
@@ -23,8 +24,8 @@ public class PluginInterruptionPropagationTest {
         DefaultPluginConfiguration parameter = new DefaultPluginConfiguration("xq-param", CORE_NAMESPACE, "xq-param");
         parameter.setProperty("name", "input");
         DefaultPluginConfiguration sleep = sleepChild();
-        parameter.setChildren(Collections.singletonList(sleep));
-        xquery.setChildren(Collections.singletonList(parameter));
+        parameter.setChildren(Collections.<PluginConfiguration>singletonList(sleep));
+        xquery.setChildren(Collections.<PluginConfiguration>singletonList(parameter));
 
         XQueryPlugin plugin = new XQueryPlugin();
         plugin.initialize(xquery);
@@ -41,8 +42,8 @@ public class PluginInterruptionPropagationTest {
 
         DefaultPluginConfiguration result = new DefaultPluginConfiguration(
                 "regexp-result", CORE_NAMESPACE, "regexp-result");
-        result.setChildren(Collections.singletonList(sleepChild()));
-        regexp.setChildren(Collections.singletonList(result));
+        result.setChildren(Collections.<PluginConfiguration>singletonList(sleepChild()));
+        regexp.setChildren(Collections.<PluginConfiguration>singletonList(result));
 
         RegexpPlugin plugin = new RegexpPlugin();
         plugin.initialize(regexp);
