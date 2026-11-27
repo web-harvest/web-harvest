@@ -854,7 +854,7 @@ The implementation of `CorePluginRegistry.registerMapping(processorClass, plugin
 This is another reason not to extend the singleton map into a canonical registry. A future generation builder should reject duplicate expanded element identities by default, require an explicit compatibility/override declaration for aliases or intentional replacement, retain origin/provenance, and publish atomically only after all conflicts and dependencies validate. Reset should be a lifecycle operation on one host/runtime instance, not a pair of unrelated static methods.
 
 
-## 30. Reassessment of the existing registry API and generation identity primitive
+## 34. Reassessment of the existing registry API and generation identity primitive
 
 A deeper source inspection changes one earlier design preference: **do not assume that the existing `PluginRegistry` interface should become the canonical runtime registry by extension**. The earlier suggestion to evolve it was a candidate, not an accepted decision.
 
