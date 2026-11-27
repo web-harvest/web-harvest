@@ -265,7 +265,7 @@ The current source shape is:
 
 - `ElementsRegistry` is a thin interface extending the generic `Registry<ElementName, ElementInfo>`.
 - `ElementsRegistryImpl` delegates all storage behavior to `AbstractRegistry`.
-- `ElementName` represents an XML name/namespace pair, but its fields are mutable and its equality/ordering implementation is not a suitable immutable identity contract for a new runtime.
+- `ElementName` represents an XML name/namespace pair. Its fields are non-final (there are no public setters), and its equality/ordering implementation is not a suitable canonical identity contract for a new runtime. It is also used by the legacy `XmlNode` tree as the key for child-element indexes and in public child-lookup methods.
 - `ElementInfo` contains historical XML grammar and editor/validation metadata: permitted/required child names, permitted/required attributes, namespace-family attribute rules (`p:*` and `v:*`), suggested attribute values, internal-element markers and dependent-processor metadata.
 - The old definition/processor class fields were removed, while the constructor still accepts class arguments and the corresponding getters return `null`. The remaining value collections and arrays are exposed as mutable references.
 
@@ -279,7 +279,9 @@ The current `StreamingXmlParser` source has the old resolver/ElementInfo lookup 
 
 The existing `ConfigParser` abstraction is also incomplete, and the current `XMLConfig.reload()` behavior is tied to a concrete parser implementation. The XML migration therefore needs to restore a real parser contract, not simply reconnect the old registry.
 
-These are source observations, not proof that every historical XML validation behavior is currently exercised by the default parser. The call-site and historical behavior inventory remains a required characterization task.
+The existing `ElementInfoContractTest` currently protects required child/attribute markers, namespace wildcards, enumerated attribute values, internal markers and XML template generation. It is characterization evidence for the metadata vocabulary, not proof that the default parser currently applies these rules. `XmlNode` has its own focused contract tests and must be included in the replacement inventory.
+
+These are source observations, not proof that every historical XML validation behavior is currently exercised by the default parser. The complete production/test call-site and historical behavior inventory remains a required characterization task.
 
 ### 12.3 Target: one generation, separate typed projections
 
@@ -336,6 +338,7 @@ A temporary compatibility adapter may be used only where a verified caller requi
 - Parser output contains no implementation `Class<?>` binding and is independent of the concrete parser implementation.
 - Invalid XML metadata candidates fail before publication and leave the last-known-good runtime generation unchanged.
 - The old `ElementsRegistry` API has no production authority after migration; any temporary adapter is covered by explicit compatibility tests.
+- `XmlNode` child indexing and lookup behavior is preserved or deliberately replaced by an equivalent immutable expanded-name index; all `ElementName` consumers are migrated before the old value type is removed.
 
 ## 13. Configuration scopes and secret references
 
