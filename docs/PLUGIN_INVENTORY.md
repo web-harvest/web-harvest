@@ -72,7 +72,7 @@ The current source tree contains these plugin-named implementation classes outsi
 | `webharvest-ftp` | `FtpPlugin`, `FtpGetPlugin`, `FtpPutPlugin`, `FtpListPlugin` | Outside Core; optional integration (review direction 2026-11-27); retain container/child compatibility audit |
 | `webharvest-database` | `DatabasePlugin`, `ConnectionPlugin` | Outside default Core; optional-integration candidate; inspect connection/runtime support classes |
 | `webharvest-mail` | `MailPlugin` | Outside Core; optional integration (review direction 2026-11-27) |
-| `webharvest-webbrowser` | `WebBrowserPlugin` | Unclassified; optional-integration candidate pending capability/lifecycle review |
+| `webharvest-webbrowser` | `WebBrowserPlugin` | Optional browser-rendering integration; HtmlUnit remains outside Core |
 | `webharvest-zip` | `ZipPlugin`, `ZipEntryPlugin` | Optional extension; PR #187 adds an explicit `ZipPluginRegistrar`, scoped execution-context stream and nested-archive runtime evidence; remains outside default Core |
 
 The database module also contains the following runtime/support classes, which are part of the module boundary audit even though they are not plugin entry points by name:
@@ -87,7 +87,7 @@ The database module also contains the following runtime/support classes, which a
 
 Exception classes are not counted as user-facing plugin implementations.
 
-**Membership review direction (2026-11-27):** FTP and Mail are outside Core and should be delivered as opt-in integrations. Their current `@CorePlugin` annotations are not product-boundary decisions. WebBrowser remains deliberately unresolved; evaluate whether browser automation is a generally required platform capability or an integration with optional HtmlUnit dependency and independently managed browser/client lifecycle. Until that review is complete, do not classify it as Core or auto-activate it by classpath scanning.
+**Agreed membership direction (2026-11-27):** FTP, Mail and WebBrowser are outside Core and must be delivered as opt-in integrations. Their current `@CorePlugin` annotations are historical/discovery metadata, not product-boundary decisions or permission for default activation. WebBrowser remains an optional HtmlUnit-backed integration because browser automation is specialized, has a substantial engine dependency and a distinct resource lifecycle; ordinary HTTP acquisition remains available without it. Do not introduce a generic Core browser capability prematurely. Revisit that neutral contract only if a second browser provider or a demonstrated Core-wide use case requires it.
 
 ### Current descriptor and dependency-contract findings (2026-11-27)
 
@@ -423,7 +423,7 @@ assert `metadata.isCorePlugin() == true`. Therefore the annotation and
 
 **WebBrowser re-check (2026-11-27):** the earlier static-global-state concern is too broad for the current source. Browser pages are grouped by scraper session ID and the state subscribes to terminal session events for cleanup; only the no-session compatibility path uses a weak-key context map. The remaining risks are whether every session reliably emits a terminal event, whether the no-session fallback closes resources deterministically, and whether the static maps are safe across multiple runtime instances with colliding session IDs. The module POM currently depends on HtmlUnit 5.8.0. The CLI POM directly includes this and all other optional modules in its shaded distribution, so module-level optionality does not currently mean the CLI distribution is minimal.
 
-**Review recommendation, not an approved membership decision:** keep WebBrowser outside Core as an opt-in browser-rendering integration. JavaScript-capable browser execution is a specialized acquisition capability with a substantial engine dependency and a distinct resource lifecycle; ordinary HTTP acquisition remains available without it. If browser automation becomes a required baseline capability, Core should define a small browser/rendering capability contract while an HtmlUnit implementation remains an independently selectable provider. Do not promote the current HtmlUnit-backed implementation itself into Core merely because it is annotated `@CorePlugin` or reports `isCorePlugin() == true`.
+**Agreed architecture direction (2026-11-27):** keep WebBrowser outside Core as an opt-in browser-rendering integration. JavaScript-capable browser execution is a specialized acquisition capability with a substantial engine dependency and a distinct resource lifecycle; ordinary HTTP acquisition remains available without it. Do not introduce a generic browser/rendering capability into Core now. Reconsider a neutral contract only if a second browser provider or a demonstrated baseline requirement justifies it. Do not promote the current HtmlUnit-backed implementation itself into Core merely because it is annotated `@CorePlugin` or reports `isCorePlugin() == true`.
 
 ### Database extension: concrete support gaps (Issue #185)
 
