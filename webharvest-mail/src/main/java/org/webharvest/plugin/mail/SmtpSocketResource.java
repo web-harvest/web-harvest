@@ -15,6 +15,10 @@ import java.util.UUID;
  */
 final class SmtpSocketResource implements AutoCloseable {
 
+    static final int CONNECT_TIMEOUT_MILLIS = 10_000;
+    static final int READ_TIMEOUT_MILLIS = 30_000;
+    static final int WRITE_TIMEOUT_MILLIS = 30_000;
+
     private final TrackingSmtpSocketFactory socketFactory;
     private final ExecutionResourceAccess.OperationResource operation;
     private final ExecutionResourceAccess.Lease lease;
