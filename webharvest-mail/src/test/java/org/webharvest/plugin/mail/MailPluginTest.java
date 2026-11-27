@@ -93,6 +93,30 @@ public class MailPluginTest {
         // Configuration is protected, so we can't access it directly
     }
 
+    @Test
+    public void interruptedBodyExecutionPropagatesBeforeSmtpSend() throws Exception {
+        InterruptedException interruption = new InterruptedException("mail body interrupted");
+        MailPlugin interruptingPlugin = new InterruptingBodyMailPlugin(interruption);
+        DefaultPluginConfiguration config = new DefaultPluginConfiguration(
+                "mail", "http://org.webharvest/schema/2.1/core", "mail");
+        config.setProperty("smtp-host", "127.0.0.1");
+        config.setProperty("smtp-port", "25");
+        config.setProperty("from", "sender@example.com");
+        config.setProperty("to", "recipient@example.com");
+        config.setProperty("subject", "Interrupted message");
+        interruptingPlugin.initialize(config);
+
+        try {
+            interruptingPlugin.execute(context);
+            fail("Expected the nested body interruption to propagate");
+        } catch (InterruptedException actual) {
+            assertSame(actual, interruption, "The original interruption must be preserved");
+            assertTrue(Thread.currentThread().isInterrupted(), "The interrupt flag must be restored");
+        } finally {
+            Thread.interrupted();
+        }
+    }
+
     @Test(expectedExceptions = PluginException.class)
     public void testConfigurationValidationWithNullConfig() throws Exception {
         plugin.initialize(null);
@@ -248,6 +272,19 @@ public class MailPluginTest {
         
         // Test that plugin can be initialized without errors
         // Note: getIntProperty is protected, so we can't test it directly
+    }
+
+    private static final class InterruptingBodyMailPlugin extends MailPlugin {
+        private final InterruptedException interruption;
+
+        private InterruptingBodyMailPlugin(InterruptedException interruption) {
+            this.interruption = interruption;
+        }
+
+        @Override
+        protected Variable executeBody(DynamicScopeContext context) throws InterruptedException {
+            throw interruption;
+        }
     }
 
     @Test
