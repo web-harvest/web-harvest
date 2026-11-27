@@ -890,3 +890,19 @@ The target should have three distinct seams:
 
 Legacy registries and scanners may feed a migration adapter during transition, but classpath discovery, metadata projection, XML grammar, plugin construction, and live publication must not be collapsed into one mutable registry object. This is a revised design recommendation; no production API has been changed.
 
+
+
+## 35. Optional module registration contracts are explicit but still mutate one process-global registry
+
+The module tree and registrar source show a more precise situation than a generic classpath-discovery model:
+
+- Core has `CorePluginsRegistrar.registerCorePlugins()`, a static synchronized bootstrap that writes 44 mappings into `CorePluginRegistry.getInstance()` and tracks initialization in a separate static boolean.
+- Database has `DatabasePluginRegistrar.register(CorePluginRegistry)`, which adds `connection` and `database`.
+- ZIP has `ZipPluginRegistrar.register(CorePluginRegistry)`, which adds `zip` and `zip-entry`.
+- The current source tree contains no corresponding module registrar class for FTP, Mail, or WebBrowser. Those modules may still be made discoverable through the opt-in package scanner or another host integration; absence of a registrar class is not proof that no external registration path exists.
+- The Database and ZIP registrar Javadocs describe the argument as a runtime registry supplied by the application. However, `CorePluginRegistry` has a private constructor and exposes only `getInstance()`; callers cannot create independent registry instances through its current API. The supplied object is therefore the process-wide singleton, not a separately owned runtime registry.
+- These optional registrars mutate the same singleton as Core. There is no common contribution SPI, module identity/provenance, dependency declaration, registration ordering contract, duplicate/override policy, or atomic all-modules publication. Because `registerMapping` uses plain `put`, an optional module can silently replace a mapping with the same local name.
+
+The current module contract is therefore **manual module-specific registration into one global map**, not runtime-scoped plugin composition. The future host API should accept module contributions through a common typed contract, validate the complete candidate (including optional dependency availability and duplicate XML identities), and publish once. A module registrar should describe/contribute registrations; it should not receive a mutable live registry to modify after publication.
+
+Characterization still required before retiring the current hooks: inspect every optional module's public integration documentation and tests, determine whether users call the package scanner for FTP/Mail/WebBrowser, and record the expected XML names and dependency behavior for all optional modules. No optional module behavior is changed by this documentation finding.
