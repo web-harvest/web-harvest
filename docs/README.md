@@ -13,6 +13,15 @@ For current project direction and contribution guidance, start here:
 - [Groovy Runtime Migration Notes](GROOVY_RUNTIME_MIGRATION.md) — production Groovy baseline and compatibility guidance.
 - [Project roadmap on GitHub](https://github.com/web-harvest/web-harvest/issues/1).
 
+## Architecture proposals under review
+
+The following documents describe proposed target architecture and are not claims of implemented behavior:
+
+- [Plugin Registry Generation Design](PLUGIN_REGISTRY_GENERATION_DESIGN.md) — one runtime-owned immutable generation, plugin descriptor and XML grammar projections, historical XML metadata migration, and retirement of legacy registries.
+- [Configuration Parameters and Secret Resolution](CONFIGURATION_PARAMETER_AND_SECRET_MODEL.md) — runtime variables, plugin-instance configuration, versioned global parameter contexts and a future host-supplied secret-provider boundary.
+
+Current review: [PR #423](https://github.com/web-harvest/web-harvest/pull/423). These proposals remain subject to the source inventory, compatibility characterization and architecture gates tracked in GitHub Issues #346, #347 and #422.
+
 ## Documentation status
 
 Some content under `web/` and versioned subdirectories was written for earlier Web-Harvest releases. It remains useful as historical reference and for compatibility research, but must not be treated as an authoritative statement of current Core plugin membership, current API stability, current release availability or current runtime behavior without verification against source, tests and CI.
