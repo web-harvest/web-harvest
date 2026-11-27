@@ -36,6 +36,7 @@
 */
 package org.webharvest.runtime;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -87,6 +88,14 @@ public class ScraperContext implements DynamicScopeContext {
 
     private Map<String, Stack<Variable>> centralReferenceTable = new HashMap<String, Stack<Variable>>();
 
+    /**
+     * Non-null only while a Scraper execution is actively using this context.
+     * The context's mutable variable/scope state is confined to that thread.
+     */
+    private volatile Thread executionThread;
+
+    private int executionDepth;
+
     // map of function definitions - REMOVED in v2.2.x (FunctionDef deleted)
     // @Deprecated
     // private final Map<String, FunctionDef> functionDefs = new HashMap<String, FunctionDef>();
@@ -120,12 +129,14 @@ public class ScraperContext implements DynamicScopeContext {
         // ${http} variable no longer available
     }
 
-    public void setLocalVar(String name, Object value) {
+    public synchronized void setLocalVar(String name, Object value) {
+        assertExecutionThread();
         setLocalVar(name, CommonUtil.createVariable(value));
     }
 
     @Override
-    public void setLocalVar(String name, Variable variable) {
+    public synchronized void setLocalVar(String name, Variable variable) {
+        assertExecutionThread();
         // TODO rbala Currently used only for the sake of validation.
         new VariableName(name);
         Stack<Variable> variableValueStack = centralReferenceTable.get(name);
@@ -149,7 +160,8 @@ public class ScraperContext implements DynamicScopeContext {
 
     @Override
     @SuppressWarnings({"ConstantConditions"})
-    public Variable replaceExistingVar(String name, Variable variable) {
+    public synchronized Variable replaceExistingVar(String name, Variable variable) {
+        assertExecutionThread();
         // TODO rbala Currently used only for the sake of validation.
         new VariableName(name);
         final Stack<Variable> variableValueStack = centralReferenceTable.get(name);
@@ -158,7 +170,8 @@ public class ScraperContext implements DynamicScopeContext {
     }
 
     @Override
-    public Variable getVar(String name) {
+    public synchronized Variable getVar(String name) {
+        assertExecutionThread();
         // TODO rbala Currently used only for the sake of validation.
         new VariableName(name);
         final Stack<Variable> stack = centralReferenceTable.get(name);
@@ -168,28 +181,33 @@ public class ScraperContext implements DynamicScopeContext {
     }
 
     @Override
-    public boolean containsVar(String name) {
+    public synchronized boolean containsVar(String name) {
+        assertExecutionThread();
         return getVar(name) != null;
     }
 
     @Override
     @SuppressWarnings({"unchecked"})
-    public Iterator<KeyValuePair<Variable>> iterator() {
-        return IteratorUtils.transformedIterator(centralReferenceTable.entrySet().iterator(), new Transformer() {
-            @Override
-            public Object transform(Object input) {
-                final Map.Entry<String, Stack<Variable>> crtEntry = (Map.Entry<String, Stack<Variable>>) input;
-                return new KeyValuePair<Variable>(crtEntry.getKey(), crtEntry.getValue().peek());
+    public synchronized Iterator<KeyValuePair<Variable>> iterator() {
+        assertExecutionThread();
+        List<KeyValuePair<Variable>> snapshot = new ArrayList<>();
+        for (Map.Entry<String, Stack<Variable>> entry : centralReferenceTable.entrySet()) {
+            if (!entry.getValue().isEmpty()) {
+                snapshot.add(new KeyValuePair<Variable>(entry.getKey(), entry.getValue().peek()));
             }
-        });
+        }
+        return snapshot.iterator();
     }
 
     @Override
     public <R> R executeWithinNewContext(Callable<R> callable) throws InterruptedException {
-        try {
+        synchronized (this) {
+            assertExecutionThread();
             scopeStack.push(new ScopeFrame());
-            return callable.call();
+        }
 
+        try {
+            return callable.call();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw e;
@@ -198,23 +216,53 @@ public class ScraperContext implements DynamicScopeContext {
         } catch (Exception e) {
             throw new RuntimeException(e);
         } finally {
-            ScopeFrame frame = scopeStack.pop();
-            for (String varName : frame.createdVariables) {
-                removeVarFromCRT(varName);
+            synchronized (this) {
+                assertExecutionThread();
+                ScopeFrame frame = scopeStack.pop();
+                for (String varName : frame.createdVariables) {
+                    removeVarFromCRT(varName);
+                }
+                for (Map.Entry<String, Integer> entry : frame.overrideDepths.entrySet()) {
+                    final Stack<Variable> stack = centralReferenceTable.get(entry.getKey());
+                    if (stack == null) {
+                        continue;
+                    }
+                    final int targetDepth = entry.getValue();
+                    while (stack.size() > targetDepth) {
+                        stack.pop();
+                    }
+                    if (stack.isEmpty()) {
+                        centralReferenceTable.remove(entry.getKey());
+                    }
+                }
             }
-            for (Map.Entry<String, Integer> entry : frame.overrideDepths.entrySet()) {
-                final Stack<Variable> stack = centralReferenceTable.get(entry.getKey());
-                if (stack == null) {
-                    continue;
-                }
-                final int targetDepth = entry.getValue();
-                while (stack.size() > targetDepth) {
-                    stack.pop();
-                }
-                if (stack.isEmpty()) {
-                    centralReferenceTable.remove(entry.getKey());
-                }
-            }
+        }
+    }
+
+    synchronized void beginExecution() {
+        Thread current = Thread.currentThread();
+        if (executionThread != null && executionThread != current) {
+            throw new IllegalStateException("ScraperContext is already active on another execution thread");
+        }
+        executionThread = current;
+        executionDepth++;
+    }
+
+    synchronized void endExecution() {
+        if (executionThread != Thread.currentThread() || executionDepth == 0) {
+            throw new IllegalStateException("ScraperContext execution must be ended by its owning thread");
+        }
+        executionDepth--;
+        if (executionDepth == 0) {
+            executionThread = null;
+        }
+    }
+
+    private void assertExecutionThread() {
+        Thread owner = executionThread;
+        if (owner != null && owner != Thread.currentThread()) {
+            throw new IllegalStateException(
+                "ScraperContext variable and scope state is confined to its active execution thread");
         }
     }
 
@@ -233,7 +281,8 @@ public class ScraperContext implements DynamicScopeContext {
 
     @Override
     // TODO Add unit test
-    public void setLocalVar(final Map<String, Object> map) {
+    public synchronized void setLocalVar(final Map<String, Object> map) {
+        assertExecutionThread();
         // FIXME rbala code moved from Scraper object. Refactore ASAP
         if (map != null) {
             for (Map.Entry<String, Object> entry : map.entrySet()) {
