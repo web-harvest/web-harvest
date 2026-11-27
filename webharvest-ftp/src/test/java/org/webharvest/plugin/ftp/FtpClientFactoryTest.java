@@ -80,7 +80,7 @@ public class FtpClientFactoryTest {
     }
 
     @Test
-    public void legacyClientIsClosedDirectlyWhenNoExecutionResourceAccessExists() {
+    public void legacyClientIsClosedDirectlyWhenNoExecutionResourceAccessExists() throws Exception {
         FTPClient client = mock(FTPClient.class);
         when(client.isConnected()).thenReturn(true);
         DynamicScopeContext context = mock(DynamicScopeContext.class);
