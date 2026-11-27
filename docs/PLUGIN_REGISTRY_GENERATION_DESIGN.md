@@ -996,3 +996,68 @@ Do not promise arbitrary hot-unload as a first milestone. First implement immuta
 
 **Characterization gates before implementation:** test same-FQCN contributions from two classloaders; independent runtime instances with distinct module selections; publication while an execution is blocked inside a plugin; failure during candidate validation; module resource cleanup after the last generation lease; missing/optional capability behavior; duplicate QName conflicts; and XML aliases mapped to one executable plugin. Add explicit tests proving that FTP/Mail are discoverable as optional contributions without becoming default Core registrations.
 
+## 40. Migration order and architecture acceptance gates
+
+The implementation should be staged so that each step can be characterized and verified without mixing registry replacement, XML compatibility changes and module packaging changes.
+
+### Phase A — freeze observable behavior
+
+- Keep the 44 current Core XML element mappings and the `set-var` compatibility mapping as an explicit golden contract.
+- Record each optional module's public XML names, parent/child semantics, configuration schema, external artifact dependencies, initialization side effects and cleanup behavior.
+- Add module-level integration tests for FTP, Mail, WebBrowser, Database and ZIP. Verify not only metadata discovery but actual XML dispatch, successful execution, error propagation and resource cleanup.
+- Characterize external embedding usage of `PluginPackageScanner`, `PluginRegistry`, `DefaultPluginFactory`, registrars and metadata endpoints before removing or changing their public behavior.
+
+### Phase B — introduce descriptors without changing execution
+
+- Define immutable module and plugin contribution descriptors, XML QName bindings, typed dependency categories, capability declarations and factory-binding identifiers.
+- Build a deterministic candidate-generation validator that reports missing requirements, duplicate IDs/QNames, incompatible versions, invalid aliases and invalid module membership.
+- Keep discovery separate from activation. A host must explicitly select which discovered modules contribute to a runtime.
+- Initially adapt existing annotations, metadata objects and registrars into descriptors. Mark every inferred/defaulted field as compatibility-derived; do not silently treat it as authoritative.
+- Generate metadata catalog, IDE palette and semantic-model projections from the same candidate/generation descriptors. Remove independent classpath scans only after parity tests pass.
+
+### Phase C — make construction host-owned
+
+- Define a narrow factory-binding/dependency-resolution seam that can be implemented with Guice, another IoC container, a service provider, or ordinary constructors.
+- Core owns the plugin lifecycle protocol and validates the returned instance; the host owns dependency construction and external service bindings.
+- Do not require a global injector, static service locator, reflective constructor guessing or plugin instances stored in a registry.
+- Separate plugin-instance cleanup from module/provider shutdown and generation retirement.
+
+### Phase D — pin execution to immutable generations
+
+- Make runtime startup publish one validated immutable generation.
+- Acquire the generation lease at execution admission and carry it through XML parsing, dialect validation, semantic binding, plugin factory lookup and execution.
+- Add concurrency tests where a new generation is published while an old execution is blocked. The old execution must complete using only the old generation.
+- Reject new executions against a generation that is closing; do not invalidate already admitted executions.
+- Only after these tests pass should optional module replacement or unloading be considered.
+
+### Phase E — migrate module activation and retire legacy registries
+
+- Make FTP and Mail explicit optional modules. Their inclusion in a distribution may remain a packaging choice, but they must not be default Core registrations.
+- Keep WebBrowser as an optional module unless a later product decision promotes the abstract browser capability (not the HtmlUnit implementation) into the baseline runtime.
+- Migrate Database and ZIP registrar paths to the same module-contribution contract.
+- Provide a temporary adapter for legacy package-scanner users. It must build candidate contributions rather than mutate the live registry.
+- Retire `CorePluginRegistry`, `PluginRegistryHolder`, `DefaultPluginRegistry`, the legacy `PluginRegistry` and scanner-based registration only after in-repository and external embedding consumers have been accounted for.
+
+### Acceptance criteria
+
+The new design is acceptable only when all of the following are demonstrated:
+
+1. Two independently configured runtime instances can use different plugin/module sets without global-state interference.
+2. An optional module on the classpath is not active unless the host selects it.
+3. FTP and Mail are unavailable in the default Core generation but can be enabled explicitly without Core changes.
+4. WebBrowser can be enabled/disabled independently and does not leak clients, threads, listeners or classloader references across executions/runtimes.
+5. The same executable plugin may expose multiple XML QNames/aliases, and XML identity is namespace URI + local name rather than prefix spelling.
+6. Duplicate QName ownership and missing required capabilities fail candidate validation before any live state changes.
+7. Host dependency construction works with no IoC container and with an externally supplied IoC adapter; Core does not own an application injector.
+8. An in-flight execution remains pinned to one generation during publication of a replacement.
+9. A retired generation releases all module resources and classloader references after its final lease is released.
+10. The IDE catalog, XML parser, semantic model and runtime factory agree on the same published descriptor generation.
+11. Existing XML examples and characterized public embedding paths remain compatible or have an explicit, versioned migration path.
+
+### Decisions deliberately left open
+
+- The concrete module discovery transport (explicit host registration, Java `ServiceLoader`, or a small adapter combination). The runtime contract must not depend on one discovery mechanism.
+- Whether a separate public browser-rendering capability SPI is justified before a second browser implementation exists.
+- Whether the CLI ships as one complete distribution or offers minimal and extended packaging profiles.
+- The exact public Java API names and package placement. Do not introduce a speculative `PluginRegistryV2` or publish provisional interfaces before the descriptor and lifecycle contracts are reviewed.
+
