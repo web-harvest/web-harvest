@@ -733,7 +733,7 @@ Call-site inspection at the current branch head confirms that the TypeScript par
 1. Resolve one canonical XML document wrapper/namespace policy for every IDE export path; do not allow mode switching and explicit export to serialize different dialects.
 2. Add integration tests for XML → Visual → XML via App.switchViewMode(), file import in Visual mode, tab switching in Visual mode, VisualDesigner.generateXML(), and generateXMLForNode(). Assert expanded-name semantics, not just string presence or local-name structure.
 3. Determine whether VisualNode is intended as a lossy visual editing projection or a round-trip-capable semantic model. If lossy, the UI must warn/refuse round-trip when unsupported namespace constructs are present; if round-trip-capable, it must retain expanded names and namespace declarations.
-4. Search the legacy webapp entry points and script loading order to establish whether SimpleXMLParser remains reachable. Until then, classify its reachability as unknown rather than dead code.
+4. Confirm which IDE entrypoint the deployed distribution serves and whether index-old.html / index-unified.html are supported externally. The source tree proves these alternate pages load and use SimpleXMLParser, but deployment routing remains unverified.
 
 ## 26. Legacy SimpleXMLParser is wired into alternate IDE HTML entrypoints
 
