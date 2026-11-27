@@ -59,7 +59,7 @@ The current production Groovy runtime is Apache Groovy 5.1.3 through the JSR-223
 Core includes built-in processors and preserves documented legacy compatibility such as the `<set-var>` alias alongside `<def>`. Optional integrations currently exist as Maven modules in this repository.
 
 The project direction is to:
-1. establish a format- and source-neutral Core semantic model and stable capability contracts;
+1. establish a format- and source-neutral Core model for data-operation semantics and runtime Capability contracts, while keeping shared domain semantics independently governed;
 2. make specialized plugins independently identifiable and composable across acquisition, parsing, extraction, validation, transformation, enrichment and destination operations;
 3. define safe, bounded adaptive composition: deterministic execution remains first-class, while agents may propose changes that Core validates and applies only at safe lifecycle boundaries;
 4. persist validated, portable definitions (eventually through a DSL) so they can be inspected, reused, reloaded and adapted in later runs;
