@@ -253,3 +253,153 @@ Each slice must have focused tests and full Core/reactor quality gates. No step 
 ## 11. Verification boundary
 
 This document is based on source inspection of `main`. It does not claim that the target design has been implemented, tested, or approved by CI. Implementation remains gated by #93/#94 (Core inventory and descriptor/SPI approval), #377 (generation ownership), #349 (activation/lifecycle policy), and the dependent execution/resource contracts.
+
+
+## 12. Historical XML element metadata and ElementsRegistry retirement
+
+### 12.1 Correct responsibility classification
+
+`ElementsRegistry` is not an executable plugin registry and must not be mechanically merged into `CorePluginRegistry`, `PluginRegistry`, or a plugin factory.
+
+The current source shape is:
+
+- `ElementsRegistry` is a thin interface extending the generic `Registry<ElementName, ElementInfo>`.
+- `ElementsRegistryImpl` delegates all storage behavior to `AbstractRegistry`.
+- `ElementName` represents an XML name/namespace pair, but its fields are mutable and its equality/ordering implementation is not a suitable immutable identity contract for a new runtime.
+- `ElementInfo` contains historical XML grammar and editor/validation metadata: permitted/required child names, permitted/required attributes, namespace-family attribute rules (`p:*` and `v:*`), suggested attribute values, internal-element markers and dependent-processor metadata.
+- The old definition/processor class fields were removed, while the constructor still accepts class arguments and the corresponding getters return `null`. The remaining value collections and arrays are exposed as mutable references.
+
+This metadata is valuable historical behavior. The old registry and mutable value objects are not an appropriate target architecture.
+
+The distinction matters because the actual current XML execution dispatch path is separately represented by `CorePluginRegistry` and `DefaultPluginBodyExecutor`. A registry unification that only replaces `CorePluginRegistry` would leave XML grammar/validation metadata as a separate legacy subsystem; a mechanical merge of `ElementsRegistry` into plugin dispatch would incorrectly imply that every XML grammar node is an executable plugin.
+
+### 12.2 Current parser qualification
+
+The current `StreamingXmlParser` source has the old resolver/ElementInfo lookup commented out. Its handler assigns `elementInfo = null`, creates a `PluginConfigurationTree` node without a plugin class, and describes the fallback as a POC. Consequently, the current parser path does not consume the old `ElementsRegistry` metadata to validate the parsed tree.
+
+The existing `ConfigParser` abstraction is also incomplete, and the current `XMLConfig.reload()` behavior is tied to a concrete parser implementation. The XML migration therefore needs to restore a real parser contract, not simply reconnect the old registry.
+
+These are source observations, not proof that every historical XML validation behavior is currently exercised by the default parser. The call-site and historical behavior inventory remains a required characterization task.
+
+### 12.3 Target: one generation, separate typed projections
+
+The runtime generation should own one coherent, immutable XML/plugin semantic snapshot, with distinct typed projections:
+
+1. **Plugin descriptors** describe executable providers, construction contracts, capabilities, plugin configuration schemas and lifecycle.
+2. **XML element descriptors** describe the accepted XML grammar, element identity, dialect applicability, child/attribute constraints, defaults, aliases, and whether an element is executable, declarative/parent-consumed, or compatibility-only.
+3. **XML dialect descriptors/adapters** define historical parsing and normalization semantics for each supported XML format/version.
+
+These are not three independently mutable registries. They are typed indexes and projections built and validated together, then published atomically as part of one immutable runtime generation. A declarative XML node may have an XML element descriptor without having a plugin provider. An executable plugin descriptor may reference one or more XML element identities and aliases.
+
+Names such as `XmlElementDescriptor`, `XmlDialectDescriptor`, and `XmlElementCatalog` are conceptual only; final Java API names must follow the completed source inventory and descriptor/SPI review. Do not introduce an `ElementsRegistryV2` or another independently mutable registry.
+
+### 12.4 Metadata migration rules
+
+Migrate the semantics of `ElementInfo` into immutable, defensively copied descriptor data:
+
+- allowed and required child expanded names;
+- allowed and required attributes;
+- namespace-family attribute rules;
+- suggested/enum attribute values;
+- internal and parent-consumed markers;
+- dialect-specific defaults and normalization rules;
+- source/documentation metadata where useful to diagnostics and tooling.
+
+Use an immutable expanded XML name value (namespace URI + local name); do not reuse mutable `ElementName` as the canonical identity. Do not retain `Class<?>` references in parsed configuration nodes or XML grammar descriptors. Provider binding belongs to the plugin descriptor/factory projection for a pinned generation.
+
+### 12.5 XML front-end pipeline
+
+The target XML path is:
+
+1. Parse XML syntax into a parser-neutral, namespace-aware syntax tree that preserves text, qualified attributes, namespace declarations and source locations.
+2. Select the historical dialect adapter using explicit version/namespace/root rules.
+3. Apply that dialect's exact name, attribute, text, alias and default semantics.
+4. Validate the normalized syntax tree against immutable XML element descriptors in the selected runtime generation.
+5. Produce a class-neutral canonical configuration tree/AST.
+6. Resolve executable nodes through the plugin descriptors and generation-bound factory at execution/plan time; retain declarative nodes as configuration consumed by their parent.
+
+The parser implementation must return the same canonical model through the `ConfigParser` contract. `XMLConfig` must not branch on `instanceof StreamingXmlParser`. Parsing/normalization must not consult a process-global registry or a different generation from the one selected for validation and execution.
+
+### 12.6 Retirement decision
+
+The intended end state is to replace and retire `ElementsRegistry`, `ElementsRegistryImpl`, `ElementInfo` and `ElementName` as the authoritative XML metadata model after their required semantics have been characterized and migrated.
+
+A temporary compatibility adapter may be used only where a verified caller requires it during migration. It must delegate to an explicitly supplied immutable generation/dialect view and must not create another registry authority. Java API compatibility alone is not a reason to preserve the old classes; the mandatory compatibility boundary is the historical XML behavior.
+
+### 12.7 Additional acceptance tests
+
+- Every historical XML dialect fixture is parsed and normalized through the same parser contract.
+- Child/attribute requiredness, namespace-family attributes, suggested values and internal-node behavior match characterized historical semantics.
+- Namespace URI + local name identity, aliases and dialect-specific name collisions are deterministic.
+- Declarative/parent-consumed nodes are accepted and represented without requiring a plugin implementation.
+- Executable nodes resolve only through the pinned generation's plugin descriptor/factory.
+- Parser output contains no implementation `Class<?>` binding and is independent of the concrete parser implementation.
+- Invalid XML metadata candidates fail before publication and leave the last-known-good runtime generation unchanged.
+- The old `ElementsRegistry` API has no production authority after migration; any temporary adapter is covered by explicit compatibility tests.
+
+## 13. Configuration scopes and secret references
+
+Plugin registry generations must reference configuration contracts, not absorb configuration ownership into the registry. WebHarvest configuration has distinct lifetimes and must not be represented by one untyped map.
+
+The required conceptual scopes are:
+
+| Scope | Lifetime / owner | Responsibility |
+|---|---|---|
+| Runtime variables | One execution and its nested scopes | Dynamic values produced/read/updated while a flow executes |
+| Plugin instance configuration | One plugin instance or configured component | Typed initialization inputs validated against its descriptor schema |
+| Global parameter context | A named host/application/environment context, captured as a versioned snapshot | Reusable values shared by flows and plugin instances |
+| Secret provider | External or host-owned security boundary | Resolve sensitive references under an explicit access context |
+
+Global parameters are analogous in purpose to Apache NiFi Parameter Contexts, but the WebHarvest model must define its own lifecycle, scoping, versioning and security behavior.
+
+A global parameter context should be versioned and immutable once captured by an execution/configuration revision. References should be stable keys rather than copied values. Precedence/overrides (if supported) must be explicit and deterministic; ambient environment variables must not silently override declared configuration.
+
+Plugin descriptors should declare typed configuration requirements and validation rules. A plugin instance receives its resolved, validated configuration through its creation context. It must not reach into a process-global parameter singleton or query a Vault implementation directly.
+
+Runtime variables remain execution data. They are not global configuration, must not be implicitly persisted as parameter values, and must preserve existing expression/variable semantics unless a separately reviewed migration changes them.
+
+### 13.1 Secret references are not ordinary parameter values
+
+A global parameter may contain a typed secret reference, but secret material must remain under a separate provider boundary. For example, a configuration may refer to a logical secret such as `vault://services/weather/api-key`; this is illustrative syntax, not a frozen URI scheme or API.
+
+The model must distinguish:
+
+- ordinary literal parameter values;
+- secret references and provider identity;
+- resolved secret material/credential handles;
+- certificates, private keys and other typed credential material that should not be coerced into ordinary strings.
+
+Secret values must not be serialized into DSL/configuration exports, metadata catalogs, diagnostics or logs. Resolution must be authorized and auditable, and secret exposure should be minimized. APIs should avoid requiring immutable `String` values for secret material where a safer representation is practical.
+
+### 13.2 Provider architecture
+
+Define a neutral secret-resolution port and access context. Provider implementations may later support environment-backed values, protected local files, operating-system credential stores, HashiCorp Vault or other external secret managers. No specific provider or Vault dependency is required by Core.
+
+The provider boundary must account for:
+
+- explicit provider selection and reference validation;
+- runtime/host identity and least-privilege access;
+- redaction and safe diagnostic behavior;
+- secret rotation and revocation;
+- typed credentials/certificates as well as scalar tokens;
+- offline operation and host-supplied providers;
+- deterministic failure behavior when a provider is absent or access is denied;
+- explicit resolution/rotation consistency semantics for a running execution.
+
+Do not assume that a secret's plaintext should be copied into an immutable parameter snapshot. The snapshot should normally pin the reference and policy; whether resolution uses the latest value or a specific provider version must be an explicit policy decision. Rotation must not silently change a credential midway through an operation.
+
+### 13.3 Ownership boundaries
+
+- The runtime owns the parameter-context snapshot associated with an execution/configuration revision.
+- The plugin factory supplies each plugin instance with its declared, validated configuration.
+- The host/runtime supplies secret-resolution capability and access context.
+- A plugin receives only the secret or credential capability it needs; it does not receive unrestricted access to every global parameter or secret.
+- The registry generation may carry descriptor schemas and required capability declarations, but it does not store secret material or own a Vault client.
+
+### 13.4 Design and implementation gates
+
+Before implementation, characterize existing variable interpolation, `PluginConfiguration`, configuration loading, XML parameter/variable namespaces and plugin initialization. Then define versioning, scope visibility, override rules, expression evaluation order, secret reference semantics and failure behavior.
+
+Acceptance must cover two independent runtimes with different parameter contexts/providers, execution snapshot consistency, nested runtime-variable scope behavior, plugin schema validation, secret redaction, denied/missing providers, rotation policy and absence of secret material from serialized DSL and logs.
+
+This section records architectural requirements only. It does not claim that global parameter contexts, a Vault integration, or a new secret store are implemented.
