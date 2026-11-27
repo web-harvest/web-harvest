@@ -383,6 +383,7 @@ This document defines the cross-cutting vocabulary and conceptual boundaries. It
 - [Plugin Registry Generation Design](PLUGIN_REGISTRY_GENERATION_DESIGN.md) describes runtime registration, descriptors, XML bindings and generation lifecycle.
 - [Configuration Parameters and Secret Resolution](CONFIGURATION_PARAMETER_AND_SECRET_MODEL.md) describes configuration scopes and secret handling.
 - [Semantic Metadata Stage 1 Contract](semantic-metadata/STAGE1_CONTRACT.md) describes the current limited semantic XML-inspection behavior.
+- [Cross-Application Semantic Contract Inventory](CROSS_APPLICATION_SEMANTIC_CONTRACT_INVENTORY.md) identifies candidate shared domains and the evidence required before schemas or identifiers are standardized.
 
 Where older documentation uses *Pack* or *Kit* to mean a binary/artifact grouping, treat that usage as historical or provisional and migrate it to technical distribution terminology. The functional definitions in this document are the intended cross-application meaning.
 
