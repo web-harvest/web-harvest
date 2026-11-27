@@ -2,6 +2,7 @@ package org.webharvest.plugin.core;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.UUID;
 
@@ -23,7 +24,7 @@ public class FilePluginInterruptionTest {
     public void interruptedNestedBodyIsNotConvertedToEmptyFileWriteSuccess() throws Exception {
         CorePluginsRegistrar.registerCorePlugins();
 
-        Path output = Path.of("target", "test-output",
+        Path output = Paths.get("target", "test-output",
                 "file-interrupted-" + UUID.randomUUID() + ".txt");
         DefaultPluginConfiguration file = new DefaultPluginConfiguration("file", CORE_NAMESPACE, "file");
         file.setProperty("path", output.toString());
