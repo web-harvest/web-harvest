@@ -369,9 +369,9 @@ public class FtpPlugin extends AbstractPlugin {
             
             return result;
             
-        } catch (InterruptedException e) {
+        } catch (InterruptedException interrupted) {
             Thread.currentThread().interrupt();
-            throw e;
+            throw interrupted;
         } catch (IOException e) {
             LOGGER.error("FTP operation failed", e);
             throw new RuntimeException("FTP operation failed: " + e.getMessage(), e);
