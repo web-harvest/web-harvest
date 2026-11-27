@@ -332,3 +332,15 @@ The first implementation should support a simple in-memory/local-file provider b
 - `DefPluginTest` is a metadata contract test, not a comprehensive execution/scope contract.
 
 Before changing these semantics, add runtime-level characterization tests for `def` shadowing and legacy `set-var` mutation inside loops/functions/nested containers, including exceptional exit. Keep the existing context-level tests as lower-level invariants.
+
+
+## 14. Validation is not currently a guaranteed central lifecycle step (2026-11-27)
+
+The current plugin lifecycle has a validation gap relevant to typed configuration:
+
+- `AbstractPlugin.initialize(configuration)` stores the configuration and calls `doInitialize(configuration)`; it does not call the public `validateConfiguration(configuration)` method automatically.
+- `DefaultPluginBodyExecutor.createChildPlugin()` constructs the plugin and calls `initialize(childConfig)`; it does not independently invoke `validateConfiguration()`.
+- Some plugins explicitly call `doValidateConfiguration()` from their own `doInitialize()`, while others have different initialization paths. Therefore validation currently depends on per-plugin implementation discipline.
+- `PluginConfigurationSchema` exposes type/constraint metadata, but its `validate()` method is plugin-provided; the interface does not itself guarantee a common schema interpreter that enforces every `AttributeDefinition`.
+
+**Target requirement:** the future descriptor-bound configuration pipeline must validate centrally and deterministically before plugin construction/initialization. Plugin-specific validation may add semantic checks, but it must not be the only enforcement point for declared types, requiredness, defaults, allowed values, numeric bounds, patterns, secret-reference policy or parameter-reference policy. Tests must prove that invalid configuration is rejected before provider construction and that the same descriptor/schema produces identical results across Core, CLI, IDE and host adapters.
