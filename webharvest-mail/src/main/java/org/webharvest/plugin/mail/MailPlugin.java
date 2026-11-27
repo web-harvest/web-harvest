@@ -395,6 +395,8 @@ public class MailPlugin extends AbstractPlugin {
             javax.mail.Session mailSession = email.getMailSession();
             TrackingSmtpSocketFactory socketFactory = new TrackingSmtpSocketFactory();
             mailSession.getProperties().put("mail.smtp.socketFactory", socketFactory);
+            // Do not let JavaMail silently fall back to an untracked raw socket.
+            mailSession.getProperties().setProperty("mail.smtp.socketFactory.fallback", "false");
             mailSession.getProperties().setProperty(
                 "mail.smtp.writetimeout", Integer.toString(SmtpSocketResource.WRITE_TIMEOUT_MILLIS));
 
