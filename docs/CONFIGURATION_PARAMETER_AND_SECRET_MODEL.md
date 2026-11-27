@@ -278,3 +278,47 @@ Before any secret can enter a plugin execution path:
 - a plugin that does not declare/receive the required secret capability must not be able to resolve the reference itself or enumerate unrelated secrets.
 
 A global parameter context may hold ordinary values and typed references to secrets. It must not become a back door for making secret material globally visible as ordinary runtime variables.
+
+
+## 13. Proposed deterministic parameter resolution policy — review required
+
+The following is a concrete proposal for review, not yet an accepted public API.
+
+### 13.1 Context binding and overlays
+
+- A host binds one base parameter context to a runtime or flow.
+- Optional overlays are explicitly listed in order from broadest to most specific (for example: organization → environment → flow). The order is part of the binding, not inferred from names or ambient process state.
+- Every layer is pinned to an immutable context revision. Later layers may override earlier layers only under an explicit override policy recorded in the binding; otherwise duplicate keys are a configuration error.
+- The effective parameter snapshot is materialized at execution admission. A running execution sees one stable set of ordinary parameter values and pinned secret references even if an administrator publishes a newer context revision.
+- Context references resolve within the effective snapshot. Cycles, missing references and type mismatches fail before plugin initialization with redacted diagnostics.
+
+This provides NiFi-like reuse and controlled inheritance without introducing an implicit process-global mutable map.
+
+### 13.2 Per-plugin field resolution
+
+For each descriptor-declared configuration field, use this order:
+
+1. explicit plugin-instance input (a literal value or an explicit typed parameter reference);
+2. lookup by the descriptor's declared parameter key in the bound effective snapshot;
+3. descriptor default;
+4. missing-value failure if the field is required.
+
+An explicit instance input and an implicit context lookup must not silently merge. If both literal and parameter-reference forms are supplied for the same field, reject the configuration as ambiguous. A parameter reference must identify a value in the bound snapshot or an explicitly authorized context; it must not cause an arbitrary context lookup.
+
+Type conversion is strict. Malformed booleans/numbers, invalid enums, invalid URLs and constraint violations are errors; they must never silently become false, zero or a default. Validate the fully resolved ordinary value before plugin construction/initialization.
+
+### 13.3 Secret fields
+
+- The descriptor declares a field as ordinary, sensitive, or a specific credential type (for example password, token, certificate, private key).
+- A sensitive/credential field accepts a typed secret reference, not a plaintext value embedded in exported DSL.
+- The effective parameter snapshot pins the secret reference and optional provider version/policy. It does not contain secret plaintext.
+- The host grants the plugin factory a narrowly scoped resolver capability for the declared credential requirement. Resolution happens as late as practical and yields a typed credential handle/value with bounded lifetime.
+- A secret field must not be copied into runtime variables, generic template interpolation, plugin metadata or registry descriptors. If a plugin genuinely needs to transform secret material, that must be an explicit capability with a documented exposure boundary.
+
+### 13.4 Context lifecycle and operational controls
+
+The host owns context creation, revision publication, access policy, audit events and binding to runtimes/flows. Core consumes an immutable snapshot and does not own the parameter administration API.
+
+A revision update affects new executions only. Rollback means rebinding to a prior immutable revision. Revocation of a secret is provider-owned and may invalidate future resolutions; the policy for already-issued operation-scoped credential handles must be explicit. Secret rotation must not change credentials halfway through a single operation.
+
+The first implementation should support a simple in-memory/local-file provider behind the neutral contract for offline operation and deterministic tests. A Vault adapter can be added later as an optional integration without changing the Core contract.
