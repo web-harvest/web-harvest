@@ -208,6 +208,21 @@ This needs a deterministic cancellation race test with a blocked/in-flight JDBC 
 
 The current Guava EventBus is synchronous in-process notification. In the standard service, `ScraperSessionImpl.cancel()` invokes the task cancellation callback and posts the terminal event before the worker's `SessionTask.run()` finally block calls `markExecutionExited()`. The event callback can therefore run on the cancelling thread while the worker is still unwinding.
 
+### 5.3 Required deterministic integration test
+
+Before changing the Database or WebBrowser cleanup path, add a service-level test using a controlled blocking resource and latches:
+
+1. Start a session and enter a simulated in-flight JDBC/browser operation while holding a ResourceLedger lease.
+2. Request cancellation from a different thread.
+3. Assert that business status becomes CANCELLED and the provider's abort action is requested promptly.
+4. Assert that the worker has **not** yet reached EXITED and that final close has **not** run while the operation still holds its lease.
+5. Release/complete the blocked operation; let the service observe worker exit.
+6. Assert owner quiescence, lease drain and exactly one final close; verify registration retirement only after successful close.
+7. Repeat with a deliberately non-cooperative worker: assert the resource remains visible/quarantined and is not reported as safely closed while the worker is unresponsive.
+8. Verify that late/duplicate terminal notifications cannot cause duplicate abort/close or resurrect a retired registration.
+
+Run the same behavioral contract for an HTTP/browser provider and the database provider, not only against a fake ledger resource. Keep a separate IDE stop-path test because `ExecutionManager` does not use the same `ExecutionTrackedSession` coordinator.
+
 A safe provider lifecycle needs separate signals/actions:
 - stop admitting new operations;
 - request abort of active I/O when responsiveness requires it;
