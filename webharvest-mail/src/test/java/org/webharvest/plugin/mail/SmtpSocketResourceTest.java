@@ -1,13 +1,13 @@
 package org.webharvest.plugin.mail;
 
+import java.net.Socket;
+import java.net.SocketException;
+
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.testng.annotations.Test;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.resource.ExecutionResourceAccess;
-
-import java.net.Socket;
-import java.net.SocketException;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
