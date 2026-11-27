@@ -93,6 +93,154 @@ public class FtpClientResourceTest {
     }
 
     @Test
+    public void legacyContextCanOpenAndCloseWithoutResourceAccess() throws Exception {
+        FtpClientResource resource = FtpClientResource.open(null);
+        assertNotNull(resource.getClient());
+        resource.close();
+    }
+
+    @Test
+    public void registrationFailureClosesUnregisteredClient() {
+        DynamicScopeContext context = mock(DynamicScopeContext.class);
+        ExecutionResourceAccess access = mock(ExecutionResourceAccess.class);
+        when(context.getResourceAccess()).thenReturn(access);
+        when(access.registerOperationResource(anyString(),
+                any(ExecutionResourceAccess.AbortAction.class),
+                any(ExecutionResourceAccess.CloseAction.class)))
+            .thenThrow(new IllegalStateException("registration rejected"));
+
+        try {
+            FtpClientResource.open(context);
+            throw new AssertionError("Expected registration failure");
+        } catch (IllegalStateException expected) {
+            assertEquals(expected.getMessage(), "registration rejected");
+        }
+    }
+
+    @Test
+    public void leaseAdmissionFailureClosesRegisteredOperation() {
+        DynamicScopeContext context = mock(DynamicScopeContext.class);
+        ExecutionResourceAccess access = mock(ExecutionResourceAccess.class);
+        ExecutionResourceAccess.OperationResource operation =
+            mock(ExecutionResourceAccess.OperationResource.class);
+        when(context.getResourceAccess()).thenReturn(access);
+        when(access.registerOperationResource(anyString(),
+                any(ExecutionResourceAccess.AbortAction.class),
+                any(ExecutionResourceAccess.CloseAction.class))).thenReturn(operation);
+        when(operation.acquire()).thenThrow(new IllegalStateException("lease rejected"));
+
+        try {
+            FtpClientResource.open(context);
+            throw new AssertionError("Expected lease admission failure");
+        } catch (IllegalStateException expected) {
+            assertEquals(expected.getMessage(), "lease rejected");
+        }
+
+        verify(operation).close();
+    }
+
+    @Test
+    public void finalCloseSurfacesDisconnectFailureWhenLogoutIsNotAttempted() throws Exception {
+        FTPClient client = mock(FTPClient.class);
+        java.io.IOException disconnectFailure = new java.io.IOException("disconnect failed");
+        when(client.isConnected()).thenReturn(false);
+        doThrow(disconnectFailure).when(client).disconnect();
+
+        try {
+            FtpClientResource.closeClient(client);
+            throw new AssertionError("Disconnect failure must be surfaced");
+        } catch (java.io.IOException actual) {
+            assertSame(actual, disconnectFailure);
+        }
+    }
+
+    @Test
+    public void finalCloseSuppressesDisconnectFailureBehindLogoutFailure() throws Exception {
+        FTPClient client = mock(FTPClient.class);
+        java.io.IOException logoutFailure = new java.io.IOException("logout failed");
+        java.io.IOException disconnectFailure = new java.io.IOException("disconnect failed");
+        when(client.isConnected()).thenReturn(true);
+        doThrow(logoutFailure).when(client).logout();
+        doThrow(disconnectFailure).when(client).disconnect();
+
+        try {
+            FtpClientResource.closeClient(client);
+            throw new AssertionError("Logout failure must be surfaced");
+        } catch (java.io.IOException actual) {
+            assertSame(actual, logoutFailure);
+            assertEquals(actual.getSuppressed().length, 1);
+            assertSame(actual.getSuppressed()[0], disconnectFailure);
+        }
+    }
+
+    @Test
+    public void finalCloseDoesNotSuppressTheSameFailureTwice() throws Exception {
+        FTPClient client = mock(FTPClient.class);
+        java.io.IOException failure = new java.io.IOException("shared close failure");
+        when(client.isConnected()).thenReturn(true);
+        doThrow(failure).when(client).logout();
+        doThrow(failure).when(client).disconnect();
+
+        try {
+            FtpClientResource.closeClient(client);
+            throw new AssertionError("Close failure must be surfaced");
+        } catch (java.io.IOException actual) {
+            assertSame(actual, failure);
+            assertEquals(actual.getSuppressed().length, 0);
+        }
+    }
+
+    @Test
+    public void managedDisconnectAttemptsAllDataSocketsAndAggregatesFailures() throws Exception {
+        FtpClientFactory.ManagedFtpClient client = new FtpClientFactory.ManagedFtpClient();
+        Socket first = mock(Socket.class);
+        Socket second = mock(Socket.class);
+        java.io.IOException firstFailure = new java.io.IOException("first data close");
+        java.io.IOException secondFailure = new java.io.IOException("second data close");
+        doThrow(firstFailure).when(first).close();
+        doThrow(secondFailure).when(second).close();
+        client.trackDataSocket(first);
+        client.trackDataSocket(second);
+
+        try {
+            client.disconnect();
+            throw new AssertionError("Data socket close failures must be surfaced");
+        } catch (java.io.IOException actual) {
+            assertTrue(actual == firstFailure || actual == secondFailure);
+            assertEquals(actual.getSuppressed().length, 1);
+            assertTrue(actual.getSuppressed()[0] == firstFailure
+                || actual.getSuppressed()[0] == secondFailure);
+            assertTrue(actual.getSuppressed()[0] != actual);
+        }
+
+        verify(first).close();
+        verify(second).close();
+    }
+
+    @Test
+    public void managedDisconnectDoesNotSelfSuppressRepeatedDataSocketFailure() throws Exception {
+        FtpClientFactory.ManagedFtpClient client = new FtpClientFactory.ManagedFtpClient();
+        Socket first = mock(Socket.class);
+        Socket second = mock(Socket.class);
+        java.io.IOException failure = new java.io.IOException("shared data close failure");
+        doThrow(failure).when(first).close();
+        doThrow(failure).when(second).close();
+        client.trackDataSocket(first);
+        client.trackDataSocket(second);
+
+        try {
+            client.disconnect();
+            throw new AssertionError("Data socket close failure must be surfaced");
+        } catch (java.io.IOException actual) {
+            assertSame(actual, failure);
+            assertEquals(actual.getSuppressed().length, 0);
+        }
+
+        verify(first).close();
+        verify(second).close();
+    }
+
+    @Test
     public void abortActionClosesBlockedDataSocketAndUnblocksTransfer() throws Exception {
         ServerSocket controlServer = new ServerSocket(0, 1, java.net.InetAddress.getLoopbackAddress());
         ServerSocket dataServer = new ServerSocket(0, 1, java.net.InetAddress.getLoopbackAddress());
