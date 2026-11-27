@@ -20,7 +20,7 @@ The following documents describe proposed target architecture and are not claims
 - [Plugin Registry Generation Design](PLUGIN_REGISTRY_GENERATION_DESIGN.md) — one runtime-owned immutable generation, plugin descriptor and XML grammar projections, historical XML metadata migration, and retirement of legacy registries.
 - [Configuration Parameters and Secret Resolution](CONFIGURATION_PARAMETER_AND_SECRET_MODEL.md) — runtime variables, plugin-instance configuration, versioned global parameter contexts and a future host-supplied secret-provider boundary.
 
-Current review: [PR #423](https://github.com/web-harvest/web-harvest/pull/423). These proposals remain subject to the source inventory, compatibility characterization and architecture gates tracked in GitHub Issues #346, #347 and #422.
+Current review: [PR #423](https://github.com/web-harvest/web-harvest/pull/423). These proposals remain subject to the source inventory, compatibility characterization and architecture gates tracked in GitHub Issues #346, #347, #422 and #424.
 
 ## Documentation status
 
