@@ -263,10 +263,9 @@ public class FtpGetPlugin extends AbstractPlugin {
         
         LOGGER.debug("FTP Get Plugin - Host: " + host + ":" + port + ", User: " + username + ", Path: " + path);
         
-        FTPClient ftpClient = null;
-        try {
+        try (FtpClientResource ftpResource = FtpClientResource.open(context)) {
             // Create FTP connection
-            ftpClient = FtpClientFactory.create();
+            FTPClient ftpClient = ftpResource.getClient();
             ftpClient.connect(host, port);
             
             if (!ftpClient.login(username, password)) {
@@ -293,21 +292,15 @@ public class FtpGetPlugin extends AbstractPlugin {
             }
             return new NodeVariable(new String(fileData, charset));
             
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw e;
         } catch (IOException e) {
             LOGGER.error("FTP Get Plugin - IOException", e);
             throw new RuntimeException("FTP Get failed: " + e.getMessage(), e);
         } catch (Exception e) {
             LOGGER.error("FTP Get Plugin - Unexpected error", e);
             throw new RuntimeException("FTP Get failed: " + e.getMessage(), e);
-        } finally {
-            if (ftpClient != null && ftpClient.isConnected()) {
-                try {
-                    ftpClient.logout();
-                    ftpClient.disconnect();
-                } catch (IOException e) {
-                    LOGGER.warn("Failed to close FTP connection", e);
-                }
-            }
         }
     }
 
