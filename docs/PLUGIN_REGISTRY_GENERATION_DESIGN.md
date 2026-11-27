@@ -480,3 +480,37 @@ Required historical XML characterization fixtures:
 11. parser security cases: DOCTYPE, external general entities, external parameter entities and external schema access.
 
 The test oracle for each fixture must be the historical meaning and execution result, not simply the current parser's output.
+
+
+## 16. Repository-wide audit boundary — module inventory (2026-11-27)
+
+The root Maven reactor on `main` declares these nine modules:
+
+| Module | Role relevant to this audit | Call-site status |
+|---|---|---|
+| `webharvest-core` | XML parser, plugin execution, legacy XML model and registry implementations | Targeted source inspection completed; findings above |
+| `webharvest-cli` | Host/client composition and possible external use of Core XML/runtime types | Not yet exhaustively searched |
+| `webharvest-ide` | Editor, import/export, configuration and possible serialized-model consumers | Not yet exhaustively searched |
+| `webharvest-database` | Optional plugin configuration and XML examples | Not yet exhaustively searched |
+| `webharvest-ftp` | Optional plugin configuration and XML examples | Not yet exhaustively searched |
+| `webharvest-mail` | Optional plugin configuration and XML examples | Not yet exhaustively searched |
+| `webharvest-webbrowser` | Optional plugin configuration and XML examples | Not yet exhaustively searched |
+| `webharvest-zip` | Optional plugin configuration and XML examples | Not yet exhaustively searched |
+| `docs` | Historical XML examples, versioned references and generated documentation inputs | Historical fixtures/examples inventory still required |
+
+The module list is taken from the root reactor POM; module responsibilities and dependency boundaries are described in `docs/MONOREPO.md`. This table deliberately does **not** convert a targeted Core scan into a repository-wide absence claim.
+
+The GitHub code-search connector did not return usable matches for the legacy type names during this pass. That is a search-index limitation, not evidence that the names are absent. The remaining audit must use a checkout or another exhaustive repository-content mechanism and record exact matches by module, path, symbol, production/test/resource status and whether the reference is executable, reflective, serialized or documentary.
+
+### Required closure evidence
+
+Before retiring `XmlNode`, `ElementName` or any legacy XML type, the audit artifact must include:
+
+1. All source references in every reactor module, including imports, declarations, method signatures, reflection strings and generated-source inputs.
+2. All test references and fixtures, classified separately from production consumers.
+3. All resource/documentation references, including historical XML examples and versioned docs.
+4. IDE/CLI import, export, persistence and serialization paths that may consume or emit the legacy model.
+5. A repository search for Java serialization usage and persisted `XmlNode` payloads; absence of an in-repository writer is not proof that external consumers never persisted the type.
+6. A compatibility disposition for every non-Core consumer: migrate, preserve behind an adapter, or retire with an explicit compatibility note.
+
+Until this evidence exists, the defensible decision is limited: `ElementsRegistry` is not the active Core dispatch authority in the inspected path; its repository-wide and external-use retirement gate remains open.
