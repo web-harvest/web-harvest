@@ -69,10 +69,10 @@ The current source tree contains these plugin-named implementation classes outsi
 
 | Maven module | Plugin implementation classes visible in source tree | Preliminary product status |
 |---|---|---|
-| `webharvest-ftp` | `FtpPlugin`, `FtpGetPlugin`, `FtpPutPlugin`, `FtpListPlugin` | Optional-integration candidate; verify container/child semantics |
-| `webharvest-database` | `DatabasePlugin`, `ConnectionPlugin` | Optional-integration candidate; inspect connection/runtime support classes |
-| `webharvest-mail` | `MailPlugin` | Optional-integration candidate |
-| `webharvest-webbrowser` | `WebBrowserPlugin` | Optional-integration candidate |
+| `webharvest-ftp` | `FtpPlugin`, `FtpGetPlugin`, `FtpPutPlugin`, `FtpListPlugin` | Outside Core; optional integration (review direction 2026-11-27); retain container/child compatibility audit |
+| `webharvest-database` | `DatabasePlugin`, `ConnectionPlugin` | Outside default Core; optional-integration candidate; inspect connection/runtime support classes |
+| `webharvest-mail` | `MailPlugin` | Outside Core; optional integration (review direction 2026-11-27) |
+| `webharvest-webbrowser` | `WebBrowserPlugin` | Unclassified; optional-integration candidate pending capability/lifecycle review |
 | `webharvest-zip` | `ZipPlugin`, `ZipEntryPlugin` | Optional extension; PR #187 adds an explicit `ZipPluginRegistrar`, scoped execution-context stream and nested-archive runtime evidence; remains outside default Core |
 
 The database module also contains the following runtime/support classes, which are part of the module boundary audit even though they are not plugin entry points by name:
@@ -86,6 +86,8 @@ The database module also contains the following runtime/support classes, which a
 - `org.webharvest.runtime.database.StandaloneConnectionPool`
 
 Exception classes are not counted as user-facing plugin implementations.
+
+**Membership review direction (2026-11-27):** FTP and Mail are outside Core and should be delivered as opt-in integrations. Their current `@CorePlugin` annotations are not product-boundary decisions. WebBrowser remains deliberately unresolved; evaluate whether browser automation is a generally required platform capability or an integration with optional HtmlUnit dependency and independently managed browser/client lifecycle. Until that review is complete, do not classify it as Core or auto-activate it by classpath scanning.
 
 ## 3. Discovery and metadata discrepancies
 
