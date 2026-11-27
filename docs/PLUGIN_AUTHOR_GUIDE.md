@@ -23,7 +23,7 @@ This guide describes the required shape of that contract. It does not promise th
 
 ## 2. What a plugin is responsible for
 
-A plugin provides a named capability to a WebHarvest workflow. Its contract must make the following explicit:
+A Plugin is an executable provider. It may implement one or more independently identified Capabilities; the Plugin's identity is not the Capability's semantic identity. A workflow declares the Capability contract it requires, and the runtime resolves a compatible provider. The provider contract must make the following explicit:
 
 | Concern | Required declaration/behavior |
 |---|---|
@@ -32,7 +32,7 @@ A plugin provides a named capability to a WebHarvest workflow. Its contract must
 | Metadata | Version, description, vendor/maintainer and capability identifiers |
 | Configuration | Accepted properties, types, defaults, required values and validation |
 | Execution | Inputs, outputs, side effects, error behavior and interruption behavior |
-| Semantics | Capability role, typed inputs/outputs and valid execution context |
+| Capability implementation | Stable Capability IDs/versions implemented by this Plugin, with typed inputs/outputs and valid execution context |
 | Dependencies | Required libraries, external services and optional capabilities |
 | Lifecycle | Initialization, readiness, cleanup and resource ownership |
 | Diagnostics | Clear errors for invalid configuration, incompatibility and initialization/execution failures |
@@ -131,7 +131,7 @@ The target application flow is:
 1. The operator installs the plugin artifact using the documented packaging mechanism.
 2. The runtime discovers the provider/descriptor.
 3. The runtime validates identity, API compatibility, dependencies, schema and policy.
-4. The runtime registers the capability and exposes its descriptor to semantic tooling.
+4. The runtime registers the Plugin's provider bindings for the declared Capabilities and exposes their descriptors to semantic tooling.
 5. The runtime initializes the plugin and reports readiness or a structured failure.
 6. Workflow validation and execution resolve only compatible registered capabilities.
 7. Shutdown invokes plugin cleanup and releases owned resources.
@@ -140,7 +140,7 @@ The exact packaging/discovery mechanism is still subject to implementation and t
 
 ## 9. Semantic capability resolution — target
 
-The long-term runtime will resolve a workflow's semantic requirements against installed plugin capabilities.
+The long-term runtime will resolve a workflow's semantic requirements against compatible Capability providers contributed by installed Plugins.
 
 A workflow should declare what capability it needs and the typed contract it expects, rather than binding itself to a display label or implementation class. The resolver must check:
 - capability identity and version constraints;
