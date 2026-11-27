@@ -514,3 +514,17 @@ Before retiring `XmlNode`, `ElementName` or any legacy XML type, the audit artif
 6. A compatibility disposition for every non-Core consumer: migrate, preserve behind an adapter, or retire with an explicit compatibility note.
 
 Until this evidence exists, the defensible decision is limited: `ElementsRegistry` is not the active Core dispatch authority in the inspected path; its repository-wide and external-use retirement gate remains open.
+
+
+## 17. Legacy metadata value-object limitations — direct source inspection (2026-11-27)
+
+Direct inspection of the legacy definitions in `webharvest-core/src/main/java/org/webharvest/definition/` confirms that these classes are not suitable as immutable generation descriptors:
+
+- `ElementsRegistry` is only `Registry<ElementName, ElementInfo>`; `ElementsRegistryImpl` adds no XML-specific behavior and delegates to `AbstractRegistry`.
+- `ElementInfo` parses comma-separated child/attribute declarations in its constructor. The legacy `p:*` and `v:*` markers are converted to namespace URI strings in a set, while ordinary attribute names and suggested values are stored separately. Its element identity is only the local `name`; namespace and dialect are not part of this metadata object.
+- The old `definitionClass` and `processorClass` constructor arguments are ignored, their fields are commented out, and both getters return `null`. These are historical API remnants, not viable provider bindings.
+- `ElementInfo` returns its mutable sets, the internal suggested-value array, and the dependent-processor array directly. It therefore does not provide defensive immutable metadata suitable for atomic generation publication.
+- `ElementName` stores `name` and `uri`, but its `equals()` and `compareTo()` dereference `uri`; the constructor permits a null URI. Null-URI equality/order behavior is therefore unsafe and needs an explicit characterization test if compatibility requires it.
+- `XmlNode` is independently `Serializable`, stores an ordered `List<Serializable>` plus a child index keyed by `ElementName`, and has custom `writeObject/readObject` hooks. Its serialization behavior is a separate compatibility question from historical XML document compatibility.
+
+These findings strengthen the retirement direction: migrate the useful grammar semantics into immutable, namespace-aware descriptor values, not the mutable `ElementInfo` object graph or its historical constructor/API shape. They do **not** close the all-module or external serialized-data audit in section 16.
