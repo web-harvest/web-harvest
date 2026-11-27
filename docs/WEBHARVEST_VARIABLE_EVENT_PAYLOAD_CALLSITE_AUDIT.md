@@ -116,7 +116,29 @@ These are current implementation facts on the inspected revision. They justify a
 
 **INFERENCE —** A migration adapter cannot safely infer semantic type, framing, ownership, immutability or missing-value meaning from these conversions. Compatibility adapters should preserve existing behavior while new APIs make these properties explicit.
 
-## 4. Design constraints derived from evidence
+## 4. Core plugin source sweep: Variable boundaries
+
+A bounded source sweep inspected all **47 Java source files** directly under `webharvest-core/src/main/java/org/webharvest/plugin/core/` at the inspected revision for Variable conversion, collection and wrapped-object operations. This is a package-level scan, not an exhaustive repository-wide or downstream-consumer inventory.
+
+The sweep confirms that Variable is the common execution return/input type across control-flow and transformation plugins, but meaningful conversion/shape changes cluster at several boundaries:
+
+| Source path / method | Observed behavior | Why it matters |
+|---|---|---|
+| `plugin/core/LoopInputSourceResolver.java` — `unwrapSingleChildResult()`, `flatten()` | Removes one body-executor aggregation layer and preserves direct ListVariable members and their Variable types. | This is an example of a careful compatibility boundary; preserve this behavior in migration characterization. |
+| `plugin/core/LoopPlugin.java` — `doExecute()` | Runs each source item in a nested scope, but appends each non-empty body result via `bodyResult.toString()` to one StringBuilder and returns a NodeVariable string. | A loop can accept typed list members but its aggregate output becomes flattened text. It is not a typed map/collect operation. |
+| `plugin/core/CallPlugin.java` — `normalizeReturnValue()` | For ListVariable, selects the last non-empty item; for NodeVariable wrapping a Java List, returns one item or joins multiple items with spaces; also normalizes bracketed string forms. | Function-call return normalization is intentionally legacy-specific and can discard list structure. |
+| `plugin/core/XPathPlugin.java` — CSS evaluation path | Collects matching element text values into ListVariable of NodeVariable strings. | XPath/CSS result is a list of extracted text values, not a typed XML-node/result-set contract. |
+| `plugin/core/TokenizePlugin.java` and `RegexpPlugin.java` | Build ListVariable values from token/match strings. | These are list-producing text transformations; element boundaries exist only in the Variable collection. |
+| `plugin/core/WhilePlugin.java` | Aggregates iteration body results into a ListVariable on its result path. | Differs from LoopPlugin's string-concatenating output; superficially similar iteration plugins do not share one output shape. |
+| `plugin/core/XQueryPlugin.java` | Converts a Variable to String XML, reparses it with Saxon to bind node() parameters; falls back to string on conversion failure. | Structured values cross a stringify/reparse boundary and can be copied/materialized. |
+| `plugin/core/JsonToXmlPlugin.java` and `XmlToJsonPlugin.java` | Convert body values to String before parsing and serialize the transformed whole document into NodeVariable. | Current JSON/XML conversion is whole-document materialization. |
+| `plugin/core/IfPlugin.java` | Inspects `getWrappedObject()` to implement truthiness, in addition to string/numeric handling. | Consumers can depend on the concrete wrapped Java type, not merely Variable's public conversion methods. |
+
+Other Core plugins use Variable primarily as an execution/return carrier, scope value or body aggregation type (for example Def, GetVar, SetVar, Var, Config, Function, Return, Catch, Try, Script, Template, Text and List). The 47-file sweep does not prove that no additional conversion paths exist in other packages, scripting adapters, optional modules, IDE code or external applications.
+
+**Architectural implication:** Preserve legacy behavior through explicit adapters and characterization tests. Do not silently normalize Loop and While to one behavior, change CallPlugin's return normalization, or assume every ListVariable is a homogeneous typed collection.
+
+## 5. Design constraints derived from evidence
 
 The next data/payload API design should be evaluated against these constraints:
 
