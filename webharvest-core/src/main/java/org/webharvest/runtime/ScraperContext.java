@@ -40,14 +40,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
 
 import javax.annotation.PostConstruct;
 
-import org.apache.commons.collections.IteratorUtils;
-import org.apache.commons.collections.Transformer;
 import org.apache.commons.lang3.ObjectUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
