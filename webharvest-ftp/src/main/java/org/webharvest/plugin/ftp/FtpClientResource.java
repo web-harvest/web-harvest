@@ -96,7 +96,7 @@ final class FtpClientResource implements AutoCloseable {
         }
     }
 
-    private static void closeClient(FTPClient client) throws IOException {
+    static void closeClient(FTPClient client) throws IOException {
         synchronized (client) {
             IOException failure = null;
             if (client.isConnected()) {
