@@ -443,3 +443,39 @@ The current `StreamingXmlParserTest` covers basic/nested/multiple elements, text
 The parser creates a namespace-aware SAX factory but does not set explicit secure-processing/DOCTYPE/external-entity restrictions in the inspected implementation. This needs a separate security characterization before replacing the parser; it is not safe to assume that the hardened settings in the unrelated `XSDMetadataParser` also apply here.
 
 These gaps are characterization work, not permission to change parser behavior before historical XML fixtures and expected semantics are inventoried.
+
+
+## 15. Residual XML model and compatibility inventory (2026-11-27)
+
+The `XmlNode` / `ElementName` relationship must not be mistaken for the current XML configuration parser:
+
+- `StreamingXmlParser` builds `PluginConfigurationTree`; it does not construct `XmlNode`.
+- Current XML result handling uses `NodeVariable` and `XmlNodeWrapper` around Saxon/XQuery nodes. `XQueryPlugin` has a stale `XmlNode` import in the inspected source, but no use of the type was found in that file.
+- The legacy `XmlNode` class is `Serializable`, maintains a separate ordered element/text list and a child index keyed by `ElementName`, and has custom serialization hooks that flush pending text. Its contract test covers child lookup and serialization round-trip.
+- No active production call site for `ElementsRegistry` or `XmlNode` was identified in the targeted Core source inspection. This is a targeted finding, not yet a complete all-module/external-consumer proof.
+
+Before deleting `XmlNode` / `ElementName`, complete the repository-wide call-site and serialized-data audit. If no supported consumer exists, retire both rather than preserving a parallel XML tree model. If a consumer is found, migrate it to an immutable expanded-name value type and preserve only the semantics actually required. The explicit product compatibility requirement remains historical XML document behavior, not arbitrary Java serialization of internal tree objects; any persisted serialized data discovered in the audit must be surfaced as a separate decision.
+
+### 15.1 Namespace and alias characterization matrix
+
+The current `StreamingXmlParser.normalizeNamespace()` behavior is narrow:
+- empty/null element namespace maps to the 1.0 Core namespace;
+- the canonical 1.0 namespace and the historical SourceForge 1.0 URI map to the canonical 1.0 URI;
+- other namespace URIs pass through unchanged.
+
+The current `ElementAliasTable` is a Stage-1 local-name-only map and defaults to empty. It is not yet a QName alias policy. The final descriptor/compatibility contract must explicitly define whether aliases are scoped by namespace and how collisions are rejected; never allow a local-name alias to cross namespace boundaries implicitly.
+
+Required historical XML characterization fixtures:
+1. no namespace / empty namespace root and descendants;
+2. canonical 1.0 Core namespace;
+3. historical SourceForge 1.0 namespace URI;
+4. canonical 2.1 Core namespace;
+5. unknown namespace with a known local element name;
+6. same local element name in two distinct namespaces;
+7. namespaced parameter and variable attributes, including same-local-name collisions;
+8. unqualified attributes alongside namespaced attributes;
+9. executable nodes versus parent-consumed/declarative nodes (`http-header`, `http-param`, `stylesheet`, `xq-expression`, `xq-param`, and other evidenced cases);
+10. invalid/unknown elements and invalid required/allowed child/attribute combinations;
+11. parser security cases: DOCTYPE, external general entities, external parameter entities and external schema access.
+
+The test oracle for each fixture must be the historical meaning and execution result, not simply the current parser's output.
