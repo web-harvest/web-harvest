@@ -75,8 +75,13 @@ import org.slf4j.LoggerFactory;
  *           url="jdbc:h2:mem:test"
  *           username="sa"
  *           password=""
+ *           queryTimeout="30"
  *           sql="SELECT * FROM table"/&gt;
  * </pre>
+ *
+ * <p>The optional {@code queryTimeout} attribute uses JDBC seconds. Zero (the
+ * default) preserves the JDBC driver's timeout behavior. Managed executions
+ * additionally register the active statement for best-effort cancellation.</p>
  * 
  * @author WebHarvest Team
  * @since 2.1.0
