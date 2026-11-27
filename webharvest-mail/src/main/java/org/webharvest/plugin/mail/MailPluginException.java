@@ -43,16 +43,45 @@ import org.webharvest.plugin.exceptions.PluginException;
  */
 public class MailPluginException extends PluginException {
 
+    /**
+     * Best-known disposition of the external SMTP side effect.
+     *
+     * <p>UNKNOWN means the client cannot establish whether the remote server
+     * accepted the message. It must not be interpreted as a safe retry signal.</p>
+     */
+    public enum DeliveryDisposition {
+        NOT_STARTED,
+        IN_PROGRESS,
+        CONFIRMED,
+        FAILED,
+        UNKNOWN
+    }
+
+    private final DeliveryDisposition deliveryDisposition;
+
     public MailPluginException(String message) {
-        super(message);
+        this(message, null, null);
     }
 
     public MailPluginException(Throwable cause) {
-        super(cause);
+        this(cause == null ? null : cause.getMessage(), null, cause);
     }
 
     public MailPluginException(String message, Throwable cause) {
+        this(message, null, cause);
+    }
+
+    public MailPluginException(String message, DeliveryDisposition deliveryDisposition, Throwable cause) {
         super(message, cause);
+        this.deliveryDisposition = deliveryDisposition;
+    }
+
+    /**
+     * Returns the recorded SMTP effect disposition, or null for legacy
+     * exceptions created without delivery-phase information.
+     */
+    public DeliveryDisposition getDeliveryDisposition() {
+        return deliveryDisposition;
     }
 }
 
