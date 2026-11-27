@@ -377,6 +377,15 @@ A follow-up tree-driven source pass used the recursive Git tree for the inspecte
 - The non-Core pass fetched all 49 production Java files under the optional modules/CLI/IDE source roots, plus the documentation generator source. It confirmed additional Variable boundaries in the CLI argument-to-context path, IDE variable extraction/stringification, Database connection handles/results, FTP text/binary handling, Mail attachments, WebBrowser results and ZIP context-held output streams.
 - This is a source-file inventory for the selected boundaries, not a full symbol-level audit of every Core package, test source, generated code, public API consumer or downstream embedding application. GitHub Code Search returned zero/incomplete results for known symbols; those results are not evidence that no other call sites exist.
 
+
+**Additional boundary observations from the same source pass:**
+
+- **CLI input:** `WebHarvestCLI` injects parsed command-line variables through `context.setLocalVar(name, String)`. That overload calls `CommonUtil.createVariable()`, so command-line empty strings enter the context as `EmptyVariable`, not as a distinct empty-text value.
+- **IDE output:** `ExecutionManager.extractVariables()` first iterates the context and stringifies each `Variable` with `toString()`; it filters `EmptyVariable` only when the name is a function definition. Its secondary probe path skips blank strings. The two extraction paths therefore do not apply one uniform empty-value policy. The iterator path also truncates displayed values to 5,000 characters.
+- **JSR-223 boundary:** `JSRScriptEngineAdapter.copyVariables()` copies `getWrappedObject()` and separately attempts trimmed String-to-Integer/Double conversion. Empty Strings remain Strings, null wrapped objects remain null, and malformed non-empty strings remain Strings. This is independent of `Variable.toDouble()` and the SetVar arithmetic fallback.
+- **Template boundary:** `BaseTemplater.evaluateToString()` maps any result for which `isEmpty()` is true to Java `null`; the Variable-returning path uses `CommonUtil.createVariable()`. A template string boundary can therefore collapse more states than a caller expecting a literal empty string may anticipate.
+- **Optional integrations:** `ConnectionPlugin` stores a JDBC pool/credentials inside a `NodeVariable` subclass; Database returns serialized XML/text; FTP GET and PUT take different text/binary paths; Mail converts attachments through `toBinary()`; WebBrowser returns strings; ZIP stores an active `ZipOutputStream` inside a context `NodeVariable`. These are concrete in-repository consumers of the broad Variable carrier, not reasons to move those integrations into Core.
+
 ## 5. Design constraints derived from evidence
 
 The next data/payload API design should be evaluated against these constraints:
