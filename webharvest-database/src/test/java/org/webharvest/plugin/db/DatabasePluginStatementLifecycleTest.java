@@ -25,10 +25,14 @@ import org.webharvest.runtime.variables.Variable;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotNull;
+import static org.testng.Assert.assertSame;
 import static org.testng.Assert.assertTrue;
+import static org.testng.Assert.fail;
 
 /** Tests owner cancellation and statement timeout at the JDBC operation boundary. */
 public class DatabasePluginStatementLifecycleTest {
@@ -131,6 +135,51 @@ public class DatabasePluginStatementLifecycleTest {
 
         org.mockito.Mockito.verify(statement, org.mockito.Mockito.never()).setQueryTimeout(
             org.mockito.ArgumentMatchers.anyInt());
+    }
+
+    @Test
+    public void queryTimeoutParserPreservesDriverDefaultAndRejectsInvalidValues() throws Throwable {
+        Method method = DatabasePlugin.class.getDeclaredMethod("parseQueryTimeout", String.class);
+        method.setAccessible(true);
+        DatabasePlugin plugin = new DatabasePlugin();
+
+        assertEquals(method.invoke(plugin, new Object[] { null }), 0);
+        assertEquals(method.invoke(plugin, "   "), 0);
+        assertEquals(method.invoke(plugin, "0"), 0);
+        assertEquals(method.invoke(plugin, "12"), 12);
+
+        assertQueryTimeoutRejected(method, plugin, "-1");
+        assertQueryTimeoutRejected(method, plugin, "invalid");
+    }
+
+    @Test
+    public void managedStatementCloseFailureRemainsObservable() throws Throwable {
+        Connection connection = mock(Connection.class);
+        PreparedStatement statement = mock(PreparedStatement.class);
+        SQLException closeFailure = new SQLException("managed statement close failed");
+        when(connection.prepareStatement(anyString())).thenReturn(statement);
+        when(statement.executeUpdate()).thenReturn(1);
+        doThrow(closeFailure).when(statement).close();
+
+        try {
+            invokeExecuteSql(connection, "UPDATE sample SET value = 1", 0,
+                new TrackingResourceAccess());
+            fail("A managed statement close failure must remain observable");
+        } catch (SQLException expected) {
+            assertTrue(expected.getSuppressed().length > 0,
+                "The resource-close failure must remain attached to the surfaced cleanup failure");
+            assertSame(expected.getSuppressed()[0].getCause(), closeFailure);
+        }
+    }
+
+    private static void assertQueryTimeoutRejected(Method method, DatabasePlugin plugin, String value)
+            throws Exception {
+        try {
+            method.invoke(plugin, value);
+            fail("Invalid queryTimeout must be rejected: " + value);
+        } catch (InvocationTargetException expected) {
+            assertTrue(expected.getCause() instanceof IllegalArgumentException);
+        }
     }
 
     private static Variable invokeExecuteSql(Connection connection, String sql, int queryTimeoutSeconds,
