@@ -8,7 +8,11 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.webharvest.Harvester;
 import org.webharvest.ScrapingAware;
+import org.webharvest.runtime.DynamicScopeContext;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
+import com.google.inject.Guice;
 import com.google.inject.Injector;
 
 /**
@@ -76,6 +80,64 @@ public class ScrapingInterceptorTest {
         verify(owningInjector).getInstance(ScrapingInterceptor.ScrapingAwareHelper.class);
         verify(owningInjector).getInstance(AttributeHolder.class);
         verifyNoInteractions(unrelatedInjector);
+    }
+
+    @Test
+    public void twoGuiceManagedHarvestersUseTheirOwningRuntimeInjector() {
+        Injector firstRuntime = Guice.createInjector(
+                new ScraperModule(System.getProperty("user.dir")));
+        Injector secondRuntime = Guice.createInjector(
+                new ScraperModule(System.getProperty("user.dir")));
+
+        AtomicInteger firstBefore = new AtomicInteger();
+        AtomicInteger firstAfter = new AtomicInteger();
+        AtomicInteger secondBefore = new AtomicInteger();
+        AtomicInteger secondAfter = new AtomicInteger();
+
+        firstRuntime.getInstance(ScrapingInterceptor.ScrapingAwareHelper.class)
+                .addListener(new ScrapingAware() {
+                    @Override
+                    public void onBeforeScraping(Harvester harvester) {
+                        firstBefore.incrementAndGet();
+                    }
+
+                    @Override
+                    public void onAfterScraping(Harvester harvester) {
+                        firstAfter.incrementAndGet();
+                    }
+                });
+        secondRuntime.getInstance(ScrapingInterceptor.ScrapingAwareHelper.class)
+                .addListener(new ScrapingAware() {
+                    @Override
+                    public void onBeforeScraping(Harvester harvester) {
+                        secondBefore.incrementAndGet();
+                    }
+
+                    @Override
+                    public void onAfterScraping(Harvester harvester) {
+                        secondAfter.incrementAndGet();
+                    }
+                });
+
+        firstRuntime.getInstance(GuiceManagedHarvester.class).execute(null);
+        assertEquals(firstBefore.get(), 1);
+        assertEquals(firstAfter.get(), 1);
+        assertEquals(secondBefore.get(), 0);
+        assertEquals(secondAfter.get(), 0);
+
+        secondRuntime.getInstance(GuiceManagedHarvester.class).execute(null);
+        assertEquals(firstBefore.get(), 1);
+        assertEquals(firstAfter.get(), 1);
+        assertEquals(secondBefore.get(), 1);
+        assertEquals(secondAfter.get(), 1);
+    }
+
+    public static class GuiceManagedHarvester implements Harvester {
+        @Override
+        @Scraping
+        public DynamicScopeContext execute(ContextInitCallback callback) {
+            return null;
+        }
     }
 
     @Test
