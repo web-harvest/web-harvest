@@ -4,7 +4,6 @@
  */
 package org.webharvest.plugin.mail;
 
-import javax.net.SocketFactory;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.Socket;
@@ -13,6 +12,8 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
+import javax.net.SocketFactory;
 
 /**
  * Tracks the sockets created for one SMTP send operation.
