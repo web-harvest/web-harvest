@@ -322,3 +322,13 @@ The host owns context creation, revision publication, access policy, audit event
 A revision update affects new executions only. Rollback means rebinding to a prior immutable revision. Revocation of a secret is provider-owned and may invalidate future resolutions; the policy for already-issued operation-scoped credential handles must be explicit. Secret rotation must not change credentials halfway through a single operation.
 
 The first implementation should support a simple in-memory/local-file provider behind the neutral contract for offline operation and deterministic tests. A Vault adapter can be added later as an optional integration without changing the Core contract.
+
+
+### 11.4 Existing test evidence and remaining gaps
+
+- `ScraperContextVariableScopeTest` verifies root-variable visibility, nested-variable cleanup, multiple nested frames and shadow/restore behavior.
+- `ScraperContextTest.testReplaceExistingVar_inSubContext` verifies that replacing an existing visible variable inside a nested context survives scope exit.
+- `SetVarPluginTest` primarily uses a mocked `DynamicScopeContext` and verifies the local-set path; it does not prove the full `SetVarPlugin` + real `ScraperContext` nested-scope behavior end to end.
+- `DefPluginTest` is a metadata contract test, not a comprehensive execution/scope contract.
+
+Before changing these semantics, add runtime-level characterization tests for `def` shadowing and legacy `set-var` mutation inside loops/functions/nested containers, including exceptional exit. Keep the existing context-level tests as lower-level invariants.
