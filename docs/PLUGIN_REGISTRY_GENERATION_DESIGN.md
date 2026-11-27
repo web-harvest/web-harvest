@@ -528,3 +528,50 @@ Direct inspection of the legacy definitions in `webharvest-core/src/main/java/or
 - `XmlNode` is independently `Serializable`, stores an ordered `List<Serializable>` plus a child index keyed by `ElementName`, and has custom `writeObject/readObject` hooks. Its serialization behavior is a separate compatibility question from historical XML document compatibility.
 
 These findings strengthen the retirement direction: migrate the useful grammar semantics into immutable, namespace-aware descriptor values, not the mutable `ElementInfo` object graph or its historical constructor/API shape. They do **not** close the all-module or external serialized-data audit in section 16.
+
+
+## 18. XML compatibility is a grammar contract, not registry compatibility — current runtime evidence (2026-11-27)
+
+The existing `docs/CORE_PLUGIN_RUNTIME_EVIDENCE.md` records the exact 44 XML element mappings registered by `CorePluginsRegistrar`, with corresponding runtime/test evidence. This inventory is the compatibility baseline to preserve or explicitly deprecate; it is not a requirement to retain the old registry classes.
+
+### Compatibility distinctions that the replacement model must encode
+
+1. **Registered executable mappings:** preserve the 44-name mapping set as the current baseline, subject to explicit later Core/optional-module classification. Do not silently drop a name because its implementation is not a standalone capability.
+2. **Declarative/parent-consumed XML nodes:** distinguish executable plugin descriptors from configuration-node descriptors. In particular:
+   - `stylesheet` is read by the XSLT parent as stylesheet content;
+   - `xq-expression` supplies the XQuery expression;
+   - `xq-param` supplies typed parameter configuration whose value children are consumed by the parent;
+   - `http-header`, `http-param`, regexp child nodes and similar structures are parent-level grammar, not automatically independent processors.
+3. **Dual-use XML nodes:** `xml` has a standalone runtime behavior and is also consumed declaratively by transformation parents. A single descriptor can express multiple roles only if those roles remain explicit and validated.
+4. **Legacy alias:** `set-var` remains an explicit registered compatibility mapping. `var` is not one of the 44 default mappings; its deprecated class/metadata visibility must not be mistaken for default runtime registration. Preserve `set-var` unless a separately approved deprecation/removal plan provides migration evidence.
+5. **Historical metadata fallback:** the 53-name metadata fallback described in the runtime evidence is not equivalent to the 44 active runtime mappings. Do not use IDE metadata discovery as proof of Core dispatch availability.
+
+### Namespace constants and the old p/v grammar
+
+The current `WHConstants` source declares:
+
+| Constant | URI |
+|---|---|
+| `XMLNS_CORE` | `http://org.webharvest/schema/2.1/core` |
+| `XMLNS_VAR` | `http://org.webharvest/schema/2.1/var` |
+| `XMLNS_PARAM` | `http://org.webharvest/schema/2.1/param` |
+| `XMLNS_CORE_10` | `http://org.webharvest/schema/1.0/config` |
+
+`ElementInfo` historically interprets `p:*` and `v:*` declarations as namespace-family allowances and stores the corresponding namespace URIs. This establishes that the old metadata grammar distinguished parameter-namespace and variable-namespace attributes. It does **not** establish that the current streaming parser resolves either family into a Parameter Context or runtime variable: the active parser's attribute projection to local-name/string values loses the namespace identity required to make that distinction.
+
+Consequently, the future XML adapter must preserve expanded attribute names (namespace URI + local name) until semantic binding and validation are complete. A local-name-only map is insufficient. The adapter must explicitly characterize:
+- namespace declarations and namespace alias prefixes (prefix spelling is not identity);
+- unqualified attributes versus attributes in the parameter and variable namespaces;
+- same-local-name attributes from different namespace URIs;
+- parameter reference versus runtime variable reference semantics;
+- legacy unqualified attributes and historical namespace aliases.
+
+No new interpretation of `p:*` or `v:*` is approved by this evidence alone. Their exact historical value/reference semantics must be established from fixtures and runtime behavior before the new parameter binding model is finalized.
+
+### Design consequence
+
+The new registry/generation system should publish at least two related but distinct immutable descriptor views:
+- **Executable plugin descriptors:** identity, implementation/factory binding, supported configuration schema, lifecycle/validation contract and capability requirements.
+- **XML dialect descriptors:** QName-scoped element/attribute grammar, aliases, parent-child relationships, content model, deprecation/version metadata and mapping to executable descriptors where applicable.
+
+The XML dialect adapter owns compatibility parsing and translation. Core runtime dispatch must consume normalized semantic configuration and must not infer executable capability from the mere presence of an XML element name.
