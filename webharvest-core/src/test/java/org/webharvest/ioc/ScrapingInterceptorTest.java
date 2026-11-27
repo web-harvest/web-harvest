@@ -54,6 +54,31 @@ public class ScrapingInterceptorTest {
     }
 
     @Test
+    public void invokeUsesTheInjectorOwnedByItsRuntimeBinding() throws Throwable {
+        Injector owningInjector = mock(Injector.class);
+        Injector unrelatedInjector = mock(Injector.class);
+        ScraperScope owningScope = new ScraperScope();
+        ScrapingInterceptor.ScrapingAwareHelper owningHelper =
+                new ScrapingInterceptor.ScrapingAwareHelper();
+        AttributeHolder owningHolder = mock(AttributeHolder.class);
+        when(owningInjector.getInstance(ScraperScope.class)).thenReturn(owningScope);
+        when(owningInjector.getInstance(ScrapingInterceptor.ScrapingAwareHelper.class))
+                .thenReturn(owningHelper);
+        when(owningInjector.getInstance(AttributeHolder.class)).thenReturn(owningHolder);
+
+        MethodInvocation invocation = mock(MethodInvocation.class);
+        when(invocation.getThis()).thenReturn(harvester);
+        when(invocation.proceed()).thenReturn("owning-runtime");
+        ScrapingInterceptor owningInterceptor = new ScrapingInterceptor(() -> owningInjector);
+
+        assertEquals(owningInterceptor.invoke(invocation), "owning-runtime");
+        verify(owningInjector).getInstance(ScraperScope.class);
+        verify(owningInjector).getInstance(ScrapingInterceptor.ScrapingAwareHelper.class);
+        verify(owningInjector).getInstance(AttributeHolder.class);
+        verifyNoInteractions(unrelatedInjector);
+    }
+
+    @Test
     public void testScrapingAwareHelperAddListener() {
         // Arrange
         ScrapingInterceptor.ScrapingAwareHelper helper = new ScrapingInterceptor.ScrapingAwareHelper();
