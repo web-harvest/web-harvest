@@ -25,6 +25,7 @@ import org.webharvest.runtime.resource.ExecutionResourceAccess;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -32,6 +33,7 @@ import static org.mockito.Mockito.when;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertNotNull;
+import static org.testng.Assert.assertSame;
 import static org.testng.Assert.assertTrue;
 
 /** Contract tests for the FTP operation resource adapter. */
@@ -71,6 +73,23 @@ public class FtpClientResourceTest {
         InOrder order = inOrder(lease, operation);
         order.verify(lease).close();
         order.verify(operation).close();
+    }
+
+    @Test
+    public void finalCloseAttemptsDisconnectWhenLogoutFails() throws Exception {
+        FTPClient client = mock(FTPClient.class);
+        java.io.IOException logoutFailure = new java.io.IOException("logout failed");
+        when(client.isConnected()).thenReturn(true);
+        doThrow(logoutFailure).when(client).logout();
+
+        try {
+            FtpClientResource.closeClient(client);
+            throw new AssertionError("Logout failure must be surfaced");
+        } catch (java.io.IOException actual) {
+            assertSame(actual, logoutFailure);
+        }
+
+        verify(client).disconnect();
     }
 
     @Test
