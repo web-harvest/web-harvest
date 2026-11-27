@@ -34,6 +34,7 @@
 package org.webharvest.plugin.mail;
 
 import java.io.IOException;
+import java.time.Duration;
 
 import javax.activation.DataSource;
 
@@ -386,10 +387,22 @@ public class MailPlugin extends AbstractPlugin {
             String bodyContent = getBodyContent(context);
             setBodyContent(email, bodyContent, "html".equalsIgnoreCase(type));
             
-            String messageId = email.send();
-            LOGGER.debug("Mail sent successfully with message ID: " + messageId);
-            
-            return new NodeVariable("Email sent successfully. Message ID: " + messageId);
+            // Commons Email defaults to 60-second socket timeouts. Keep SMTP
+            // connection and I/O waits finite and expose the underlying socket to
+            // the execution owner through the session's SocketFactory instance.
+            email.setSocketConnectionTimeout(Duration.ofMillis(SmtpSocketResource.CONNECT_TIMEOUT_MILLIS));
+            email.setSocketTimeout(Duration.ofMillis(SmtpSocketResource.READ_TIMEOUT_MILLIS));
+            javax.mail.Session mailSession = email.getMailSession();
+            TrackingSmtpSocketFactory socketFactory = new TrackingSmtpSocketFactory();
+            mailSession.getProperties().put("mail.smtp.socketFactory", socketFactory);
+            mailSession.getProperties().setProperty(
+                "mail.smtp.writetimeout", Integer.toString(SmtpSocketResource.WRITE_TIMEOUT_MILLIS));
+
+            try (SmtpSocketResource smtpResource = SmtpSocketResource.open(context, socketFactory)) {
+                String messageId = email.send();
+                LOGGER.debug("Mail sent successfully with message ID: " + messageId);
+                return new NodeVariable("Email sent successfully. Message ID: " + messageId);
+            }
             
         } catch (InterruptedException interrupted) {
             Thread.currentThread().interrupt();
