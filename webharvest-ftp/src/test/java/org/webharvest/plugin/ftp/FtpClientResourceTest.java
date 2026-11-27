@@ -117,7 +117,8 @@ public class FtpClientResourceTest {
             when(operation.acquire()).thenReturn(lease);
 
             FtpClientResource resource = FtpClientResource.open(context);
-            FTPClient client = resource.getClient();
+            try {
+                FTPClient client = resource.getClient();
             client.connect("127.0.0.1", controlServer.getLocalPort());
             assertTrue(client.login("user", "secret"));
             assertTrue(client.setFileType(FTPClient.BINARY_FILE_TYPE));
@@ -141,7 +142,9 @@ public class FtpClientResourceTest {
             assertTrue(dataClosed.await(3, TimeUnit.SECONDS),
                 "Owner abort must close the data socket, not only the FTP control socket");
             assertFalse(client.isConnected(), "Owner abort must disconnect the control socket");
-            resource.close();
+            } finally {
+                resource.close();
+            }
         } finally {
             worker.shutdownNow();
             controlServer.close();
@@ -184,7 +187,6 @@ public class FtpClientResourceTest {
                         }
                     }
                     dataClosed.countDown();
-                    reply(writer, "226 transfer complete");
                 } else if ("QUIT".equals(verb)) {
                     reply(writer, "221 goodbye");
                     return;
