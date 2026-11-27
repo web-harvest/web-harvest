@@ -110,7 +110,7 @@ interface PayloadReader extends AutoCloseable {
 }
 ```
 
-This is not yet a decision that Java `InputStream` is the final abstraction. The important requirements are that access is explicit, readers are closeable, payload metadata is separate, and the runtime can attribute and drain active reads. A reader must not expose an unbounded in-memory copy as the default behavior.
+This is not yet a decision that Java `InputStream` is the final abstraction. The important requirements are that access is explicit, readers are closeable, payload metadata is separate, and the runtime can attribute and drain active reads. The reader owns the underlying stream and its resource lease; `input()` is a borrowed view, and closing the reader closes the stream and releases the lease. A reader must not expose an unbounded in-memory copy as the default behavior.
 
 A corresponding write API may be supplied by an optional artifact/storage provider. It should define commit versus abort and return a stable PayloadRef after successful completion. Core must not mandate a particular storage backend.
 
@@ -127,7 +127,7 @@ interface StreamSession<T> extends AutoCloseable {
 }
 ```
 
-This is a candidate shape, not an approved signature. It still needs decisions about multi-subscriber fan-out, terminal semantics, cancellation acknowledgement and resource ownership.
+This is a candidate shape, not an approved signature. It still needs decisions about multi-subscriber fan-out, terminal semantics, cancellation acknowledgement and resource ownership. `cancel()`/`close()` request termination; the `termination()` stage should complete only after the provider has observed source termination and released its source-side resources. A per-subscriber `Flow.Subscription.cancel()` cancels only that subscriber unless the provider's explicit fan-out policy says no consumers remain and source shutdown is appropriate.
 
 Non-negotiable behavior:
 - bounded per-subscriber buffering;
