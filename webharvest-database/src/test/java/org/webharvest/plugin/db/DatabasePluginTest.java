@@ -36,6 +36,7 @@ package org.webharvest.plugin.db;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
+import java.time.Duration;
 
 import com.google.common.eventbus.EventBus;
 import org.testng.annotations.BeforeMethod;
@@ -44,6 +45,10 @@ import org.webharvest.plugin.DefaultPluginConfiguration;
 import org.webharvest.definition.Config;
 import org.webharvest.plugin.exceptions.PluginException;
 import org.webharvest.runtime.DynamicScopeContext;
+import org.webharvest.runtime.ScraperContext;
+import org.webharvest.runtime.resource.LedgerExecutionResourceCoordinator;
+import org.webharvest.runtime.resource.ResourceLedger;
+import org.webharvest.runtime.session.ExecutionOwner;
 import org.webharvest.runtime.database.ConnectionProxy;
 import org.webharvest.runtime.session.ScraperSessionImpl;
 import org.webharvest.runtime.variables.Variable;
@@ -139,6 +144,155 @@ public class DatabasePluginTest {
                 "<results><row><column name=\"id\">7</column><column name=\"name\">A&amp;B &lt;C&gt;</column></row></results>");
         assertTrue(physicalConnection.isClosed(),
                 "Legacy contexts without a session EventBus must still release the physical connection");
+    }
+
+    @Test
+    public void testManagedInlineConnectionUsesOperationResourceScope() throws Exception {
+        String url = "jdbc:h2:mem:db_managed_inline;DB_CLOSE_DELAY=-1";
+        createFixture(url);
+        ResourceLedger ledger = new ResourceLedger("db-runtime");
+        ExecutionOwner owner = new ExecutionOwner("db-runtime", "db-inline-session", 1);
+        LedgerExecutionResourceCoordinator coordinator =
+            new LedgerExecutionResourceCoordinator(ledger, owner);
+        DynamicScopeContext managedContext = new ScraperContext();
+        managedContext.setExecutionOwner(owner);
+        managedContext.setResourceAccess(coordinator.getAccess());
+
+        DatabasePlugin plugin = new DatabasePlugin();
+        plugin.initialize(inlineConfig(url, "SELECT id AS \"id\" FROM sample"));
+        Variable result = plugin.execute(managedContext);
+
+        assertEquals(result.toString(), "<results><row><column name=\"id\">7</column></row></results>");
+        assertEquals(ledger.size(), 0,
+            "An inline operation resource must be drained and retired when the SQL operation exits");
+    }
+
+    @Test
+    public void testManagedNamedConnectionHoldsSessionResourceUntilOwnerDrain() throws Exception {
+        String url = "jdbc:h2:mem:db_managed_named;DB_CLOSE_DELAY=-1";
+        createFixture(url);
+        ResourceLedger ledger = new ResourceLedger("db-runtime");
+        ExecutionOwner owner = new ExecutionOwner("db-runtime", "db-named-session", 1);
+        LedgerExecutionResourceCoordinator coordinator =
+            new LedgerExecutionResourceCoordinator(ledger, owner);
+        DynamicScopeContext managedContext = new ScraperContext();
+        managedContext.setExecutionOwner(owner);
+        managedContext.setResourceAccess(coordinator.getAccess());
+
+        ConnectionPlugin connectionPlugin = new ConnectionPlugin();
+        DefaultPluginConfiguration connectionConfig = new DefaultPluginConfiguration(
+            "connection", CORE_NAMESPACE, "connection");
+        connectionConfig.setProperty("id", "main");
+        connectionConfig.setProperty("driver", "org.h2.Driver");
+        connectionConfig.setProperty("url", url);
+        connectionConfig.setProperty("username", "sa");
+        connectionConfig.setProperty("password", "");
+        connectionPlugin.initialize(connectionConfig);
+        connectionPlugin.execute(managedContext);
+        try {
+            ConnectionPlugin.getNamedConnection(managedContext, "main");
+            fail("Managed JDBC connections must require an execution resource lease");
+        } catch (IllegalStateException expected) {
+            assertTrue(expected.getMessage().contains("resource lease"));
+        }
+        try {
+            ConnectionPlugin.closeNamedConnection(managedContext, "main");
+            fail("Managed JDBC pools must not be closed outside their resource owner");
+        } catch (IllegalStateException expected) {
+            assertTrue(expected.getMessage().contains("resource owner"));
+        }
+
+        DatabasePlugin databasePlugin = new DatabasePlugin();
+        DefaultPluginConfiguration databaseConfig = config();
+        databaseConfig.setProperty("connection", "main");
+        databaseConfig.setProperty("sql", "SELECT id AS \"id\" FROM sample");
+        databasePlugin.initialize(databaseConfig);
+        assertEquals(databasePlugin.execute(managedContext).toString(),
+            "<results><row><column name=\"id\">7</column></row></results>");
+
+        ConnectionPlugin.NamedConnectionLease activeUse =
+            ConnectionPlugin.acquireNamedConnection(managedContext, "main");
+        Connection tracked = activeUse.getConnection();
+        Connection physical = ((ConnectionProxy) tracked).getTargetConnection();
+        assertFalse(physical.isClosed());
+        assertEquals(ledger.size(), 1,
+            "The named pool remains registered at SESSION scope after each SQL operation");
+
+        coordinator.requestTermination();
+        assertFalse(physical.isClosed(),
+            "A close request must not close a named pool while an operation lease is active");
+
+        activeUse.close();
+        activeUse.close(); // Lease close is deliberately idempotent for repeated cleanup paths.
+        coordinator.markOwnerQuiescentAndDrain(Duration.ofSeconds(1));
+        assertTrue(physical.isClosed());
+        assertEquals(ledger.size(), 0);
+    }
+
+    @Test
+    public void failedManagedNamedConnectionAcquisitionReleasesItsOperationLease() throws Exception {
+        ResourceLedger ledger = new ResourceLedger("db-runtime");
+        ExecutionOwner owner = new ExecutionOwner("db-runtime", "db-failed-acquire-session", 1);
+        LedgerExecutionResourceCoordinator coordinator =
+            new LedgerExecutionResourceCoordinator(ledger, owner);
+        DynamicScopeContext managedContext = new ScraperContext();
+        managedContext.setExecutionOwner(owner);
+        managedContext.setResourceAccess(coordinator.getAccess());
+
+        ConnectionPlugin connectionPlugin = new ConnectionPlugin();
+        DefaultPluginConfiguration connectionConfig = new DefaultPluginConfiguration(
+            "connection", CORE_NAMESPACE, "connection");
+        connectionConfig.setProperty("id", "unavailable");
+        connectionConfig.setProperty("driver", "org.h2.Driver");
+        connectionConfig.setProperty("url", "jdbc:missing-driver:test");
+        connectionPlugin.initialize(connectionConfig);
+        connectionPlugin.execute(managedContext);
+
+        DatabasePlugin databasePlugin = new DatabasePlugin();
+        DefaultPluginConfiguration databaseConfig = config();
+        databaseConfig.setProperty("connection", "unavailable");
+        databaseConfig.setProperty("sql", "SELECT 1");
+        databasePlugin.initialize(databaseConfig);
+
+        try {
+            databasePlugin.execute(managedContext);
+            fail("Expected named connection acquisition to fail");
+        } catch (RuntimeException expected) {
+            assertTrue(expected.getMessage().contains("Unexpected error")
+                || expected.getMessage().contains("Database operation failed"));
+        }
+
+        coordinator.requestTermination();
+        coordinator.markOwnerQuiescentAndDrain(Duration.ofSeconds(1));
+        assertEquals(ledger.size(), 0,
+            "A failed JDBC acquisition must release its operation lease so owner drain can retire the pool");
+    }
+
+    @Test
+    public void failedManagedInlineConnectionAcquisitionReleasesItsOperationLease() throws Exception {
+        ResourceLedger ledger = new ResourceLedger("db-runtime");
+        ExecutionOwner owner = new ExecutionOwner("db-runtime", "db-failed-inline-session", 1);
+        LedgerExecutionResourceCoordinator coordinator =
+            new LedgerExecutionResourceCoordinator(ledger, owner);
+        DynamicScopeContext managedContext = new ScraperContext();
+        managedContext.setExecutionOwner(owner);
+        managedContext.setResourceAccess(coordinator.getAccess());
+
+        DatabasePlugin databasePlugin = new DatabasePlugin();
+        databasePlugin.initialize(inlineConfig("jdbc:missing-driver:test", "SELECT 1"));
+
+        try {
+            databasePlugin.execute(managedContext);
+            fail("Expected inline JDBC connection acquisition to fail");
+        } catch (RuntimeException expected) {
+            assertTrue(expected.getMessage().contains("Unexpected error")
+                || expected.getMessage().contains("Database operation failed"));
+        }
+
+        coordinator.requestTermination();
+        coordinator.markOwnerQuiescentAndDrain(Duration.ofSeconds(1));
+        assertEquals(ledger.size(), 0,
+            "A failed inline JDBC acquisition must release its operation lease and retire its pool");
     }
 
     @Test
@@ -268,6 +422,40 @@ public class DatabasePluginTest {
         plugin.initialize(config);
         plugin.execute(context);
     }
+
+    @Test
+    public void sqlExecutionFailureIsReportedAndInlineResourceIsCleanedUp() throws Exception {
+        String url = "jdbc:h2:mem:db_invalid_sql;DB_CLOSE_DELAY=-1";
+        ResourceLedger ledger = new ResourceLedger("db-runtime");
+        ExecutionOwner owner = new ExecutionOwner("db-runtime", "db-invalid-sql-session", 1);
+        LedgerExecutionResourceCoordinator coordinator =
+            new LedgerExecutionResourceCoordinator(ledger, owner);
+        DynamicScopeContext managedContext = new ScraperContext();
+        managedContext.setExecutionOwner(owner);
+        managedContext.setResourceAccess(coordinator.getAccess());
+
+        DatabasePlugin plugin = new DatabasePlugin();
+        plugin.initialize(inlineConfig(url, "SELEC deliberately_invalid_sql"));
+
+        try {
+            plugin.execute(managedContext);
+            fail("Expected invalid SQL to fail");
+        } catch (RuntimeException expected) {
+            assertTrue(expected.getMessage().contains("Unexpected error in database plugin"));
+            Throwable cause = expected;
+            while (cause != null && !(cause instanceof java.sql.SQLException)) {
+                cause = cause instanceof java.lang.reflect.UndeclaredThrowableException
+                    ? ((java.lang.reflect.UndeclaredThrowableException) cause).getUndeclaredThrowable()
+                    : cause.getCause();
+            }
+            assertTrue(cause instanceof java.sql.SQLException,
+                "The original JDBC failure must remain reachable through the proxy wrapper");
+        }
+
+        assertEquals(ledger.size(), 0,
+            "The inline operation resource must be retired even when SQL execution fails");
+    }
+
 
     private static void createFixture(String url) throws Exception {
         Class.forName("org.h2.Driver");
