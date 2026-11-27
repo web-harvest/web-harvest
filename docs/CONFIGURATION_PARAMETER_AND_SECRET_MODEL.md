@@ -354,3 +354,26 @@ The current plugin lifecycle has a validation gap relevant to typed configuratio
 - `GetVarPlugin` returns the original `Variable` object, while template interpolation converts values to strings.
 
 Therefore a future `SecretValue` implemented merely as another ordinary `Variable` would inherit generic string/binary conversion and would be exposed to existing plugin code and logs. A secret must instead be a distinct typed reference/handle with explicit access methods and no implicit general-purpose conversion. The configuration and variable APIs need a deliberate sensitivity/provenance design before secret values can enter them.
+
+
+## 15. Vault integration shape — provider adapter, not ambient secret plugin
+
+The preferred architecture is a **Secret Provider SPI** owned by the host/runtime boundary. A Vault integration is an optional provider adapter/module implementing that SPI; Core must not depend on Vault libraries, endpoint configuration or client lifecycle.
+
+A flow-visible "Vault plugin" that can fetch arbitrary paths and return plaintext into ordinary runtime variables is not the preferred default. It would turn the DSL into an unrestricted secret-exfiltration interface and route secret material through the current unsafe variable/template/logging abstractions.
+
+If a workflow-level secret operation is needed, expose only a constrained capability:
+- the descriptor declares the exact credential purpose/type required;
+- host policy authorizes the plugin identity, runtime and allowed secret reference/path;
+- the plugin receives an opaque, operation-scoped credential handle or typed value;
+- the handle cannot enumerate other secrets or be serialized into XML/JSON/logs;
+- the plugin cannot convert it to a generic runtime variable or template string;
+- access is auditable without recording the secret material.
+
+A Vault adapter may be delivered as an optional extension module or host integration package. It should not be registered as a universal built-in plugin with ambient access to the whole Vault namespace.
+
+### 15.1 Offline/local provider requirements
+
+Offline operation is a first-class requirement for Core. The provider contract must not assume network connectivity. The initial test/local provider can be in-memory; a persistent local provider should use an OS credential store or an encrypted file whose encryption key is supplied/owned by the host. Do not invent a home-grown encryption/key-management scheme or silently fall back to plaintext when the OS store is unavailable.
+
+Provider capability discovery must be explicit. A runtime with no secret provider can still execute flows that use ordinary parameters; a flow requiring a secret fails closed with a redacted, actionable error.
