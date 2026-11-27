@@ -408,3 +408,38 @@ Before implementation, characterize existing variable interpolation, `PluginConf
 Acceptance must cover two independent runtimes with different parameter contexts/providers, execution snapshot consistency, nested runtime-variable scope behavior, plugin schema validation, secret redaction, denied/missing providers, rotation policy and absence of secret material from serialized DSL and logs.
 
 This section records architectural requirements only. It does not claim that global parameter contexts, a Vault integration, or a new secret store are implemented.
+
+
+## 14. Runtime reality check — the legacy ElementsRegistry is not the active dispatch path (2026-11-27)
+
+A further source inspection changes the migration framing in an important way:
+
+- The production Core source has no active registration or lookup call site for `ElementsRegistry` / `ElementsRegistryImpl`. The interface and implementation remain as isolated legacy types; the current runtime does not populate them.
+- `ElementInfo` is referenced by `StreamingXmlParser`, but only as a local variable assigned `null`. The former resolver field and lookup are commented out. Its class/processor getters also return `null`; the corresponding fields were removed.
+- `ElementName` remains used by the legacy `XmlNode` child index and lookup API. This is a separate residual dependency from the registry interface itself.
+- Actual executable dispatch currently goes through the singleton `CorePluginRegistry`: `CorePluginsRegistrar` manually registers local element-name strings, and `DefaultPluginBodyExecutor` resolves child plugins using only `childConfig.getElementName()`.
+- `StreamingXmlParser` does not resolve a descriptor or plugin. It creates every XML node with a null `pluginClass`; the executor later performs local-name-only dispatch. The comments explicitly describe this as a POC/fallback and defer direct registry lookup.
+
+**Design consequence:** do not mechanically "replace ElementsRegistry" as if it were the active runtime registry, and do not port the old registry API into the new platform. Treat it as dead/orphaned legacy infrastructure to retire after a repository-wide production/test/reference and external-usage check. Mine `ElementInfo` only for historical grammar semantics that are independently evidenced and still required. The authoritative future source must be versioned plugin descriptors plus explicit XML grammar/compatibility entries, not an automatically migrated copy of the old mutable registry.
+
+### 14.1 XML namespace information is currently lost at dispatch/attribute boundaries
+
+Two concrete parser/dispatch constraints were confirmed:
+
+- Element namespace is normalized and stored in `DefaultPluginConfiguration`, but `DefaultPluginBodyExecutor` dispatches using only the local element name. The current `CorePluginRegistry` is also keyed only by local element name. Two providers using the same local name in different namespaces cannot be distinguished by this path.
+- `StreamingXmlParser.extractAttributes()` reads SAX `getLocalName()` and value, but does not retain each attribute's namespace URI or qualified name. Namespaced attributes sharing a local name can overwrite one another in the resulting `Map<String,String>`; the `p:*` and `v:*` distinction described by legacy `ElementInfo` metadata is not represented in this map.
+
+The future XML boundary must preserve expanded names (`{namespace URI}localName`) for elements and attributes before any compatibility normalization. Plugin dispatch, aliases and attribute binding must be namespace-aware and deterministic. Historical unqualified attributes and namespace-family rules require explicit fixtures/tests; do not infer their behavior from the current lossy map.
+
+### 14.2 The current parser test suite is a happy-path POC, not a compatibility characterization
+
+The current `StreamingXmlParserTest` covers basic/nested/multiple elements, text content and a loop/body tree shape. It does not characterize:
+- namespace-aware element dispatch or collisions across namespaces;
+- namespaced attribute preservation, including `p:*` / `v:*`;
+- unknown element rejection, descriptor lookup, or allowed/required child and attribute validation;
+- historical 1.0 namespace aliases and unqualified-root behavior as a full compatibility matrix;
+- XML security features (DTD/external entity policy) for the runtime parser.
+
+The parser creates a namespace-aware SAX factory but does not set explicit secure-processing/DOCTYPE/external-entity restrictions in the inspected implementation. This needs a separate security characterization before replacing the parser; it is not safe to assume that the hardened settings in the unrelated `XSDMetadataParser` also apply here.
+
+These gaps are characterization work, not permission to change parser behavior before historical XML fixtures and expected semantics are inventoried.
