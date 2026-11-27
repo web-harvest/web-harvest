@@ -1,11 +1,5 @@
 package org.webharvest.plugin.ftp;
 
-import org.apache.commons.net.ftp.FTPClient;
-import org.mockito.ArgumentCaptor;
-import org.mockito.InOrder;
-import org.testng.annotations.Test;
-import org.webharvest.runtime.DynamicScopeContext;
-
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
@@ -21,6 +15,12 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+
+import org.apache.commons.net.ftp.FTPClient;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
+import org.testng.annotations.Test;
+import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.resource.ExecutionResourceAccess;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -30,6 +30,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.assertTrue;
 
@@ -120,7 +121,7 @@ public class FtpClientResourceTest {
             }
             assertTrue(dataClosed.await(3, TimeUnit.SECONDS),
                 "Owner abort must close the data socket, not only the FTP control socket");
-            assertTrue(!client.isConnected(), "Owner abort must disconnect the control socket");
+            assertFalse(client.isConnected(), "Owner abort must disconnect the control socket");
             resource.close();
         } finally {
             worker.shutdownNow();
@@ -183,4 +184,5 @@ public class FtpClientResourceTest {
         writer.write(line);
         writer.write("\r\n");
         writer.flush();
-    }}
+    }
+}
