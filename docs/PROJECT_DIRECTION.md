@@ -409,19 +409,21 @@ CLI is one non-interactive interface to the broader Data Plane. It should expose
 
 CLI is a separate product distribution from both Core and IDE. Its current POM directly depends on Core and all five extension modules (Database, FTP, Mail, WebBrowser and ZIP), so today's shaded CLI distribution includes the integrations as a practical packaging fact. That current coupling must not define the long-term Data Plane contract or extension pack taxonomy.
 
-### 10.4 Official extension Packs/Kits
+### 10.4 Official extension distribution profiles
 
-Official extensions should be presented and managed as curated, compatible Packs/Kits: coherent capability sets with explicit versions and Core/SPI compatibility. A pack is a user-facing selection, installation and compatibility unit; it is not necessarily a single combined JAR.
+Technical distributions may combine selected extension Modules/artifacts for user convenience. These are **distribution profiles** or **extension bundles**, not functional Packs or scenario Kits.
 
-Keep individual extension modules/artifacts independently identifiable and buildable where appropriate. A future pack manifest should describe included extension IDs/artifacts, versions, required/optional capabilities, Core/SPI compatibility ranges and dependency constraints. This manifest/installer experience is a target, not a current feature.
+A distribution profile may describe included Module/artifact IDs and versions, Core/SPI compatibility ranges, required/optional runtime capabilities, dependency constraints and trust/activation policy. It is a technical installation and delivery unit. It does not own domain semantics and must not be used as a substitute for a Pack or Kit.
 
-Initial taxonomy candidates for evaluation (not yet approved release products):
+Candidate distribution profiles for evaluation (not approved release products):
 
-- **Data Integration Kit:** Database, FTP and Mail.
-- **Web Automation Kit:** WebBrowser.
-- **Archive capability / Kit:** ZIP, potentially included in broader kits rather than distributed as a standalone pack.
+- **Data Integration distribution:** Database, FTP and Mail Modules.
+- **Web Automation distribution:** WebBrowser Module.
+- **Archive support:** ZIP Module, potentially included in broader distributions.
 
-Validate these groupings against real workflows, runtime dependency footprint, security/trust profile, plugin discovery and user value before creating pack artifacts.
+Validate these groupings against real workflows, runtime dependency footprint, security/trust profile, plugin discovery and user value before creating distribution artifacts.
+
+The cross-application meanings of **Pack** and **Kit** are defined separately in [Cross-Application Semantic and Functional Architecture](CROSS_APPLICATION_SEMANTIC_ARCHITECTURE.md): a Pack is a stable functional domain/value area; a Kit is a scenario-oriented composition of Capabilities. Neither term denotes a Maven artifact, installer bundle or distribution profile.
 
 ### 10.5 Repository and distribution boundaries
 
