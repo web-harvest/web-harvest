@@ -472,7 +472,8 @@ public class DatabasePlugin extends AbstractPlugin {
             }
             if (resourceAccess != null) {
                 PreparedStatement activeStatement = statement;
-                statementCloseCompleted = new CountDownLatch(1);
+                CountDownLatch closeCompleted = new CountDownLatch(1);
+                statementCloseCompleted = closeCompleted;
                 statementResource = resourceAccess.registerOperationResource(
                     "jdbc/statement/" + UUID.randomUUID(),
                     activeStatement::cancel,
@@ -483,7 +484,7 @@ public class DatabasePlugin extends AbstractPlugin {
                             statementCloseFailure.set(failure);
                             throw failure;
                         } finally {
-                            statementCloseCompleted.countDown();
+                            closeCompleted.countDown();
                         }
                     });
                 statementLease = statementResource.acquire();
