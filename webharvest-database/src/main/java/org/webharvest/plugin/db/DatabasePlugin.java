@@ -38,6 +38,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.webharvest.plugin.AbstractPlugin;
 import org.webharvest.plugin.PluginConfiguration;
@@ -459,6 +461,8 @@ public class DatabasePlugin extends AbstractPlugin {
         ResultSet resultSet = null;
         ExecutionResourceAccess.OperationResource statementResource = null;
         ExecutionResourceAccess.Lease statementLease = null;
+        CountDownLatch statementCloseCompleted = null;
+        AtomicReference<Throwable> statementCloseFailure = new AtomicReference<>();
 
         Throwable primaryFailure = null;
         try {
@@ -468,10 +472,20 @@ public class DatabasePlugin extends AbstractPlugin {
             }
             if (resourceAccess != null) {
                 PreparedStatement activeStatement = statement;
+                statementCloseCompleted = new CountDownLatch(1);
                 statementResource = resourceAccess.registerOperationResource(
                     "jdbc/statement/" + UUID.randomUUID(),
                     activeStatement::cancel,
-                    activeStatement::close);
+                    () -> {
+                        try {
+                            activeStatement.close();
+                        } catch (SQLException | RuntimeException failure) {
+                            statementCloseFailure.set(failure);
+                            throw failure;
+                        } finally {
+                            statementCloseCompleted.countDown();
+                        }
+                    });
                 statementLease = statementResource.acquire();
             }
 
@@ -534,19 +548,22 @@ public class DatabasePlugin extends AbstractPlugin {
             if (statementResource != null) {
                 try {
                     statementResource.close();
-                    if (statementResource.getState() != ExecutionResourceAccess.ResourceState.CLOSED
-                            && statementResource.getCloseFailure() != null) {
-                        SQLException failure = new SQLException(
-                            "Failed to close managed JDBC statement", statementResource.getCloseFailure());
-                        if (cleanupFailure == null) {
-                            cleanupFailure = failure;
-                        } else {
-                            cleanupFailure.addSuppressed(failure);
-                        }
-                    }
                 } catch (RuntimeException | Error failure) {
                     if (cleanupFailure == null) {
                         cleanupFailure = new SQLException("Failed to close managed JDBC statement", failure);
+                    } else {
+                        cleanupFailure.addSuppressed(failure);
+                    }
+                } finally {
+                    // The connection lease is released by doExecute only after this
+                    // callback completes, so a delayed abort cannot race pool close.
+                    awaitStatementClose(statementCloseCompleted);
+                }
+                Throwable closeFailure = statementCloseFailure.get();
+                if (closeFailure != null) {
+                    SQLException failure = new SQLException("Failed to close managed JDBC statement", closeFailure);
+                    if (cleanupFailure == null) {
+                        cleanupFailure = failure;
                     } else {
                         cleanupFailure.addSuppressed(failure);
                     }
@@ -571,6 +588,24 @@ public class DatabasePlugin extends AbstractPlugin {
                     throw cleanupFailure;
                 }
             }
+        }
+    }
+
+    private void awaitStatementClose(CountDownLatch completed) {
+        if (completed == null) {
+            return;
+        }
+        boolean interrupted = false;
+        while (true) {
+            try {
+                completed.await();
+                break;
+            } catch (InterruptedException interruption) {
+                interrupted = true;
+            }
+        }
+        if (interrupted) {
+            Thread.currentThread().interrupt();
         }
     }
 
