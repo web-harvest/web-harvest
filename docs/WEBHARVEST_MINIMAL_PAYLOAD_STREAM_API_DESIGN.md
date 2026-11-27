@@ -184,6 +184,8 @@ Required lifecycle sequence:
 
 A session terminal event is not proof of worker quiescence. Existing Database and WebBrowser subscribers close resources on `SessionCancelledEvent`; those paths require cancellation-race characterization before replacement.
 
+**Budget is a separate policy contract.** ResourceLedger protects ownership and lifetime; TokenTracker/SessionMetrics hold explicitly recorded counters; neither enforces quotas. Payload size, stream duration, concurrent sessions, queue capacity, memory and provider-specific I/O limits must come from an explicit host-supplied execution/resource budget. The neutral payload/stream types must report relevant usage and failures without embedding billing or tenant quota policy.
+
 ## 5. Legacy Variable adapter boundary
 
 Keep the existing `Variable`, `NodeVariable` and `ListVariable` APIs as compatibility surfaces during migration.
