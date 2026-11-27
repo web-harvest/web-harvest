@@ -207,6 +207,8 @@ The three `Variable` conversion methods are not the only numeric-conversion cont
 - A present but non-numeric left-hand value is caught as `NumberFormatException` and replaced with zero. A non-numeric right-hand operand is treated the same way.
 - The arithmetic result is always converted using `(int) result` and then returned as a String-backed `NodeVariable`. Fractional results are truncated; the current branch does not preserve decimal results.
 - An outer catch converts any other evaluation failure into `EmptyVariable.INSTANCE`.
+- `SetVarPlugin.doExecute()` routes a body containing any of `+`, `-`, `*` or `/` to this evaluator. The evaluator itself only handles the simple two-operand addition and subtraction cases. Multiplication and division therefore fall through to `BaseTemplater.evaluateToVariable()` when the script engine is available; this is separately asserted by `SetVarResidualOpsBranchContractTest`.
+- The arithmetic shortcut is only applied to body content. A non-empty `value` attribute takes precedence and is evaluated through the templater path instead.
 
 **FACT —** This behavior is explicitly locked by `SetVarArithmeticNonNumericBranchContractTest`: non-numeric left and right operands produce arithmetic as if the operand were zero, and subtraction with a missing left variable starts from zero. These are existing tests, not merely undocumented implementation details.
 
