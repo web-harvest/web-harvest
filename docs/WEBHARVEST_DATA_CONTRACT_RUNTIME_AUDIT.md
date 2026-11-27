@@ -121,6 +121,7 @@ The event class documentation uses event-sourcing terminology and describes repl
 ## 5. Required follow-up audits
 
 **Follow-up evidence added:** [Variable, Event and Payload Call-Site Audit](WEBHARVEST_VARIABLE_EVENT_PAYLOAD_CALLSITE_AUDIT.md) traces representative Core/Database paths for Variable conversion, HTTP/file/database payload materialization and both event-bus families. It establishes that the inspected session/plugin event path is in-process Guava EventBus dispatch, not a durable event store, and records the concrete DatabasePlugin subscriber that releases connections on session terminal events.
+[Resource Ownership and Runtime Integration Audit](WEBHARVEST_RESOURCE_OWNERSHIP_INTEGRATION_AUDIT.md) additionally evaluates the existing ResourceLedger and the built-in worker-exit coordinator. It finds a tested but not wired ledger, and identifies the cancellation-event/JDBC-close ordering that must be characterized before resource lifecycle changes.
 
 This advances (but does not close) items 1, 3 and 4 below. The repository-wide Variable consumer inventory, complete subscriber inventory, external consumer scope and full payload lifecycle/resource-budget audit remain open. GitHub code-search connector results were empty for known symbols and are not accepted as evidence of absence.
 
