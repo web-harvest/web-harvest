@@ -342,6 +342,9 @@ public class HttpPlugin extends AbstractPlugin {
 
             return toResponseVariable(response);
 
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            throw interrupted;
         } catch (Exception e) {
             throw new IllegalStateException("HTTP request failed: " + e.getMessage(), e);
         }
