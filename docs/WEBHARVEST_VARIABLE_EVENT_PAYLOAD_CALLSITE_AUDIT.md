@@ -381,6 +381,12 @@ A deeper trace of the flags used by `CallPlugin` and `ReturnPlugin` found a seco
 
 **DESIGN CONSEQUENCE —** Return state must belong to a distinct function-invocation frame, not to an inherited context variable. The frame should carry at least invocation identity, explicit-return-present (separate from return value emptiness), and return payload. Nested calls must create independent frames; a return outcome must be consumed only by its owning invocation. This also addresses the scope-loss problem in Loop/While bodies, provided loop execution can access the active invocation frame without storing it in the loop's variable scope.
 
+**ADDITIONAL PROPAGATION CONSTRAINT —** `DefaultPluginBodyExecutor.executeTryChildren()` catches ordinary `Exception` from the Try body and may invoke Catch; `executeChildrenInternal()` logs and suppresses ordinary child failures in its non-fail-fast mode. `AbstractPlugin.execute()` also classifies ordinary exceptions as plugin failures, while explicitly rethrowing only `ScraperExecutionExitException` (plus interruption handling). Therefore a new exception-based function-return signal would need explicit transparent propagation through every one of these boundaries, as well as `CallPlugin`'s exception handler. Without that complete audit, a return signal could be reported as a failed plugin, swallowed as a best-effort child error, or incorrectly handled by Catch.
+
+**DESIGN OPTION TO EVALUATE —** Prefer an invocation-scoped return outcome/frame over reusing the scraper-exit exception. The frame can carry an explicit-return-present bit and payload independently of payload emptiness. The body executor, If/Loop/While and Try boundaries can observe the active frame and stop normal sibling/iteration execution when it is marked returned; `CallPlugin` consumes only the frame it created. A nested call creates a child frame, so it cannot inherit the parent's returned state. This option avoids using exceptions for normal control flow, but requires proving that every body/iteration boundary checks and propagates the active invocation outcome. Compare it against a dedicated typed control-flow exception only after mapping all execution boundaries and event behavior.
+
+
+
 
 ### 3.3 Optional integration modules
 
