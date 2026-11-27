@@ -143,6 +143,8 @@ Therefore, `SessionCancelledEvent` is a cancellation notification, not proof tha
 
 **FACT —** `DatabasePlugin.java` registers inline connection pools with the context EventBus when available and relies on session terminal events for physical connection cleanup.
 
+**FACT —** `webharvest-database/src/test/java/org/webharvest/runtime/database/StandaloneConnectionPoolTest.java`, `releasesConnectionsWhenSessionIsCancelled()`, posts a `SessionCancelledEvent` directly and asserts that the physical JDBC connection is already closed. The test does not model an in-flight JDBC operation, a still-running worker or delayed worker exit.
+
 **RISK / INFERENCE —** On cancellation, physical JDBC connection closure can occur while the worker is still unwinding or while a JDBC call is responding to interruption. This may be intentional best-effort I/O abort, but the same action is also the final close. The current API does not explicitly distinguish:
 - stop admitting new operations;
 - abort/cancel active I/O;
