@@ -4,6 +4,7 @@
 **Scope:** WebHarvest Core/runtime, plugin contracts, data acquisition and integration, portable definitions, agent composition and optional MCP adapters.
 **Out of scope:** Designing internal data models or product architecture of consuming applications.
 **Source of direction:** [Project Direction](PROJECT_DIRECTION.md).
+**Implementation evidence and next-step proposal:** [Runtime Audit](WEBHARVEST_DATA_CONTRACT_RUNTIME_AUDIT.md), [Variable/Event/Payload Call-Site Audit](WEBHARVEST_VARIABLE_EVENT_PAYLOAD_CALLSITE_AUDIT.md), [Resource Ownership Integration Audit](WEBHARVEST_RESOURCE_OWNERSHIP_INTEGRATION_AUDIT.md), [Minimal Payload and Stream API Design](WEBHARVEST_MINIMAL_PAYLOAD_STREAM_API_DESIGN.md). The API design is a draft and is not approved for implementation.
 
 ## 1. Purpose and product boundary
 
