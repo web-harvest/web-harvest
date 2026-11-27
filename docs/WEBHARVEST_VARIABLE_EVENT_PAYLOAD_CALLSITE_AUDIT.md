@@ -300,6 +300,22 @@ This matrix records current behavior separately from the proposed direction. It 
 
 **REMAINING UNKNOWN —** The repository tests characterize several implementation details but do not establish the downstream Java/API and external XML consumer population relying on zero-for-null, factory normalization, missing-`<get>` failure, or explicit empty function returns. No downstream compatibility claim can be made from this repository-only evidence.
 
+### 3.2.4 Explicit function return: value selection versus control-flow termination
+
+A separate control-flow discrepancy surfaced while tracing the explicit-empty return contract. It must not be silently folded into a Variable conversion change, but it affects the meaning of the return flag documented above.
+
+**FACT —** `ReturnPlugin` documentation says that `<return>` “immediately exits” the function. Its inspected implementation, however, executes its child content, stores the result in `functionResult`, sets `returnPluginCalled=true` (and a function-specific flag when found), then returns `EmptyVariable.INSTANCE`. It does not throw `ScraperExecutionExitException` or another visible control-flow signal.
+
+**FACT —** `DefaultPluginBodyExecutor.executeChildrenInternal()` iterates through all child configurations. It stops sibling execution when a child throws `ScraperExecutionExitException` or `InterruptedException`; otherwise it records a non-empty result and proceeds to the next child. The inspected method does not check `returnPluginCalled` or `returnCalled...` after executing a child. `executeChildPlugin()` simply calls `childPlugin.execute(context)` and returns the result.
+
+**FACT —** `CallPlugin` checks the explicit-return flag only after `executor.executeBody(functionConfig, context)` has completed. The flag selects the stored explicit return value (including EmptyVariable), but this check occurs after the body executor has finished its sibling loop.
+
+**INFERENCE —** In this execution path, the flag appears to select which value the function returns but does not itself terminate execution of later sibling plugins. This conflicts with the documented “immediately exits” behavior unless another outer execution path intercepts the flag; no such interception was found in the inspected `DefaultPluginBodyExecutor` path.
+
+**TEST GAP —** The inspected `ReturnPluginTest` only asserts that executing the plugin returns EmptyVariable. It does not assert that a later sibling is skipped. The inspected `CallPluginTest` does not execute a real function configuration end-to-end. Add a characterization test with a side-effecting sibling after `<return>`, and cover explicit empty and non-empty return values, before deciding whether the implementation or the documented contract is authoritative.
+
+**SCOPE —** Track this as a separate function-control-flow issue. Do not solve it by changing `Variable.isEmpty()`, by globally changing body aggregation, or by changing numeric conversion semantics.
+
 ### 3.3 Optional integration modules
 
 The bounded source scan also inspected the in-tree Database, FTP, Mail, WebBrowser and ZIP module implementations. These are optional modules, not evidence that the same capabilities belong in Core.
