@@ -204,6 +204,8 @@ public class DatabasePluginStatementLifecycleTest {
 
     private static final class TrackingResourceAccess implements ExecutionResourceAccess {
         private final AtomicReference<AbortAction> abortAction = new AtomicReference<>();
+        private final CountDownLatch abortCompleted = new CountDownLatch(1);
+        private final CountDownLatch operationCloseRequested = new CountDownLatch(1);
         private final AtomicInteger sequence = new AtomicInteger();
         private final AtomicInteger leaseCloseOrder = new AtomicInteger();
         private final AtomicInteger operationCloseOrder = new AtomicInteger();
@@ -211,9 +213,6 @@ public class DatabasePluginStatementLifecycleTest {
             new java.util.concurrent.atomic.AtomicBoolean();
         private final java.util.concurrent.atomic.AtomicBoolean operationClosed =
             new java.util.concurrent.atomic.AtomicBoolean();
-
-        private TrackingResourceAccess(PreparedStatement statement) {
-        }
 
         @Override
         public org.webharvest.runtime.session.ExecutionOwner getOwner() {
