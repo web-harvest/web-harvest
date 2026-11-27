@@ -263,10 +263,11 @@ public class FtpGetPlugin extends AbstractPlugin {
         
         LOGGER.debug("FTP Get Plugin - Host: " + host + ":" + port + ", User: " + username + ", Path: " + path);
         
-        FTPClient ftpClient = null;
+        FtpClientFactory.ManagedClient managedClient = null;
         try {
-            // Create FTP connection
-            ftpClient = FtpClientFactory.create();
+            // Register before connect so owner abort can close the control socket.
+            managedClient = FtpClientFactory.open(context);
+            FTPClient ftpClient = managedClient.getClient();
             ftpClient.connect(host, port);
             
             if (!ftpClient.login(username, password)) {
@@ -300,13 +301,8 @@ public class FtpGetPlugin extends AbstractPlugin {
             LOGGER.error("FTP Get Plugin - Unexpected error", e);
             throw new RuntimeException("FTP Get failed: " + e.getMessage(), e);
         } finally {
-            if (ftpClient != null && ftpClient.isConnected()) {
-                try {
-                    ftpClient.logout();
-                    ftpClient.disconnect();
-                } catch (IOException e) {
-                    LOGGER.warn("Failed to close FTP connection", e);
-                }
+            if (managedClient != null) {
+                managedClient.close();
             }
         }
     }
