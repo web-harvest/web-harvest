@@ -62,9 +62,9 @@ Examples include:
 - Resilience
 - Inventory
 
-A Pack can own or curate:
+A Pack can organize and curate:
 
-- domain concepts, models and rules;
+- domain vocabulary, models and rules, while shared cross-application semantic contracts remain independently governed;
 - user-facing capabilities and workflows;
 - domain-specific UI and interaction;
 - integration points and Adapter requirements;
@@ -87,7 +87,7 @@ Examples include:
 
 A Kit composes existing Capabilities, potentially from multiple Packs. It may add scenario-specific configuration, policies, thresholds, ordering, required resources and user guidance.
 
-A Kit does not redefine or copy the domain models owned by its constituent Packs. It references their stable Capability and semantic contract identities.
+A Kit does not redefine or copy the canonical semantic contracts referenced by its constituent Packs. It references stable Capability and semantic contract identities.
 
 A Kit is not automatically a new Pack, a plugin, a Maven module or a bundle of binaries. It may be represented as declarative configuration and resolved against the Capabilities available in a particular application/runtime.
 
@@ -97,12 +97,22 @@ A Kit is not automatically a new Pack, a plugin, a Maven module or a bundle of b
 |---|---|---|
 | Primary meaning | Which stable functional area does the product support? | Which scenario or outcome is being composed? |
 | Stability | Domain-oriented and relatively stable | Scenario/configuration-oriented; may evolve independently |
-| Owns | Domain vocabulary, models, rules and functional capabilities | Composition, scenario policy and configuration |
+| Organizes | Domain vocabulary, models, rules and functional capabilities | Composition, scenario policy and configuration |
 | Composition | Groups related functionality | References Capabilities from one or more Packs |
 | Vendor dependence | Must be vendor-independent | Must not require a particular vendor unless explicitly constrained |
 | Technical packaging | Independent of artifact boundaries | Independent of artifact boundaries |
 
 A Pack may be useful without any Kit. A Kit may combine Capabilities from several Packs. Neither relationship requires a one-to-one mapping.
+
+#### Semantic contracts versus Capabilities
+
+A **semantic contract** defines what a piece of information, entity, state, event, relationship or operation means. A **Capability** defines an observable functional ability or operation that a runtime/application can provide or require. They are related but not interchangeable.
+
+For example, a shared semantic contract may define an energy-storage observation (state, measured quantity, unit, timestamp and quality). A Capability may promise to retrieve or publish observations conforming to that contract. Different applications and providers can implement that Capability using different technologies while preserving the same semantic meaning.
+
+A Capability may reference multiple semantic contracts for its inputs, outputs and events. A semantic contract may be used by multiple Capabilities, Packs and applications. Neither identity should be derived from the other.
+
+A Pack organizes a functional area and curates the semantic contracts and Capabilities relevant to it. It is not automatically the sole authority for a shared contract used by other Packs or applications. Contract ownership, namespace governance and versioning remain explicit in the semantic plane.
 
 ### 2.3 Runtime and delivery plane — implementation
 
@@ -139,7 +149,7 @@ An **Adapter** connects an external system, protocol, device, vendor model or le
 
 Examples include integrations for Victron, Ropam, Synology, HTTP APIs or databases.
 
-An Adapter translates representations and interaction patterns. It must not redefine the meaning of the Pack's domain concepts or the Capability contract it implements.
+An Adapter translates representations and interaction patterns. It must not redefine the meaning of domain concepts or shared semantic contracts referenced by a Pack, nor the Capability contract it implements.
 
 Replacing an Adapter should not require changing a Kit or the consuming application's domain vocabulary, except where the replacement has materially different supported behavior or constraints. Those differences must be declared rather than hidden.
 
