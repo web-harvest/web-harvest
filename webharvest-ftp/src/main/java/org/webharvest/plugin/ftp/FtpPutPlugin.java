@@ -293,6 +293,9 @@ public class FtpPutPlugin extends AbstractPlugin {
             
             return new NodeVariable("File uploaded successfully to " + path);
             
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            throw interrupted;
         } catch (IOException e) {
             LOGGER.error("FTP Put Plugin - IOException", e);
             throw new RuntimeException("FTP Put failed: " + e.getMessage(), e);
