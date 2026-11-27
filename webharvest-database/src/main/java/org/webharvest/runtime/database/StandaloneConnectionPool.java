@@ -60,9 +60,11 @@ import com.google.common.eventbus.Subscribe;
  * it is discouraged to use {@link StandaloneConnectionPool} as an
  * application-wide singleton having long lifecycle.
  * <p>
- * This implementation is not thread-safe and does not provide advanced
- * connection pooling features. It can not execute interval connection
- * validation, does not support connection retrieval and so forth. Additionally,
+ * Registry access and pool lifecycle transitions are serialized. Connections
+ * returned to callers are not protected against concurrent JDBC operations,
+ * and this class does not provide advanced connection pooling features. It
+ * can not execute interval connection validation, does not support connection
+ * retrieval and so forth. Additionally,
  * in case of having too long lifecycle it is vulnerable for connection
  * timeouts. For production deployments you should certainly use another
  * {@link ConnectionFactory} implementation.
@@ -80,6 +82,7 @@ public final class StandaloneConnectionPool implements ConnectionFactory {
 
     private final DriverManager driverManager = DefaultDriverManager.INSTANCE;
     private EventBus registeredEventBus;
+    private String registeredSessionId;
 
     /**
      * Registers this pool with the execution context's session event bus so its
@@ -87,18 +90,33 @@ public final class StandaloneConnectionPool implements ConnectionFactory {
      *
      * @param eventBus the event bus owned by the current execution session
      */
-    public synchronized void registerForSession(final EventBus eventBus) {
+    public synchronized void registerForSession(final EventBus eventBus, final String sessionId) {
         if (eventBus == null) {
             throw new IllegalArgumentException("EventBus cannot be null");
         }
-        if (registeredEventBus == eventBus) {
+        if (sessionId == null || sessionId.trim().isEmpty()) {
+            throw new IllegalArgumentException("Session ID cannot be null or empty");
+        }
+        if (registeredEventBus == eventBus && sessionId.equals(registeredSessionId)) {
             return;
         }
         if (registeredEventBus != null) {
-            throw new IllegalStateException("Connection pool is already registered with another EventBus");
+            throw new IllegalStateException("Connection pool is already registered for another session");
         }
         eventBus.register(this);
         registeredEventBus = eventBus;
+        registeredSessionId = sessionId;
+    }
+
+    /**
+     * Unsafe legacy registration without an owner identity is deliberately
+     * rejected: a shared EventBus must never close another session's pool.
+     *
+     * @deprecated supply the exact owning session ID
+     */
+    @Deprecated
+    public void registerForSession(final EventBus eventBus) {
+        throw new IllegalArgumentException("Session ID is required for EventBus resource ownership");
     }
 
     /**
@@ -106,11 +124,21 @@ public final class StandaloneConnectionPool implements ConnectionFactory {
      * event bus. Safe to call more than once.
      */
     public synchronized void closeAllConnections() {
-        releaseAllConnections();
-        EventBus eventBus = registeredEventBus;
-        registeredEventBus = null;
-        if (eventBus != null) {
-            eventBus.unregister(this);
+        RuntimeException closeFailure = null;
+        try {
+            releaseAllConnections();
+        } catch (RuntimeException failure) {
+            closeFailure = failure;
+        } finally {
+            EventBus eventBus = registeredEventBus;
+            registeredEventBus = null;
+            registeredSessionId = null;
+            if (eventBus != null) {
+                eventBus.unregister(this);
+            }
+        }
+        if (closeFailure != null) {
+            throw closeFailure;
         }
     }
 
@@ -118,7 +146,7 @@ public final class StandaloneConnectionPool implements ConnectionFactory {
      * {@inheritDoc}
      */
     @Override
-    public Connection getConnection(final String driver, final String url,
+    public synchronized Connection getConnection(final String driver, final String url,
             final String username, final String password) {
 
         final String connectionKey = getConnectionKey(driver, url, username);
@@ -129,8 +157,8 @@ public final class StandaloneConnectionPool implements ConnectionFactory {
             try {
                 registry.bind(connectionKey, connection);
             } catch (AlreadyBoundException e) {
-                throw new RuntimeException(e); // not possible in the single
-            }                                  // threaded environment
+                throw new RuntimeException(e); // serialized by this pool's monitor
+            }
         }
 
         return connection;
@@ -152,9 +180,11 @@ public final class StandaloneConnectionPool implements ConnectionFactory {
      * @param event {@link SessionCompletedEvent} occurred (v2.2.1: updated from ScraperExecutionEndEvent)
      */
     @Subscribe
-    public void onExecutionEnd(final SessionCompletedEvent event) {
-        LOG.debug("POOL: " + this);
-        closeAllConnections();
+    public synchronized void onExecutionEnd(final SessionCompletedEvent event) {
+        if (isOwningSession(event.getSessionId())) {
+            LOG.debug("POOL: " + this);
+            closeAllConnections();
+        }
     }
 
     /**
@@ -164,8 +194,10 @@ public final class StandaloneConnectionPool implements ConnectionFactory {
      * @param event {@link SessionFailedEvent} occurred (v2.2.1: updated from ScraperExecutionErrorEvent)
      */
     @Subscribe
-    public void onExecutionError(final SessionFailedEvent event) {
-        closeAllConnections();
+    public synchronized void onExecutionError(final SessionFailedEvent event) {
+        if (isOwningSession(event.getSessionId())) {
+            closeAllConnections();
+        }
     }
 
     /**
@@ -175,8 +207,15 @@ public final class StandaloneConnectionPool implements ConnectionFactory {
      * @param event the cancellation event
      */
     @Subscribe
-    public void onExecutionCancelled(final SessionCancelledEvent event) {
-        closeAllConnections();
+    public synchronized void onExecutionCancelled(final SessionCancelledEvent event) {
+        if (isOwningSession(event.getSessionId())) {
+            closeAllConnections();
+        }
+    }
+
+    private synchronized boolean isOwningSession(String sessionId) {
+        return registeredEventBus != null && registeredSessionId != null
+            && registeredSessionId.equals(sessionId);
     }
 
     private Connection createNewConnection(final String driver,
@@ -203,17 +242,24 @@ public final class StandaloneConnectionPool implements ConnectionFactory {
 
     private void releaseAllConnections() {
         LOG.info("Releasing all database connections...");
+        SQLException firstFailure = null;
         for (String key : new ArrayList<String>(registry.listBound())) {
             try {
                 registry.lookup(key).getTargetConnection().close();
-            } catch (SQLException e) {
-                LOG.warn("Exception occurred during database connection "
-                        + "closing", e);
+            } catch (SQLException failure) {
+                if (firstFailure == null) {
+                    firstFailure = failure;
+                } else if (firstFailure != failure) {
+                    firstFailure.addSuppressed(failure);
+                }
             } finally {
                 registry.unbind(key);
             }
         }
         LOG.info("Connections released.");
+        if (firstFailure != null) {
+            throw new DatabaseException(firstFailure);
+        }
     }
 
     private ConnectionProxy createConnectionProxy(final Connection delegate) {
