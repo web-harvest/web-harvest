@@ -839,3 +839,16 @@ These facts mean that separate hosts/runtimes in one JVM cannot independently ch
 The two abstractions also have different lookup semantics: `DefaultPluginFactory` asks the metadata-oriented `PluginRegistry` for plugin instances/IDs and namespace-element pairs, while runtime dispatch asks the local-name-only Core registry for a class. Consequently the factory's namespace-aware method does not make runtime XML dispatch namespace-aware.
 
 **Decision constraint:** do not simply rename `DefaultPluginFactory` to the new factory or route the executor through it without redesign. First define the runtime construction contract around immutable descriptor identity, host-provided dependency resolution, configuration validation and lifecycle. Then adapt or retire the legacy factory after its public/test/external consumers are inventoried.
+
+
+## 33. CorePluginRegistry has silent collision and reset-state hazards
+
+The implementation of `CorePluginRegistry.registerMapping(processorClass, pluginClass, elementName)` currently logs and performs a plain `ConcurrentHashMap.put(elementName, pluginClass)`:
+
+- The `processorClass` argument is ignored.
+- Namespace is not part of the key; only the element's local-name string is used.
+- Registering a second plugin under the same element name silently replaces the first mapping. There is no duplicate policy, conflict diagnostic, module provenance or explicit override authorization.
+- The API accepts a raw `Class` for the unused processor argument and has no descriptor/schema binding.
+- `CorePluginRegistry.clear()` is public and clears the map, but does not reset `CorePluginsRegistrar.initialized`. Calling `clear()` directly after core registration leaves the registrar believing initialization is complete; a subsequent `registerCorePlugins()` returns early and the registry remains empty. Only the separate registrar `reset()` method clears both pieces of state.
+
+This is another reason not to extend the singleton map into a canonical registry. A future generation builder should reject duplicate expanded element identities by default, require an explicit compatibility/override declaration for aliases or intentional replacement, retain origin/provenance, and publish atomically only after all conflicts and dependencies validate. Reset should be a lifecycle operation on one host/runtime instance, not a pair of unrelated static methods.
