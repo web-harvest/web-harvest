@@ -139,6 +139,9 @@ Each audit should produce exact call-site lists and tests. Do not claim exhausti
 
 ## 6. Review conclusion
 
+A draft next-step proposal is now available in [WebHarvest Minimal Payload and Stream API Design](WEBHARVEST_MINIMAL_PAYLOAD_STREAM_API_DESIGN.md). It is explicitly unapproved and records open API decisions; it does not authorize implementation.
+
+
 The proposed WebHarvest architecture is directionally compatible with the current Core only if it is introduced as a new, explicit contract layer with legacy adapters.
 
 The current Variable, PluginConfiguration, session-event and XML metadata abstractions are not adequate as canonical contracts for heterogeneous records, real-time streams, media artifacts or AI-derived data. This is a source-backed design constraint, not a criticism of their original legacy purposes.
