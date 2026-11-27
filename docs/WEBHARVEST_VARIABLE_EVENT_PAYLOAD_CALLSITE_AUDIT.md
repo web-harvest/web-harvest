@@ -367,6 +367,21 @@ A deeper trace of the flags used by `CallPlugin` and `ReturnPlugin` found a seco
 **SCOPE —** This is a separate control-flow contract and likely needs a dedicated function-invocation frame or typed return outcome. Do not reuse the global scraper-exit exception without a design proving that it is caught at the correct function boundary and cannot escape to the root runtime.
 
 
+### 3.2.7 Nested function calls inherit stale generic return state
+
+**FACT —** `CallPlugin` creates and resets a function-specific flag named `returnCalled{FunctionName}` in the invocation scope. It also clears `functionResult` in the outer scope and again in the invocation scope. It does **not** clear the generic `returnPluginCalled` flag before invoking the function. After executing the body, it treats either the function-specific flag or the generic flag as proof that this invocation executed `<return>`.
+
+**FACT —** `ScraperContext.getVar()` reads the top value from the central variable stack without restricting lookup to the current scope. `executeWithinNewContext()` pushes a new `ScopeFrame`, but parent values remain visible until shadowed; cleanup restores the previous stack depth. Therefore a nested `CallPlugin` invocation can observe a parent's `returnPluginCalled=true` if the parent already executed `<return>`.
+
+**FACT —** `ReturnPlugin` writes the generic `returnPluginCalled=true`. Its attempted function-specific flag discovery searches for names beginning `__returnCalled_`, whereas `CallPlugin` creates `returnCalled{FunctionName}`. The mismatch is not repairable through the normal variable API: `VariableName` validates names against `^[a-zA-Z][a-zA-Z0-9_]*$`, so the leading underscore is invalid.
+
+**INFERENCE —** After a parent function executes `<return>`, a nested call that does not execute `<return>` can inherit the parent's generic true flag and be misclassified as having an explicit return. Its `functionResult` is separately reset to EmptyVariable in the nested invocation, so the false positive can cause the nested function to return empty instead of its last body expression. This is a concrete invocation-isolation defect, not merely a naming inconsistency.
+
+**REQUIRED CHARACTERIZATION TESTS —** Add a parent function that executes `<return>` and then invokes a child function with no explicit return and a non-empty final expression. Assert that the child returns its own final expression and that the parent return remains unchanged. Add the inverse case where the child explicitly returns a value and the parent subsequently continues according to the intended function-return control-flow contract. Also test repeated and recursive calls with the same and different function names.
+
+**DESIGN CONSEQUENCE —** Return state must belong to a distinct function-invocation frame, not to an inherited context variable. The frame should carry at least invocation identity, explicit-return-present (separate from return value emptiness), and return payload. Nested calls must create independent frames; a return outcome must be consumed only by its owning invocation. This also addresses the scope-loss problem in Loop/While bodies, provided loop execution can access the active invocation frame without storing it in the loop's variable scope.
+
+
 ### 3.3 Optional integration modules
 
 The bounded source scan also inspected the in-tree Database, FTP, Mail, WebBrowser and ZIP module implementations. These are optional modules, not evidence that the same capabilities belong in Core.
