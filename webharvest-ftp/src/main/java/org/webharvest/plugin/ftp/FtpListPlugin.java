@@ -301,9 +301,6 @@ public class FtpListPlugin extends AbstractPlugin {
             
             return new NodeVariable(result.toString());
             
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw e;
         } catch (IOException e) {
             LOGGER.error("FTP List Plugin - IOException", e);
             throw new RuntimeException("FTP List failed: " + e.getMessage(), e);
