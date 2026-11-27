@@ -768,6 +768,9 @@ public class XQueryPlugin extends AbstractPlugin {
             
             return result != null ? result : EmptyVariable.INSTANCE;
             
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            throw interrupted;
         } catch (Exception e) {
             LOGGER.warn("XQueryPlugin: Failed to execute child elements: " + e.getMessage());
             return EmptyVariable.INSTANCE;

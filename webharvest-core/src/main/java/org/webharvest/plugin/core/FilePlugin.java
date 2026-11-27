@@ -1120,6 +1120,9 @@ public class FilePlugin extends AbstractPlugin {
                     LOGGER.warn("Unknown file action: " + action);
                     return EmptyVariable.INSTANCE;
             }
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            throw interrupted;
         } catch (Exception e) {
             LOGGER.error("Error during file operation", e);
             return EmptyVariable.INSTANCE;
@@ -1149,7 +1152,8 @@ public class FilePlugin extends AbstractPlugin {
         }
     }
 
-    private Variable handleFileWrite(String path, String type, String charset, boolean append, DynamicScopeContext context) {
+    private Variable handleFileWrite(String path, String type, String charset, boolean append, DynamicScopeContext context)
+            throws InterruptedException {
         try {
             if (workingDir == null) {
                 workingDir = System.getProperty("user.dir");
@@ -1173,6 +1177,9 @@ public class FilePlugin extends AbstractPlugin {
                     LOGGER.warn("FilePlugin: bodyContent is null or EmptyVariable!");
                     LOGGER.debug("FilePlugin.handleFileWrite: bodyContent is null or EmptyVariable");
                 }
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+                throw interrupted;
             } catch (Exception e) {
                 LOGGER.error("FilePlugin.handleFileWrite: Error executing body content: " + e.getMessage(), e);
                 bodyContent = EmptyVariable.INSTANCE;
@@ -1229,6 +1236,9 @@ public class FilePlugin extends AbstractPlugin {
             
             LOGGER.debug("File written successfully: " + file.getAbsolutePath());
             return EmptyVariable.INSTANCE;
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            throw interrupted;
         } catch (Exception e) {
             LOGGER.error("Error writing file: " + path, e);
             return EmptyVariable.INSTANCE;
