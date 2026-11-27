@@ -90,14 +90,15 @@ final class FtpClientFactory {
             } catch (IOException logoutFailure) {
                 failure = logoutFailure;
             }
-            try {
-                client.disconnect();
-            } catch (IOException disconnectFailure) {
-                if (failure == null) {
-                    failure = disconnectFailure;
-                } else {
-                    failure.addSuppressed(disconnectFailure);
-                }
+        }
+        try {
+            // Always release the socket, including a failed/partial connect.
+            client.disconnect();
+        } catch (IOException disconnectFailure) {
+            if (failure == null) {
+                failure = disconnectFailure;
+            } else {
+                failure.addSuppressed(disconnectFailure);
             }
         }
         if (failure != null) {
@@ -137,8 +138,14 @@ final class FtpClientFactory {
             }
             try {
                 lease.close();
+            } catch (RuntimeException failure) {
+                LOGGER.warn("Failed to release FTP operation lease", failure);
             } finally {
-                resource.close();
+                try {
+                    resource.close();
+                } catch (RuntimeException failure) {
+                    LOGGER.warn("Failed to close FTP operation resource", failure);
+                }
             }
         }
     }
