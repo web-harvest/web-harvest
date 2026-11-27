@@ -196,7 +196,7 @@ public final class ScraperModule extends AbstractModule {
     
     private void bindInterceptors() {
         bindInterceptor(Matchers.any(), Matchers.annotatedWith(Scraping.class),
-                new ScrapingInterceptor());
+                new ScrapingInterceptor(getProvider(Injector.class)));
     }
     
     private void bindAdvancedFeatures() {
