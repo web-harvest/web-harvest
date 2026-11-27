@@ -48,6 +48,7 @@ import org.webharvest.Harvester;
 import org.webharvest.ScrapingAware;
 
 import com.google.inject.Injector;
+import com.google.inject.Provider;
 import com.google.inject.Singleton;
 
 /**
@@ -71,6 +72,32 @@ public final class ScrapingInterceptor implements MethodInterceptor {
     private static final Logger LOG = LoggerFactory
             .getLogger(ScrapingInterceptor.class);
 
+    private final Provider<Injector> injectorProvider;
+
+    /**
+     * Legacy constructor retained for callers that instantiate the interceptor
+     * outside a Guice module. Runtime modules should pass their owning injector
+     * provider explicitly.
+     *
+     * @deprecated use {@link #ScrapingInterceptor(Provider)}
+     */
+    @Deprecated
+    public ScrapingInterceptor() {
+        this(InjectorHelper::getInjector);
+    }
+
+    /**
+     * Creates an interceptor bound to the Guice injector that owns its binding.
+     *
+     * @param injectorProvider provider for the owning injector
+     */
+    public ScrapingInterceptor(final Provider<Injector> injectorProvider) {
+        if (injectorProvider == null) {
+            throw new IllegalArgumentException("Injector provider is required");
+        }
+        this.injectorProvider = injectorProvider;
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -80,8 +107,11 @@ public final class ScrapingInterceptor implements MethodInterceptor {
         if (!(subject instanceof Harvester)) {
             throw new IllegalStateException("Not an instance of Harvester");
         }
-        return invoke(InjectorHelper.getInjector(),
-                (Harvester) subject, new Callback() {
+        Injector injector = injectorProvider.get();
+        if (injector == null) {
+            throw new IllegalStateException("Owning Guice injector is not available");
+        }
+        return invoke(injector, (Harvester) subject, new Callback() {
 
                     @Override
                     public Object execute() throws Throwable {
