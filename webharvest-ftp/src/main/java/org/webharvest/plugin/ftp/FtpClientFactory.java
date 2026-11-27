@@ -36,7 +36,10 @@ final class FtpClientFactory {
     }
 
     static ManagedClient open(DynamicScopeContext context) {
-        FTPClient client = create();
+        return manage(create(), context);
+    }
+
+    static ManagedClient manage(FTPClient client, DynamicScopeContext context) {
         ExecutionResourceAccess access = context.getResourceAccess();
         if (access == null) {
             return new ManagedClient(client, null, null);
