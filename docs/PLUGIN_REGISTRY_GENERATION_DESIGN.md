@@ -716,3 +716,21 @@ The IDE frontend has its own XML parser and generator. This path is independent 
 ### Evidence boundary
 
 This section is based on direct inspection of the named frontend sources and focused tests at the PR head. It does not establish that every IDE import/export path uses these classes, nor that the legacy simple parser is still reachable in production. Those call-site and deployment questions remain open.
+
+## 25. IDE XML parser/generator has active visual-mode call sites and inconsistent wrapper output
+
+Call-site inspection at the current branch head confirms that the TypeScript parser/generator are not merely isolated test utilities:
+
+- webharvest-ide/frontend/src/core/App.ts constructs XMLParser and XMLGenerator, injects PluginManager into XMLParser, and calls XMLParser.parse() when switching XML → Visual (around line 1186), opening an XML file in Visual mode (around line 1606), and switching tabs while Visual mode is active (around line 1900).
+- The same App.ts switch Visual → XML path wraps XMLGenerator output in a bare <config> element without the Core 2.1 default namespace (around line 1200). This differs from VisualDesigner.generateXML(), which wraps output in <config xmlns="http://org.webharvest/schema/2.1/core"> (around lines 6134–6147).
+- VisualDesigner.generateXMLForNode() also emits the Core 2.1 default namespace wrapper (around lines 6159–6172).
+- Therefore at least two active UI export paths produce different root namespace contracts. The App.ts mode-switch exporter can produce unqualified Core elements, while the VisualDesigner export methods produce elements in the Core 2.1 namespace.
+- VisualDesigner imports XMLGenerator directly; no separate parser is used there for export. The App class is the confirmed central import/export orchestration point in the inspected TypeScript sources.
+- No usable repository-wide GitHub code-search results were returned for XMLParser, XMLGenerator, or SimpleXMLParser. The call-site evidence above is from direct source inspection, not an exhaustive reference search.
+
+### Required follow-up
+
+1. Resolve one canonical XML document wrapper/namespace policy for every IDE export path; do not allow mode switching and explicit export to serialize different dialects.
+2. Add integration tests for XML → Visual → XML via App.switchViewMode(), file import in Visual mode, tab switching in Visual mode, VisualDesigner.generateXML(), and generateXMLForNode(). Assert expanded-name semantics, not just string presence or local-name structure.
+3. Determine whether VisualNode is intended as a lossy visual editing projection or a round-trip-capable semantic model. If lossy, the UI must warn/refuse round-trip when unsupported namespace constructs are present; if round-trip-capable, it must retain expanded names and namespace declarations.
+4. Search the legacy webapp entry points and script loading order to establish whether SimpleXMLParser remains reachable. Until then, classify its reachability as unknown rather than dead code.
