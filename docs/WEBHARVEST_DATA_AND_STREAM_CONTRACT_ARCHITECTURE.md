@@ -273,7 +273,11 @@ The runtime registry generation must publish enough information to validate and 
 
 Metadata/IDE/MCP projections must derive from the same authoritative generation and contract definitions. They must not scan and invent a second semantic universe.
 
-## 11. Evidence gaps before implementation
+## 11. Current implementation evidence
+
+The source-backed baseline is recorded separately in [WebHarvest Data Contract Runtime Audit](WEBHARVEST_DATA_CONTRACT_RUNTIME_AUDIT.md). In brief, current Variable wrappers are conversion-oriented rather than typed semantic contracts; PluginConfiguration uses string-valued properties; session lifecycle events are not evidence of a durable domain event log; StreamingXmlParser is an XML parser, not a general stream-processing API; and no dedicated media/MCP implementation paths were found in the inspected main tree. These findings constrain the target design but do not authorize a compatibility-breaking rewrite.
+
+## 12. Evidence gaps before implementation
 
 The following are open architecture questions, not assumed current capabilities:
 
@@ -290,7 +294,7 @@ The following are open architecture questions, not assumed current capabilities:
 
 Each finding must cite source paths, call sites and tests, and be classified FACT, INFERENCE, UNKNOWN or PROPOSAL. No implementation should begin merely because a conceptual contract is described here.
 
-## 12. Proposed architecture decisions
+## 13. Proposed architecture decisions
 
 1. WebHarvest Core models data operations and the minimum neutral semantics needed to compose them; it does not own every domain ontology.
 2. Semantic data contracts, Capability contracts, Plugin/provider descriptors, representation contracts and execution lineage remain separate.
