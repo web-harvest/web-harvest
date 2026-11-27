@@ -241,7 +241,7 @@ The null/empty audit also needs to distinguish the predicates used by individual
 
 **FACT —** `Variable.toBoolean()` and `IfPlugin.isTruthyConditionValue()` implement different string rules:
 
-- `Variable.toBoolean()` returns true for Boolean true, or case-insensitive strings `true`, `yes` and `1`; other strings (including `"2"` and `"random"`) are false.
+- `Variable.toBoolean()` returns the wrapped Boolean directly; for every other non-null wrapped value it stringifies and returns true only for case-insensitive exact values `true`, `yes` and `1`. Thus `Integer(1)` is true while `Double(1.0)` is false, and other strings (including `"2"` and `"random"`) are false.
 - `IfPlugin.isTruthyConditionValue()` handles Boolean and Number wrapped objects directly. Numeric zero and NaN are false; non-zero numbers are true. For other values it trims the string, treats empty, `false` and `null` as false, parses numeric strings so zero is false, and treats every other non-empty string as true.
 - Therefore `new NodeVariable("random").toBoolean()` is false while the same non-empty string is truthy under the If plugin's value rule. A refactor that replaces the If-specific predicate with `Variable.toBoolean()` would change DSL behavior.
 
