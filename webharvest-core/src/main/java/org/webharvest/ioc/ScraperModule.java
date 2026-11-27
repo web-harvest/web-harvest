@@ -78,6 +78,7 @@ import com.google.common.eventbus.EventBus;
 import com.google.common.util.concurrent.Monitor;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
+import com.google.inject.Injector;
 import com.google.inject.Provider;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
@@ -196,7 +197,7 @@ public final class ScraperModule extends AbstractModule {
     
     private void bindInterceptors() {
         bindInterceptor(Matchers.any(), Matchers.annotatedWith(Scraping.class),
-                new ScrapingInterceptor());
+                new ScrapingInterceptor(getProvider(Injector.class)));
     }
     
     private void bindAdvancedFeatures() {
