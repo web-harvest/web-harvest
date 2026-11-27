@@ -92,6 +92,7 @@ public class DatabasePlugin extends AbstractPlugin {
     private static final String PASSWORD_ATT_NAME = "password";
     private static final String SQL_ATT_NAME = "sql";
     private static final String CONNECTION_ATT_NAME = "connection";
+    private static final String QUERY_TIMEOUT_ATT_NAME = "queryTimeout";
     
     /**
      * Default constructor - no dependency injection needed anymore.
@@ -194,7 +195,7 @@ public class DatabasePlugin extends AbstractPlugin {
                 @Override
                 public String[] getOptionalAttributes() {
                     return new String[] { CONNECTION_ATT_NAME, URL_ATT_NAME, DRIVER_ATT_NAME,
-                            USERNAME_ATT_NAME, PASSWORD_ATT_NAME, SQL_ATT_NAME };
+                            USERNAME_ATT_NAME, PASSWORD_ATT_NAME, SQL_ATT_NAME, QUERY_TIMEOUT_ATT_NAME };
                 }
 
                 @Override
@@ -276,6 +277,7 @@ public class DatabasePlugin extends AbstractPlugin {
         
         String connectionId = config.getProperty(CONNECTION_ATT_NAME, "").trim();
         String sql = config.getProperty(SQL_ATT_NAME, "");
+        int queryTimeoutSeconds = parseQueryTimeout(config.getProperty(QUERY_TIMEOUT_ATT_NAME, "0"));
         
         // Evaluate SQL template
         sql = evaluateTemplate(sql, context);
@@ -336,7 +338,7 @@ public class DatabasePlugin extends AbstractPlugin {
                 throw new RuntimeException("Database SQL is empty; provide the sql attribute or element body");
             }
 
-            return executeSql(connection, sql);
+            return executeSql(connection, sql, queryTimeoutSeconds, context.getResourceAccess());
 
         } catch (InterruptedException interrupted) {
             primaryFailure = interrupted;
@@ -416,6 +418,22 @@ public class DatabasePlugin extends AbstractPlugin {
         }
     }
 
+    private int parseQueryTimeout(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return 0;
+        }
+        try {
+            int seconds = Integer.parseInt(value.trim());
+            if (seconds < 0) {
+                throw new IllegalArgumentException("Database queryTimeout must be zero or a positive integer in seconds");
+            }
+            return seconds;
+        } catch (NumberFormatException invalidTimeout) {
+            throw new IllegalArgumentException(
+                "Database queryTimeout must be zero or a positive integer in seconds", invalidTimeout);
+        }
+    }
+
     private Throwable combineFailures(Throwable primary, Throwable next) {
         if (primary == null) {
             return next;
@@ -427,12 +445,30 @@ public class DatabasePlugin extends AbstractPlugin {
     }
 
     private Variable executeSql(Connection connection, String sql) throws SQLException {
+        return executeSql(connection, sql, 0, null);
+    }
+
+    private Variable executeSql(Connection connection, String sql, int queryTimeoutSeconds,
+                                 ExecutionResourceAccess resourceAccess) throws SQLException {
         PreparedStatement statement = null;
         ResultSet resultSet = null;
-        
+        ExecutionResourceAccess.OperationResource statementResource = null;
+        ExecutionResourceAccess.Lease statementLease = null;
+
         Throwable primaryFailure = null;
         try {
             statement = connection.prepareStatement(sql);
+            if (queryTimeoutSeconds > 0) {
+                statement.setQueryTimeout(queryTimeoutSeconds);
+            }
+            if (resourceAccess != null) {
+                PreparedStatement activeStatement = statement;
+                statementResource = resourceAccess.registerOperationResource(
+                    "jdbc/statement/" + UUID.randomUUID(),
+                    activeStatement::cancel,
+                    activeStatement::close);
+                statementLease = statementResource.acquire();
+            }
 
             if (sql.trim().toLowerCase().startsWith("select")) {
                 // Query operation
@@ -479,7 +515,38 @@ public class DatabasePlugin extends AbstractPlugin {
                     cleanupFailure = failure;
                 }
             }
-            if (statement != null) {
+            if (statementLease != null) {
+                try {
+                    statementLease.close();
+                } catch (RuntimeException | Error failure) {
+                    if (cleanupFailure == null) {
+                        cleanupFailure = new SQLException("Failed to release JDBC statement lease", failure);
+                    } else {
+                        cleanupFailure.addSuppressed(failure);
+                    }
+                }
+            }
+            if (statementResource != null) {
+                try {
+                    statementResource.close();
+                    if (statementResource.getState() != ExecutionResourceAccess.ResourceState.CLOSED
+                            && statementResource.getCloseFailure() != null) {
+                        SQLException failure = new SQLException(
+                            "Failed to close managed JDBC statement", statementResource.getCloseFailure());
+                        if (cleanupFailure == null) {
+                            cleanupFailure = failure;
+                        } else {
+                            cleanupFailure.addSuppressed(failure);
+                        }
+                    }
+                } catch (RuntimeException | Error failure) {
+                    if (cleanupFailure == null) {
+                        cleanupFailure = new SQLException("Failed to close managed JDBC statement", failure);
+                    } else {
+                        cleanupFailure.addSuppressed(failure);
+                    }
+                }
+            } else if (statement != null) {
                 try {
                     statement.close();
                 } catch (SQLException failure) {
