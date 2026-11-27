@@ -1,8 +1,8 @@
 # Plugin inventory — evidence baseline
 
 **Status:** Preliminary inventory baseline; not an approved Core membership list.
-**Source snapshot:** `main` at `c4357d8fa531d5ba536b5d217e149de8e1bd8262` (2026-11-16).
-**Refresh note:** The seven primary registration/runtime/ZIP evidence files cited in this inventory were verified unchanged since the prior snapshot. This remains a targeted evidence baseline, not a complete per-plugin re-audit. Stage 1 descriptor projection and structural validation were subsequently merged in PR #90; they do not change the manual Core mappings or parser/registry lifecycle described here.
+**Source snapshot:** `main` at `c8830f0fe2f1e283abea95318d2c6fd9a644d0a4` (2026-11-27).
+**Refresh note:** Targeted refresh against the 2026-11-27 `main` snapshot covers the plugin SPI, metadata/schema contracts, Core and optional-module registration, package/class scanners, metadata catalog/factory, module POMs, and WebBrowser session lifecycle. This is still not a complete per-plugin or external-embedding consumer audit. Stage 1 descriptor projection and structural validation remain separate from the runtime registration and lifecycle contracts described here.
 **Tracking:** [Issue #93 — inventory and approve the built-in plugin set](https://github.com/web-harvest/web-harvest/issues/93).
 **Purpose:** Reconcile runtime registration, metadata discovery and module ownership before making any plugin moves.
 
