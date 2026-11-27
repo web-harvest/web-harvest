@@ -27,7 +27,6 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.assertTrue;
 
@@ -125,7 +124,6 @@ public class DatabasePluginStatementLifecycleTest {
     }
 
     private static final class TrackingResourceAccess implements ExecutionResourceAccess {
-        private final PreparedStatement statement;
         private final AtomicReference<AbortAction> abortAction = new AtomicReference<>();
         private final AtomicInteger sequence = new AtomicInteger();
         private final AtomicInteger leaseCloseOrder = new AtomicInteger();
@@ -136,7 +134,6 @@ public class DatabasePluginStatementLifecycleTest {
             new java.util.concurrent.atomic.AtomicBoolean();
 
         private TrackingResourceAccess(PreparedStatement statement) {
-            this.statement = statement;
         }
 
         @Override
