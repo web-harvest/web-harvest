@@ -121,6 +121,7 @@ public class FtpClientResourceTest {
                 FTPClient client = resource.getClient();
                 client.connect("127.0.0.1", controlServer.getLocalPort());
                 assertTrue(client.login("user", "secret"));
+                client.enterLocalPassiveMode();
                 assertTrue(client.setFileType(FTPClient.BINARY_FILE_TYPE));
 
                 Future<Boolean> transfer = worker.submit(
