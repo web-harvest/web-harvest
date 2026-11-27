@@ -123,7 +123,47 @@ These are current implementation facts on the inspected revision. They justify a
 
 **INFERENCE —** A migration adapter cannot safely infer semantic type, framing, ownership, immutability or missing-value meaning from these conversions. Compatibility adapters should preserve existing behavior while new APIs make these properties explicit.
 
-### 3.2 Optional integration modules
+### 3.2 Numeric conversion and null/empty semantics
+
+**FACT —** `webharvest-core/src/main/java/org/webharvest/runtime/variables/Variable.java`
+
+- `toInt()`, `toLong()` and `toDouble()` inspect `getWrappedObject()`.
+- If the wrapped object is actually `null`, the methods return `0`, `0L` and `0d` respectively.
+- A wrapped `Number` is narrowed/coerced using `intValue()`, `longValue()` or `doubleValue()`; this includes silent truncation for floating-to-integral conversions and narrowing overflow semantics inherited from `Number`.
+- A wrapped `Boolean` maps to 1/0.
+- Other values are parsed from trimmed `toString()`; malformed or empty strings throw the JDK parsing exception.
+- `toBoolean()` also maps a genuinely null wrapped object to false, but its non-Boolean string semantics are separately defined.
+
+**FACT —** `NodeVariable.java` and `EmptyVariable.java`
+
+- `new NodeVariable(null)` preserves a genuine null wrapped object; `isEmpty()` returns true, while its string/binary representations are empty.
+- `EmptyVariable.INSTANCE` is a different representation: `getWrappedObject()` returns the empty String, not null.
+- Consequently, the current numeric methods return zero for `NodeVariable(null)`, but throw `NumberFormatException` for `EmptyVariable.INSTANCE` because they attempt to parse an empty string.
+- An empty string in `NodeVariable("")` also throws during numeric parsing.
+
+**FACT —** `CommonUtil.createVariable(Object)` normalizes both Java `null` and an empty String to `EmptyVariable.INSTANCE`. It also normalizes an incoming Variable when it is already EmptyVariable or reports `isEmpty()`. `ListVariable.addVariable(null)` similarly substitutes EmptyVariable for a null member.
+
+**IMPORTANT CORRECTION —** The “null becomes zero” behavior is not the general factory-path behavior. It occurs when a Variable directly preserves a null wrapped object (for example, explicit `new NodeVariable(null)`). The common `CommonUtil.createVariable(null)` path collapses null into EmptyVariable, whose numeric conversion currently throws. The API therefore already has inconsistent null/empty behavior depending on construction path.
+
+**FACT —** `webharvest-core/src/test/java/org/webharvest/runtime/variables/VariableTest.java` explicitly asserts zero for all three `NodeVariable(null)` conversions. The same test class covers malformed non-empty text as `NumberFormatException`, and does not characterize numeric conversion of EmptyVariable. `NodeVariableTest` separately asserts that a null NodeVariable is empty and retains a null wrapped object. These tests encode the current edge behavior, not necessarily a desirable semantic contract.
+
+**FACT —** The inspected production files `CommonUtil`, `JSRScriptEngineAdapter`, `ScriptPlugin`, `BaseTemplater`, `IfPlugin`, `CallPlugin`, `WhilePlugin`, `SleepPlugin`, `HttpPlugin`, `FilePlugin`, `LoopPlugin`, `FunctionPlugin`, `CasePlugin`, `XPathPlugin` and `ListPlugin` did not show direct calls to `Variable.toInt()`, `toLong()` or `toDouble()`. This is a representative inspection, not an exhaustive call-site proof. GitHub code-search requests for these symbols returned empty/incomplete results, so they cannot establish absence of other call sites.
+
+**INFERENCE —** The first correction should be to define a consistent distinction between *no numeric value* and the numeric value zero. It should not be implemented by changing only the three null branches while leaving the factory-normalized EmptyVariable path undocumented.
+
+**DESIGN CANDIDATE —** A coherent API can offer three explicit operations per numeric type:
+
+- Strict conversion (`toInt()`, `toLong()`, `toDouble()`): return a number only when conversion is valid; absence/empty input must fail rather than silently become zero. Preserve existing parsing behavior for malformed non-empty strings unless a separately reviewed exception contract is adopted.
+- Optional conversion (`toOptionalInt()`, etc.): return empty for a Variable that represents no value/empty content; return a present zero for an actual numeric zero; invalid non-empty text remains a conversion error.
+- Explicit fallback (`toIntOrDefault(defaultValue)`, etc.): use the supplied fallback only for absence/empty content, not for malformed non-empty data. This prevents a default from masking corrupt input.
+
+The current `EmptyVariable`/factory normalization means null and empty String have already been collapsed on the common path. An Optional conversion can therefore represent “no numeric value” for that combined state, but it cannot recover whether the original Java input was null or `""`. If preserving that distinction is a requirement, it needs a separate null/missing representation or a deliberate change to `CommonUtil.createVariable`; that is a broader compatibility decision and is not required merely to stop returning zero.
+
+**COMPATIBILITY GATE —** Before changing existing methods, obtain a complete in-repository call-site inventory (including optional modules, tests, scripts, IDE and public API examples), identify downstream embedding use where possible, and characterize direct constructors versus factory/list normalization. Existing callers may rely on the current zero fallback even though no direct production call was found in the bounded sample. Do not silently change Boolean-to-number conversion, Number narrowing/truncation, overflow, whitespace parsing or exception behavior as part of this null-semantics correction.
+
+**UNKNOWN —** Whether downstream applications or user scripts intentionally depend on `NodeVariable(null).toInt()/toLong()/toDouble()` returning zero is not established by repository inspection. Also unknown: whether preserving null versus empty String is a supported public semantic requirement.
+
+### 3.3 Optional integration modules
 
 The bounded source scan also inspected the in-tree Database, FTP, Mail, WebBrowser and ZIP module implementations. These are optional modules, not evidence that the same capabilities belong in Core.
 
