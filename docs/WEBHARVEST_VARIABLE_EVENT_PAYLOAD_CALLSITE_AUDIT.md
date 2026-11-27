@@ -18,6 +18,7 @@ The most consequential findings are:
 5. **File binary support is incomplete and asymmetric.** Binary writes are supported, but `FilePlugin.handleFileRead()` explicitly returns `EmptyVariable` for `type="binary"`.
 6. **List/binary aggregation is memory-based.** `ListVariable.toBinary()` accumulates all bytes in a `ByteArrayOutputStream`; `FilePlugin.appendBinary()` repeatedly allocates and copies a growing byte array.
 7. **Database query results are materialized as XML text.** `DatabasePlugin.executeSql()` reads every row into a `StringBuilder` and returns one `NodeVariable`; the inspected implementation does not expose a cursor/stream result contract.
+8. **Variable is also used as a resource-handle carrier.** `ConnectionPlugin.ConnectionFactoryVariable` extends `NodeVariable` while retaining a `StandaloneConnectionPool` and connection credentials; `getNamedConnection()` recovers it by concrete subclass check. This is a legacy context convention, not a data payload. It reinforces that `Variable` must not become the ownership or lifecycle abstraction for the new runtime.
 
 These are current implementation facts on the inspected revision. They justify a separate payload/stream contract boundary; they do not select a transport, storage engine, media framework or third-party library.
 
