@@ -67,7 +67,8 @@ final class TrackingSmtpSocketFactory extends SocketFactory {
             if (localAddress != null) {
                 socket.bind(localAddress);
             }
-            socket.connect(remoteAddress);
+            socket.connect(remoteAddress, SmtpSocketResource.CONNECT_TIMEOUT_MILLIS);
+            socket.setSoTimeout(SmtpSocketResource.READ_TIMEOUT_MILLIS);
             return socket;
         } catch (IOException connectionFailure) {
             try {
