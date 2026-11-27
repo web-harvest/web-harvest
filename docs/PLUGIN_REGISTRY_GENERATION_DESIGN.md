@@ -792,3 +792,50 @@ Inspection of the IDE packaging and server bootstrap narrows the deployment ques
 - The source confirms that the modern index is the intended current UI artifact and that the legacy entrypoints are shipped. It does not by itself establish whether external deployments document or rely on direct access to those alternate paths, nor does it prove the exact root welcome-file resolution for every Jetty/runtime configuration.
 
 **Migration implication:** treat all three entrypoints as compatibility surfaces until a release-level decision explicitly removes the legacy pages. Add packaging smoke tests that request `/`, `/index.html`, `/index-old.html`, and `/index-unified.html` from the built JAR, and record which entrypoints are supported in the distribution contract. Do not remove `SimpleXMLParser` merely because the modern root page does not load it.
+
+
+## 30. Optional extension modules do not share one registration contract
+
+The repository tree and module sources show three different extension states:
+
+- The root Maven reactor includes `webharvest-database`, `webharvest-ftp`, `webharvest-mail`, `webharvest-webbrowser` and `webharvest-zip` as separate modules. Reactor membership is build organization, not runtime activation.
+- The IDE POM declares `webharvest-core` as its framework dependency and explicitly describes plugins as optional; it does not declare the optional extension artifacts as direct dependencies. Thus the default IDE artifact does not gain those optional runtime implementations merely because the root reactor builds them.
+- Database exposes `DatabasePluginRegistrar.register(CorePluginRegistry)` for `connection` and `database`. ZIP exposes `ZipPluginRegistrar.register(CorePluginRegistry)` for `zip` and `zip-entry`. Both mutate the same process-wide singleton registry.
+- No equivalent module registrar was found in the inspected FTP, Mail or WebBrowser module trees. Their annotated plugin classes can be found by the generic `PluginPackageScanner` if a host explicitly configures package scanning, but the inspected `ScraperModule` startup does not invoke that scanner or configure those package names.
+- FTP's `FtpPlugin` annotation and metadata claim `isCorePlugin() == true` despite residing in the optional `webharvest-ftp` artifact. This metadata flag is not an authoritative runtime activation contract.
+- `PluginClassScanner` has a hard-coded list of Core and optional package names and a fallback class list spanning those same families. It feeds `PluginMetadataCatalog`, not the Core execution registry. A class can therefore appear in a metadata catalog when its artifact is on the catalog classpath without having been registered for execution.
+
+**Conclusion:** optional extension activation is inconsistent and host-specific today. Database and ZIP have explicit singleton-mutating registrars; FTP/Mail/WebBrowser rely on other possible discovery/embedding paths; metadata discovery is a separate classpath scan. The future host composition API must make activation explicit and uniform: a host selects extension modules, supplies dependency-resolution capabilities, and builds one immutable runtime generation. Artifact presence, annotation presence, metadata visibility and runtime executability must be represented as distinct facts.
+
+### Evidence boundary
+
+This is based on root and module POMs, the IDE POM, the named registrar classes, `PluginClassScanner`, `PluginMetadataCatalog` and `ScraperModule`. It does not claim that no external embedding application has its own registration code.
+
+## 31. The current runtime registry and injector are process-global, not host/runtime scoped
+
+The execution path confirms two global coupling points:
+
+1. `CorePluginRegistry.getInstance()` returns a static singleton. Its mutable map is keyed only by local element name. `CorePluginsRegistrar` has a separate static `initialized` flag and registers its 44 mappings into that singleton. `reset()` clears the singleton map and the static flag. Optional Database/ZIP registrars receive the singleton type and mutate the same map.
+2. `DefaultPluginBodyExecutor.createChildPlugin()` always resolves through `CorePluginRegistry.getInstance()`, then obtains the Guice injector through `InjectorHelper.getInjector()`. If no injector exists, it falls back to a public no-argument reflective construction path. The executor has no constructor-injected registry, factory or host context.
+3. `InjectorHelper` stores the injector in a static field populated by Guice static injection. The most recently installed injector is process-global state; the executor does not select an injector from the current scraper/runtime instance.
+4. `ScraperModule.configure()` calls the static Core registrar and requests static injection for `InjectorHelper`. It also binds `ElementsRegistry` to `ElementsRegistryImpl`, despite the inspected current execution path not using that binding for plugin dispatch.
+
+These facts mean that separate hosts/runtimes in one JVM cannot independently choose plugin sets or dependency resolvers through the current execution seam. A runtime configured with one optional module changes the registry observed by all executions in the process. Likewise, independently constructed Guice injectors can overwrite the static injector reference used by plugin construction. The concurrent map prevents some data-structure races; it does not provide per-runtime isolation or atomic generation publication.
+
+**Target requirement:** make the runtime composition immutable and scoped to a host/runtime instance. The executor receives a `PluginResolver` / `PluginFactory` capability from its runtime, never reads a static registry or static injector. Host adapters may use Guice, Spring, another IoC container or direct constructors, but Core's execution contract must not require any one of them. A no-container host must still be able to supply dependencies explicitly; reflection should not be an invisible fallback that changes construction semantics.
+
+### Required isolation tests
+
+- Two runtime instances in one JVM with disjoint optional plugin sets; each resolves only its own set.
+- Two runtimes with different dependency providers; plugin construction must use the provider bound to the executing runtime, regardless of creation order.
+- A failed generation build must not mutate or partially publish the active generation.
+- Replacing a generation must affect newly admitted executions only; existing executions retain their pinned generation.
+- Reset/close of one host must not clear or alter another host's registry, injector, metadata or running executions.
+
+## 32. The plugin factory abstraction is not currently the runtime construction seam
+
+`DefaultPluginFactory` is constructed with `PluginRegistry` and creates plugins by class, ID or namespace/element pair, but the inspected Core body executor does not depend on `PluginFactory`. Instead it directly resolves a class from `CorePluginRegistry` and instantiates through the static Guice injector or reflection.
+
+The two abstractions also have different lookup semantics: `DefaultPluginFactory` asks the metadata-oriented `PluginRegistry` for plugin instances/IDs and namespace-element pairs, while runtime dispatch asks the local-name-only Core registry for a class. Consequently the factory's namespace-aware method does not make runtime XML dispatch namespace-aware.
+
+**Decision constraint:** do not simply rename `DefaultPluginFactory` to the new factory or route the executor through it without redesign. First define the runtime construction contract around immutable descriptor identity, host-provided dependency resolution, configuration validation and lifecycle. Then adapt or retire the legacy factory after its public/test/external consumers are inventoried.
