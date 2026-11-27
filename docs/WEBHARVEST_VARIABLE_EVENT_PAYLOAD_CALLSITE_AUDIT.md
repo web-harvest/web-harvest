@@ -116,6 +116,21 @@ These are current implementation facts on the inspected revision. They justify a
 
 **INFERENCE —** A migration adapter cannot safely infer semantic type, framing, ownership, immutability or missing-value meaning from these conversions. Compatibility adapters should preserve existing behavior while new APIs make these properties explicit.
 
+### 3.2 Optional integration modules
+
+The bounded source scan also inspected the in-tree Database, FTP, Mail, WebBrowser and ZIP module implementations. These are optional modules, not evidence that the same capabilities belong in Core.
+
+| Module / source path | Observed payload or lifecycle behavior | Limitation |
+|---|---|---|
+| FTP — `webharvest-ftp/.../FtpPlugin.java`, `handleFtpGet()` | Retrieves into `ByteArrayOutputStream`, converts to `byte[]`, returns `NodeVariable(byte[])`. | Whole remote file is buffered in memory. |
+| FTP — `FtpGetPlugin.java` | Retrieves into `ByteArrayOutputStream`, then converts downloaded bytes to String using context charset. | The dedicated GET plugin does not preserve arbitrary binary content. |
+| FTP — `FtpPutPlugin.java` and `FtpPlugin.handleFtpPut()` | Converts body Variable to String, then to bytes and uploads from `ByteArrayInputStream`. | Binary body values can be corrupted by string conversion; upload is fully materialized. |
+| Mail — `MailPlugin.createDataSourceOfVariable()` | Calls `variable.toBinary(charset)` and creates `ByteArrayDataSource`. | Attachment payload is fully materialized as byte array. |
+| ZIP — `ZipPlugin.doExecute()` | Writes the entire archive into `ByteArrayOutputStream` and returns `NodeVariable(byte[])`. | Archive size is memory-bounded only by process memory; no artifact sink/stream output. |
+| ZIP — `ZipEntryPlugin.doExecute()` | Writes `bodyResult.toBinary(charset)` into the active ZipOutputStream stored in a context Variable. | Entry body must already be represented by a fully materialized Variable/byte array. |
+
+**INFERENCE —** Optional modules currently repeat the same in-memory payload pattern as Core. A future neutral payload contract should allow these modules to opt into streaming/artifact references without moving FTP, mail, ZIP or browser implementations into Core.
+
 ## 4. Core plugin source sweep: Variable boundaries
 
 A bounded source sweep inspected all **47 Java source files** directly under `webharvest-core/src/main/java/org/webharvest/plugin/core/` at the inspected revision for Variable conversion, collection and wrapped-object operations. This is a package-level scan, not an exhaustive repository-wide or downstream-consumer inventory.
