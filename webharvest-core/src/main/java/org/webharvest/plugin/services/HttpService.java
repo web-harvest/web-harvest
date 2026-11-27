@@ -80,6 +80,8 @@ public interface HttpService {
      * @throws HttpServiceException if the request fails
      */
     HttpResponse request(String method, String url, String body, Map<String, String> headers) throws HttpServiceException;
+
+
 }
 
 

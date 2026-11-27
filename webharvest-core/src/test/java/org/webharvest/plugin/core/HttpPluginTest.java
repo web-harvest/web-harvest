@@ -40,14 +40,17 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.webharvest.plugin.PluginConfiguration;
 import org.webharvest.plugin.services.HttpResponse;
+import org.webharvest.plugin.services.ExecutionAwareHttpService;
 import org.webharvest.plugin.services.HttpService;
 import org.webharvest.plugin.services.HttpServiceException;
 import org.webharvest.runtime.DynamicScopeContext;
+import org.webharvest.runtime.resource.ExecutionResourceAccess;
 import org.webharvest.runtime.variables.EmptyVariable;
 import org.webharvest.runtime.variables.NodeVariable;
 import org.webharvest.runtime.variables.Variable;
 
 import java.lang.reflect.Field;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -70,7 +73,10 @@ public class HttpPluginTest {
     private DynamicScopeContext context;
     
     @Mock
-    private HttpService httpService;
+    private ExecutionAwareHttpService httpService;
+
+    @Mock
+    private ExecutionResourceAccess resourceAccess;
     
     @Mock
     private PluginConfiguration configuration;
@@ -131,6 +137,52 @@ public class HttpPluginTest {
         verify(httpService).get(eq("https://httpbin.org/get"), anyMap());
     }
     
+    @Test
+    public void serviceManagedExecutionUsesOwnerBoundRequestAndConfiguredTimeout() throws Exception {
+        HttpPlugin plugin = createHttpPluginWithInjection();
+        when(context.getResourceAccess()).thenReturn(resourceAccess);
+        when(configuration.getProperty("url")).thenReturn("https://example.com/data");
+        when(configuration.getProperty("method", "GET")).thenReturn("GET");
+        when(configuration.getProperty("timeout", "30000")).thenReturn("750");
+        when(httpService.request(anyString(), anyString(), anyString(), anyMap(),
+            any(Duration.class), same(resourceAccess))).thenReturn(httpResponse);
+
+        plugin.initialize(configuration);
+        Variable result = plugin.execute(context);
+
+        assertNotNull(result);
+        verify(httpService).request(
+            eq("GET"),
+            eq("https://example.com/data"),
+            eq(""),
+            anyMap(),
+            eq(Duration.ofMillis(750)),
+            same(resourceAccess));
+        verify(httpService, never()).get(anyString(), anyMap());
+    }
+
+    @Test
+    public void managedExecutionRejectsLegacyHttpProviderWithoutCancellationCapability() throws Exception {
+        HttpPlugin plugin = createHttpPluginWithInjection();
+        HttpService legacyProvider = mock(HttpService.class);
+        Field httpServiceField = HttpPlugin.class.getDeclaredField("httpService");
+        httpServiceField.setAccessible(true);
+        httpServiceField.set(plugin, legacyProvider);
+
+        when(context.getResourceAccess()).thenReturn(resourceAccess);
+        when(configuration.getProperty("url")).thenReturn("https://example.com/data");
+        when(configuration.getProperty("method", "GET")).thenReturn("GET");
+        plugin.initialize(configuration);
+
+        try {
+            plugin.execute(context);
+            fail("Managed execution must reject a provider without execution-aware cancellation");
+        } catch (RuntimeException expected) {
+            assertTrue(expected.getCause().getMessage().contains("does not support execution-owned"));
+        }
+        verifyNoInteractions(legacyProvider);
+    }
+
     @Test
     public void testHttpPluginPutRequestUsesGenericRequest() throws Exception {
         HttpPlugin plugin = createHttpPluginWithInjection();
