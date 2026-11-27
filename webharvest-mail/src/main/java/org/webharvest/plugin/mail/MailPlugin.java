@@ -359,7 +359,9 @@ public class MailPlugin extends AbstractPlugin {
         subject = evaluateTemplate(subject, context);
         
         LOGGER.debug("Mail Plugin - SMTP: " + smtpHost + ":" + smtpPort + ", From: " + from + ", To: " + to + ", Subject: " + subject);
-        
+
+        boolean sendStarted = false;
+        boolean sendConfirmed = false;
         try {
             Email email;
             if ("html".equalsIgnoreCase(type)) {
@@ -401,7 +403,9 @@ public class MailPlugin extends AbstractPlugin {
                 "mail.smtp.writetimeout", Integer.toString(SmtpSocketResource.WRITE_TIMEOUT_MILLIS));
 
             try (SmtpSocketResource smtpResource = SmtpSocketResource.open(context, socketFactory)) {
+                sendStarted = true;
                 String messageId = email.send();
+                sendConfirmed = true;
                 LOGGER.debug("Mail sent successfully with message ID: " + messageId);
                 return new NodeVariable("Email sent successfully. Message ID: " + messageId);
             }
@@ -411,10 +415,21 @@ public class MailPlugin extends AbstractPlugin {
             throw interrupted;
         } catch (EmailException e) {
             LOGGER.error("Failed to send email", e);
-            throw new RuntimeException("Failed to send email: " + e.getMessage(), e);
+            MailPluginException.DeliveryDisposition disposition = sendStarted
+                ? MailPluginException.DeliveryDisposition.UNKNOWN
+                : MailPluginException.DeliveryDisposition.NOT_STARTED;
+            MailPluginException failure = new MailPluginException(
+                "SMTP delivery disposition: " + disposition, disposition, e);
+            throw new RuntimeException("Failed to send email: " + e.getMessage(), failure);
         } catch (Exception e) {
             LOGGER.error("Unexpected error in mail plugin", e);
-            throw new RuntimeException("Unexpected error in mail plugin: " + e.getMessage(), e);
+            MailPluginException.DeliveryDisposition disposition = sendConfirmed
+                ? MailPluginException.DeliveryDisposition.CONFIRMED
+                : sendStarted ? MailPluginException.DeliveryDisposition.UNKNOWN
+                    : MailPluginException.DeliveryDisposition.NOT_STARTED;
+            MailPluginException failure = new MailPluginException(
+                "SMTP delivery disposition: " + disposition, disposition, e);
+            throw new RuntimeException("Unexpected error in mail plugin: " + e.getMessage(), failure);
         }
     }
 
