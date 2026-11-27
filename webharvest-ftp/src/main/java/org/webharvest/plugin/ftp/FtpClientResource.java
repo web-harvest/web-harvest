@@ -5,8 +5,6 @@
 package org.webharvest.plugin.ftp;
 
 import org.apache.commons.net.ftp.FTPClient;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.webharvest.runtime.DynamicScopeContext;
 import org.webharvest.runtime.resource.ExecutionResourceAccess;
 
@@ -22,8 +20,6 @@ import java.util.UUID;
  * Legacy contexts without resource access retain local finally-based cleanup.</p>
  */
 final class FtpClientResource implements AutoCloseable {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(FtpClientResource.class);
 
     private final FTPClient client;
     private final ExecutionResourceAccess.OperationResource operation;
@@ -44,30 +40,29 @@ final class FtpClientResource implements AutoCloseable {
             return new FtpClientResource(client, null, null);
         }
 
-        ExecutionResourceAccess.OperationResource operation = null;
-        ExecutionResourceAccess.Lease lease = null;
+        ExecutionResourceAccess.OperationResource operation;
         try {
             operation = access.registerOperationResource(
                 "ftp/client/" + UUID.randomUUID(),
                 () -> disconnect(client),
                 () -> closeClient(client));
-            lease = operation.acquire();
-            return new FtpClientResource(client, operation, lease);
         } catch (RuntimeException | Error failure) {
-            if (lease != null) {
-                lease.close();
-            }
-            if (operation != null) {
-                operation.close();
-            } else {
-                try {
-                    closeClient(client);
-                } catch (IOException closeFailure) {
-                    failure.addSuppressed(closeFailure);
-                }
+            try {
+                closeClient(client);
+            } catch (IOException closeFailure) {
+                failure.addSuppressed(closeFailure);
             }
             throw failure;
         }
+
+        ExecutionResourceAccess.Lease lease;
+        try {
+            lease = operation.acquire();
+        } catch (RuntimeException | Error failure) {
+            operation.close();
+            throw failure;
+        }
+        return new FtpClientResource(client, operation, lease);
     }
 
     FTPClient getClient() {
@@ -75,7 +70,7 @@ final class FtpClientResource implements AutoCloseable {
     }
 
     @Override
-    public void close() {
+    public void close() throws IOException {
         if (lease != null) {
             lease.close();
         }
@@ -83,11 +78,7 @@ final class FtpClientResource implements AutoCloseable {
             operation.close();
             return;
         }
-        try {
-            closeClient(client);
-        } catch (IOException failure) {
-            LOGGER.warn("Failed to close legacy FTP client", failure);
-        }
+        closeClient(client);
     }
 
     private static void disconnect(FTPClient client) throws IOException {
