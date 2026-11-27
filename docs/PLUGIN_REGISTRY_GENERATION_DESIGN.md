@@ -660,3 +660,27 @@ This confirms that `CorePluginRegistry` is the current Core XML dispatch authori
 
 The above is based on direct inspection of the named production classes and related focused tests at this commit. GitHub code search returned no usable indexed matches for the registry symbols, so this is not yet a proven exhaustive all-module call-site inventory. The retirement gate for legacy types, utility APIs, serialized data and external consumers remains open.
 
+## 22. Historical `v:*` behavior is XPath-specific; `p:*` is not proof of a parameter context (2012 source evidence)
+
+A historical source snapshot at commit `92171846a490d92905bf5ca45b41e96f110e85c8` was inspected to recover the behavior behind the old namespace-family declarations. This provides stronger evidence than the current `ElementInfo` parser alone.
+
+### What the old implementation actually did
+
+- `ElementInfo` parsed `v:*` and `p:*` in an element's allowed-attribute declaration into allowed namespace URI sets. The old `DefinitionResolver.validate(XmlNode)` then accepted otherwise-unlisted attributes when their attribute namespace URI was in that set. This was an attribute grammar/validation wildcard, not a named parameter-context implementation.
+- The built-in historical `xpath` element was declared with `id,expression,v:*`. Its `XPathDef` read attributes from `XmlNode.getAttributes(WHConstants.XMLNS_VAR)`, preserving namespace URI as a lookup dimension.
+- The historical `XPathProcessor` evaluated each such attribute value through the template engine, treated the attribute local name as a variable name, evaluated the value as an XPath expression against the source document, and stored the resulting `ListVariable` into the current `DynamicScopeContext` with `setLocalVar`.
+- Thus the historical `v:` family had a concrete XPath-specific runtime consumer: namespaced attributes declared variables derived from XPath expressions. It was not a general global-variable scope and did not provide a persistent, versioned parameter context.
+- The inspected built-in `DefinitionResolver.registerInternalProcessors()` contains no corresponding built-in element declaration using `p:*`. The old `ElementInfo` parser recognizes the parameter namespace wildcard, but this inspection did not establish a built-in runtime consumer or resolution semantics for `p:` attributes. External plugin declarations or historical documents may still exist and require a wider fixture/source search.
+
+### Compatibility implications
+
+1. Preserve the old `v:` behavior as a specific XML dialect compatibility rule for the historical XPath element; do not reinterpret it as a generic runtime variable reference or as the new global Parameter Context.
+2. Keep the new global Parameter Context as a separate typed configuration facility with immutable revision snapshots and explicit override rules.
+3. Treat `p:` as unresolved legacy grammar until a real historical fixture or external plugin consumer establishes its semantics. Do not silently map it to the new parameter context.
+4. The old `XmlNode` stored attributes as namespace-URI → local-name → value maps, and `DefinitionResolver.validate()` checked the attribute namespace URI. The current `StreamingXmlParser.extractAttributes()` flattens attributes to string keys, so a compatibility adapter must recover expanded-name identity before it can preserve the old behavior.
+5. Add characterization fixtures for at least: an XPath element with one `v:` attribute, multiple `v:` attributes, a same-local-name unqualified/`v:` collision, an unknown `p:` attribute, and a plugin-specific `p:` declaration if one can be recovered. Verify both the parsed semantic representation and the resulting runtime variable scope.
+
+### Evidence boundary
+
+This is direct historical source evidence for the 2012 built-in XPath behavior and the old grammar validator. It does not establish that all old external plugins or public XML examples used `p:`, nor does it prove that current code still supports the historical behavior. The all-fixture and external-plugin audit remains open.
+
