@@ -7,6 +7,7 @@ For current project direction and contribution guidance, start here:
 - [Project Direction and Architecture Roadmap](PROJECT_DIRECTION.md) — product goals, architecture principles, phases and exit gates.
 - [Cross-Application Semantic and Functional Architecture](CROSS_APPLICATION_SEMANTIC_ARCHITECTURE.md) — shared semantic contracts and the distinct meanings of Pack, Kit, Capability, Adapter, Plugin and Module.
 - [Cross-Application Semantic Contract Inventory](CROSS_APPLICATION_SEMANTIC_CONTRACT_INVENTORY.md) — evidence-led candidate domains, governance, versioning and validation gates; no schemas are approved yet.
+- [WebHarvest Data, Stream and Semantic Contract Architecture](WEBHARVEST_DATA_AND_STREAM_CONTRACT_ARCHITECTURE.md) — WebHarvest-specific boundaries for records, observations, events, artifacts, streams, AI providers, agents, MCP and Core.
 - [Plugin Author Guide](PLUGIN_AUTHOR_GUIDE.md) — target external plugin contract, discovery and compatibility expectations; explicitly marks what is not yet stable.
 - [Monorepo and Module Boundary Policy](MONOREPO.md) — current Maven modules, dependency direction and future repository extraction gates.
 - [Plugin Inventory](PLUGIN_INVENTORY.md) — preliminary source-backed registration/discovery baseline; not yet an approved Core membership list.
