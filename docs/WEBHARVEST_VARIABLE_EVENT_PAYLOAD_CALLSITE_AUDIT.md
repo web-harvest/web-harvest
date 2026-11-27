@@ -141,11 +141,25 @@ These are current implementation facts on the inspected revision. They justify a
 - Consequently, the current numeric methods return zero for `NodeVariable(null)`, but throw `NumberFormatException` for `EmptyVariable.INSTANCE` because they attempt to parse an empty string.
 - An empty string in `NodeVariable("")` also throws during numeric parsing.
 
-**FACT —** `CommonUtil.createVariable(Object)` normalizes both Java `null` and an empty String to `EmptyVariable.INSTANCE`. It also normalizes an incoming Variable when it is already EmptyVariable or reports `isEmpty()`. `ListVariable.addVariable(null)` similarly substitutes EmptyVariable for a null member.
+**FACT —** `CommonUtil.createVariable(Object)` normalizes both Java `null` and an empty String to `EmptyVariable.INSTANCE`. It also normalizes an incoming Variable when it is already EmptyVariable or reports `isEmpty()`.
 
-**IMPORTANT CORRECTION —** The “null becomes zero” behavior is not the general factory-path behavior. It occurs when a Variable directly preserves a null wrapped object (for example, explicit `new NodeVariable(null)`). The common `CommonUtil.createVariable(null)` path collapses null into EmptyVariable, whose numeric conversion currently throws. The API therefore already has inconsistent null/empty behavior depending on construction path.
+**FACT —** The Variable collection paths add another inconsistency:
 
-**FACT —** `webharvest-core/src/test/java/org/webharvest/runtime/variables/VariableTest.java` explicitly asserts zero for all three `NodeVariable(null)` conversions. The same test class covers malformed non-empty text as `NumberFormatException`, and does not characterize numeric conversion of EmptyVariable. `NodeVariableTest` separately asserts that a null NodeVariable is empty and retains a null wrapped object. These tests encode the current edge behavior, not necessarily a desirable semantic contract.
+- `NodeVariable.isEmpty()` returns true for null, empty CharSequence, empty Iterator/Iterable and empty `XmlNodeWrapper`. It does not treat an empty `byte[]` as empty, even though its string representation is empty. Therefore `isEmpty()` is a content/shape heuristic, not a reliable null/missing predicate.
+- `ListVariable(Iterable)` wraps non-Variable members in NodeVariable and drops every member whose `isEmpty()` is true. This can discard null, empty text, empty collections and empty XML wrappers during construction.
+- `ListVariable.addVariable(null)` instead stores `EmptyVariable.INSTANCE`; it does not apply the constructor's empty-member filtering. Other empty Variables can also be added and retained.
+- `ListVariable.isEmpty()` returns true when all stored members are empty, even when the underlying list is non-empty. Its inherited numeric conversions parse the list's joined string representation; the existing tests rely on this behavior for one-element numeric lists.
+
+**IMPORTANT CORRECTION —** The “null becomes zero” behavior is not the general factory-path behavior. It occurs when a Variable directly preserves a null wrapped object (for example, explicit `new NodeVariable(null)`). The common `CommonUtil.createVariable(null)` path collapses null into EmptyVariable, whose numeric conversion currently throws. Constructor, factory and collection paths therefore do not share one consistent empty/null contract.
+
+**FACT —** Test coverage confirms and preserves parts of this inconsistency:
+
+- `VariableTest` explicitly asserts zero for all three `NodeVariable(null)` conversions and covers malformed non-empty text as `NumberFormatException`; it does not characterize numeric conversion of EmptyVariable.
+- `NodeVariableTest` asserts that null and empty-string NodeVariables are both empty, while retaining different wrapped objects.
+- `ListVariableTest.testConstructorWithEmptyVariables` explicitly expects empty members to be filtered by the iterable constructor. `testAddNullVariable` explicitly expects null to be retained as EmptyVariable. `testToInt`, `testToLong` and `testToDouble` preserve numeric conversion of one-element lists.
+- `CommonUtilTest` currently has only URL-reading and URL-validation tests; it does not characterize `createVariable` normalization.
+
+These tests encode current behavior, not necessarily a desirable semantic contract. Any cleanup must first replace accidental path-dependent behavior with an explicit, reviewed contract and a characterization matrix.
 
 **FACT —** The inspected production files `CommonUtil`, `JSRScriptEngineAdapter`, `ScriptPlugin`, `BaseTemplater`, `IfPlugin`, `CallPlugin`, `WhilePlugin`, `SleepPlugin`, `HttpPlugin`, `FilePlugin`, `LoopPlugin`, `FunctionPlugin`, `CasePlugin`, `XPathPlugin` and `ListPlugin` did not show direct calls to `Variable.toInt()`, `toLong()` or `toDouble()`. This is a representative inspection, not an exhaustive call-site proof. GitHub code-search requests for these symbols returned empty/incomplete results, so they cannot establish absence of other call sites.
 
