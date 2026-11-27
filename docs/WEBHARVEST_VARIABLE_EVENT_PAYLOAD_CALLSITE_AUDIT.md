@@ -395,6 +395,19 @@ A deeper trace of the flags used by `CallPlugin` and `ReturnPlugin` found a seco
 
 
 
+### 3.2.8 Plugin completion events retain the live Variable payload
+
+**FACT —** `AbstractPlugin.execute()` passes the exact `Variable` returned by `doExecute()` into `PluginExecutionCompletedEvent` when execution succeeds. `PluginExecutionCompletedEvent` stores that reference in a final field and returns it directly from `getResult()`; it does not snapshot, normalize, serialize or defensively copy the value.
+
+**FACT —** `Variable` implementations are not uniformly immutable. `ListVariable` exposes mutating operations such as `addVariable()`, and `NodeVariable` can wrap arbitrary objects through `getWrappedObject()`. Existing plugin values can include mutable collections, XML wrappers and technical resource handles. The event API therefore does not guarantee that the payload remains stable after publication or is safe to retain/serialize.
+
+**INFERENCE —** An event subscriber retaining `PluginExecutionCompletedEvent.getResult()` may observe later mutations to the same object. The generic payload can also expose internal objects or sensitive values to any in-process subscriber that receives the event. This is a contract/security review item; the inspection does not establish that a current subscriber persists or leaks such payloads.
+
+**FACT —** `SessionEvent` describes events as being published to Guava EventBus. The inspected event class contains an in-memory `Variable` reference and has no serialization or durable append contract. Although `PluginExecutionCompletedEvent` Javadoc lists replay as a use case, the event type alone does not provide a durable, immutable event log or deterministic replay representation.
+
+**DESIGN CONSEQUENCE —** Separate execution-local `Variable` objects from event payload contracts. If plugin completion events are intended for durable audit/replay, publish an immutable, bounded snapshot/descriptor with explicit value kind, provenance, truncation policy and redaction rules; do not retain arbitrary `NodeVariable` wrapped objects or resource handles. If the event is only an in-process notification, document that scope and avoid promising replay semantics. A future durable event log remains a separate contract.
+
+
 ### 3.3 Optional integration modules
 
 The bounded source scan also inspected the in-tree Database, FTP, Mail, WebBrowser and ZIP module implementations. These are optional modules, not evidence that the same capabilities belong in Core.
