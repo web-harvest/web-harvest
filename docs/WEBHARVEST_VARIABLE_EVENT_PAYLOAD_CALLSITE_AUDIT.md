@@ -196,6 +196,37 @@ The current `EmptyVariable`/factory normalization means null and empty String ha
 
 **UNKNOWN —** Whether downstream applications or user scripts intentionally depend on `NodeVariable(null).toInt()/toLong()/toDouble()` returning zero is not established by repository inspection. Also unknown: whether preserving null versus empty String is a supported public semantic requirement.
 
+### 3.2.1 Independent numeric coercion paths
+
+The three `Variable` conversion methods are not the only numeric-conversion contract in Core. At least two independent conversion paths were confirmed in the inspected source.
+
+**FACT —** `SetVarPlugin.evaluateArithmeticExpression()` implements its own arithmetic parsing and fallback policy:
+
+- For the supported `${left + right}` and `${left - right}` cases, operands are parsed with `Double.parseDouble()`; this does not call `Variable.toDouble()`.
+- A missing left-hand variable (`context.getVar(leftVar) == null`) remains initialized to numeric zero.
+- A present but non-numeric left-hand value is caught as `NumberFormatException` and replaced with zero. A non-numeric right-hand operand is treated the same way.
+- The arithmetic result is always converted using `(int) result` and then returned as a String-backed `NodeVariable`. Fractional results are truncated; the current branch does not preserve decimal results.
+- An outer catch converts any other evaluation failure into `EmptyVariable.INSTANCE`.
+
+**FACT —** This behavior is explicitly locked by `SetVarArithmeticNonNumericBranchContractTest`: non-numeric left and right operands produce arithmetic as if the operand were zero, and subtraction with a missing left variable starts from zero. These are existing tests, not merely undocumented implementation details.
+
+**IMPLICATION —** Changing `Variable.toInt()/toDouble()` will not correct or alter this SetVar behavior. The arithmetic evaluator needs its own separately reviewed contract. It must distinguish (a) missing operand, (b) explicitly empty operand, (c) malformed non-empty operand and (d) valid numeric operand. Whether any of these should default to zero is a product/DSL compatibility decision, not a side effect of the Variable conversion API.
+
+**FACT —** `ScraperContext` distinguishes an undefined variable from a defined empty variable at the context lookup level:
+
+- `getVar(name)` returns Java `null` when no binding exists.
+- `setLocalVar(name, null)` stores `EmptyVariable.INSTANCE` through `ObjectUtils.defaultIfNull`.
+- The Object-valued setter routes through `CommonUtil.createVariable`, which also collapses Java null and empty String into EmptyVariable.
+- Therefore `getVar(name) == null` means undefined binding, whereas a non-null `EmptyVariable.INSTANCE` means a defined binding with the current combined empty/null representation.
+
+This distinction is important for migration: a missing binding is not the same thing as a Variable whose payload is null or empty.
+
+**FACT —** `JSRScriptEngineAdapter.copyVariables()` introduces another independent coercion at the scripting boundary. It unwraps every Variable using `getWrappedObject()`; when the wrapped value is a String, it trims it and attempts Integer parsing, then Double parsing, leaving non-numeric and empty strings as strings. Thus a string such as `"5"` can reach the script engine as a numeric object, while malformed/empty strings remain text. This behavior is separate from both `Variable.toDouble()` and SetVar's arithmetic evaluator.
+
+**FACT —** `ScriptPlugin` public examples also perform conversion inside user scripts with `parseInt(...toString())` and `parseFloat(...toString())`. This is script-language behavior and is not controlled by the Java Variable conversion API.
+
+**REQUIRED FOLLOW-UP —** Expand the migration audit beyond the three Variable methods. At minimum, characterize SetVar arithmetic, JSR-223 binding conversion, template evaluation, and script examples independently. Do not centralize them behind one helper until their intentionally different semantics have been identified and approved.
+
 ### 3.3 Optional integration modules
 
 The bounded source scan also inspected the in-tree Database, FTP, Mail, WebBrowser and ZIP module implementations. These are optional modules, not evidence that the same capabilities belong in Core.
