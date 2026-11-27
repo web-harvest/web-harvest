@@ -40,8 +40,9 @@ public class MailPluginLifecycleTest {
         CountDownLatch clientSocketClosed = new CountDownLatch(1);
         CountDownLatch resourceRegistered = new CountDownLatch(1);
         AtomicReference<Throwable> serverFailure = new AtomicReference<>();
+        AtomicReference<Socket> acceptedSocket = new AtomicReference<>();
         Thread serverThread = new Thread(() -> serveBlockedSmtp(
-            serverSocket, dataReceived, clientSocketClosed, serverFailure),
+            serverSocket, dataReceived, clientSocketClosed, serverFailure, acceptedSocket),
             "smtp-abort-test-server");
         serverThread.start();
 
@@ -100,6 +101,10 @@ public class MailPluginLifecycleTest {
         } finally {
             worker.shutdownNow();
             serverSocket.close();
+            Socket accepted = acceptedSocket.get();
+            if (accepted != null) {
+                accepted.close();
+            }
             serverThread.join(3000);
         }
         if (serverFailure.get() != null && !(serverFailure.get() instanceof java.net.SocketException)) {
@@ -109,8 +114,24 @@ public class MailPluginLifecycleTest {
 
     private static void serveBlockedSmtp(ServerSocket serverSocket, CountDownLatch dataReceived,
                                          CountDownLatch clientSocketClosed,
-                                         AtomicReference<Throwable> serverFailure) {
-        try (Socket socket = serverSocket.accept();
+                                         AtomicReference<Throwable> serverFailure,
+                                         AtomicReference<Socket> acceptedSocket) {
+        try (Socket socket = serverSocket.accept()) {
+            acceptedSocket.set(socket);
+            serveSession(socket, dataReceived, clientSocketClosed);
+        } catch (Throwable failure) {
+            if (!serverSocket.isClosed()) {
+                serverFailure.compareAndSet(null, failure);
+            }
+        }
+    }
+
+    private static void serveSession(Socket socket, CountDownLatch dataReceived,
+                                     CountDownLatch clientSocketClosed) throws java.io.IOException {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(
+                 socket.getInputStream(), StandardCharsets.US_ASCII));
+             BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(
+                 socket.getOutputStream(), StandardCharsets.US_ASCII))) {
              BufferedReader reader = new BufferedReader(new InputStreamReader(
                  socket.getInputStream(), StandardCharsets.US_ASCII));
              BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(
@@ -149,10 +170,6 @@ public class MailPluginLifecycleTest {
                 }
             }
             clientSocketClosed.countDown();
-        } catch (Throwable failure) {
-            if (!serverSocket.isClosed()) {
-                serverFailure.compareAndSet(null, failure);
-            }
         }
     }
 
