@@ -68,6 +68,13 @@ The principal Guice integration is concentrated in:
 
 The static `InjectorHelper` is the strongest container-coupling point: plugin construction is resolved through a globally installed Guice Injector rather than through an explicit runtime-owned factory/provider boundary. This also creates an ambiguity for multiple independent runtimes or host containers in one process.
 
+There are additional static-injection/shared-state seams in the same composition path:
+- `ScraperModule.SCRAPER_SCOPE` is a static singleton scope shared by all `ScraperModule` instances.
+- `ScraperModule` requests static injection into both `InjectorHelper` and `BaseTemplater`.
+- `BaseTemplater.scriptEngineFactory` is a public static injected field used by static template evaluation methods. Tests explicitly construct a Guice Injector to populate it.
+
+These are not merely annotation dependencies. They are runtime state/ownership questions that must be resolved for two independent Core runtimes to coexist without sharing or overwriting each other's script-engine factory, injector or scope state. The separate `CorePluginsRegistrar` / singleton `CorePluginRegistry` initialization path is covered by the registry-generation audit and must be unified with the same runtime-owned model.
+
 The reflection fallback only covers plugin construction when the static Injector is absent. It does not provide equivalent injection for plugin dependencies, configuration factories, HTTP services, scripting services, scopes, lifecycle hooks or the other Guice-integrated paths.
 
 Guice annotations in Core source also mean that merely extracting `ScraperModule` into an adapter module would not remove the Core compile dependency. The annotations and types themselves must move behind a neutral construction/configuration contract or be removed from Core.
@@ -117,7 +124,7 @@ The target should be **container-neutral, not container-less**:
 
 1. Core defines explicit construction/provider, service-access, scope and lifecycle contracts using only JDK and WebHarvest-owned types.
 2. A Guice adapter module implements those contracts for Guice hosts; separate adapters may support Spring, another IoC container or no container.
-3. Runtime/plugin construction receives a runtime-owned provider/factory explicitly. Remove the static global Injector lookup and avoid resolving host services through a global service locator.
+3. Runtime/plugin construction receives a runtime-owned provider/factory explicitly. Remove the static global Injector lookup, static-injected `BaseTemplater` dependency and static scope ownership; avoid resolving host services through a global service locator.
 4. Core plugin classes must not require Guice annotations for construction or field injection. Prefer explicit constructor/factory inputs; optional host adapters may translate container bindings into the neutral provider contract.
 5. The host owns its general-purpose IoC container unless ownership is explicitly transferred. Runtime/generation shutdown must not close a shared host container.
 6. Guava EventBus replacement is a separate migration: define neutral event publication/subscription contracts and preserve synchronous/asynchronous behavior, exception policy, subscriber registration ownership, session scoping and cleanup ordering. A compatibility adapter can preserve old integrations during migration.
