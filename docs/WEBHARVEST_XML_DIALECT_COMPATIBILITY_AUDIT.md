@@ -113,7 +113,14 @@ The inspected `StreamingXmlParserTest`:
 
 `StreamingXmlParserTextContentTest` focuses on CDATA, plain text, multiline and empty text. `DefaultConfigFactoryTest` uses a stub parser and does not characterize real XML dialect parsing or `getVersion()`.
 
-The recursive tree contains many XML examples and integration fixtures across Core and optional modules, but the existence of those files does not establish that each dialect is still executable. Their namespace and element-name inventory, as well as their actual execution coverage, remains to be mapped.
+The recursive tree contains 130 `.xml` files across the repository (including Maven POMs, site metadata and non-WebHarvest XML). The tracked WebHarvest example corpus was scanned for root namespace declarations:
+- The maintained `docs/web/examples` and IDE webapp example copies use the 2.1 Core namespace.
+- The 44 numbered Core `new_plugins` fixtures use the 2.1 Core namespace.
+- Five legacy-style Core/Mail test resources have no namespace and therefore enter the parser's implicit 1.0 fallback path; the inspected files include repeated `var-def` elements.
+- The inspected optional-module integration fixtures use the 2.1 Core namespace.
+- No explicit 1.0 or 2.0 namespace was found in the scanned XML configuration example/test corpus. This does not rule out downstream or untracked documents.
+
+The named tests associated with several namespace-less resources do not prove XML compatibility: the inspected CSS-selector test constructs a plugin configuration directly; the logging integration test invokes `LogPlugin` directly; and the variable/function tests exercise variable/script behavior without loading the corresponding XML fixture. A fixture's presence under `src/test/resources` is not proof that a test parses or executes it. A reference/use inventory is still required before declaring these fixtures active or obsolete.
 
 ## 6. Required compatibility fixture matrix
 
