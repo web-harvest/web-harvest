@@ -44,7 +44,7 @@ Dependency management supplies versions; by itself it does not add either librar
 | `webharvest-zip` | No direct declaration | No direct declaration | Depends on Core, therefore receives both transitively |
 | `docs` | No direct declaration | No direct declaration | No direct declaration found |
 
-The CLI's direct declarations appear redundant with its Core dependency, but that should be verified against its packaged/shaded output and intended standalone dependency contract before removal.
+The CLI's direct declarations appear redundant with its Core dependency, but that should be verified against its packaged/shaded output and intended standalone dependency contract before removal. The root POM also contains `unitils-spring` in test scope; this is not evidence of a production Spring adapter. No second production IoC adapter was identified in the inspected source/POM paths, but alternate injection APIs still need a separate scan.
 
 Because Core declares both libraries at compile scope, consumers of the published Core artifact inherit them as transitive dependencies. Marking them optional without first removing Core's direct type references would not create a working no-Guice/no-Guava runtime.
 
@@ -76,6 +76,8 @@ There are additional static-injection/shared-state seams in the same composition
 These are not merely annotation dependencies. They are runtime state/ownership questions that must be resolved for two independent Core runtimes to coexist without sharing or overwriting each other's script-engine factory, injector or scope state. The separate `CorePluginsRegistrar` / singleton `CorePluginRegistry` initialization path is covered by the registry-generation audit and must be unified with the same runtime-owned model.
 
 The reflection fallback only covers plugin construction when the static Injector is absent. It does not provide equivalent injection for plugin dependencies, configuration factories, HTTP services, scripting services, scopes, lifecycle hooks or the other Guice-integrated paths.
+
+The tests make this limitation observable: `IncludePluginTest.shouldFailClearlyWhenConfigFactoryWasNotInjected()` explicitly expects an Include plugin without Guice injection to fail; `HttpPluginWithDependencyInjectionTest` constructs the plugin through a Guice Injector; `BaseTemplaterStaticInjectionTest` asserts Guice static injection into `BaseTemplater.scriptEngineFactory`; and `DefaultPluginBodyExecutorTest` initializes its execution context through `ScraperModule`. These tests do not establish the required plain-Java end-to-end execution path.
 
 Guice annotations in Core source also mean that merely extracting `ScraperModule` into an adapter module would not remove the Core compile dependency. The annotations and types themselves must move behind a neutral construction/configuration contract or be removed from Core.
 
