@@ -611,3 +611,8 @@ A source-level census of all 57 concrete plugin implementation candidates (47 Co
 ## 24. Registry instance ownership gap
 
 `DefaultPluginRegistry.unregisterPlugin()` and `clear()` drop references without invoking cleanup or defining another close owner. Since `registerPlugin(Class)` constructs live instances, constructor-acquired resources may also lack rollback. The registry-held instance's role is ambiguous because `DefaultPluginFactory` creates a fresh instance from its class. See [Plugin Registry Generation Design, section 54](PLUGIN_REGISTRY_GENERATION_DESIGN.md#54-legacy-registry-removal-does-not-own-the-lifetime-of-registered-instances-2026-11-28).
+
+
+## 25. Parser abstraction and root dispatch findings
+
+`ConfigParser` has no parse method; `XMLConfig.reload()` only works when the injected parser is concretely `StreamingXmlParser` and otherwise returns a null tree. `XMLConfig.getVersion()` reads a `namespace` property that the parser does not populate (the namespace is stored in the configuration namespace field), so historical v1 detection is suspect and needs regression tests. `Scraper.execute()` also has a separate non-`config` root path that constructs by reflection rather than the ordinary child provider path. See [Plugin Registry Generation Design, section 55](PLUGIN_REGISTRY_GENERATION_DESIGN.md#55-configparser-is-a-marker-interface-and-xmlconfig-hard-codes-the-concrete-parser-2026-11-28).
