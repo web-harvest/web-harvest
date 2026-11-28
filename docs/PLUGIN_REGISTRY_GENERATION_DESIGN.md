@@ -1620,3 +1620,39 @@ This census reinforces the #346/#347 contract: the registry generation must bind
 **Audit boundary:** this is a source-level method census, not a proof that every individual validation rule is correct. The next verification layer is generated per-plugin tests for required/conditional attributes, child grammar, defaults/coercion, invalid values and side-effect-free preflight.
 
 No production code, tests, POMs or workflows changed in this audit.
+
+
+## 53. The legacy PluginRegistry and PluginFactory form a second, incompatible construction model (2026-11-28)
+
+The current `PluginRegistry` / `DefaultPluginRegistry` / `PluginFactory` path was inspected independently from the Core XML dispatcher. It is not a harmless facade over `CorePluginRegistry`; it has different identity, ownership, validation and construction semantics.
+
+### 53.1 Registry stores live instances and silently overwrites XML identity
+
+`DefaultPluginRegistry` stores live `Plugin` instances in its ID, QName, category and namespace maps. Registration rejects an already-present plugin ID using a separate `containsKey()` then `put()` sequence (not an atomic uniqueness operation), but it does not reject a duplicate `{namespace, elementName}` key: the QName map uses plain `put()` and silently replaces the previous plugin.
+
+`unregisterPlugin(pluginId)` later removes the QName key unconditionally based on the removed plugin's metadata. If plugin A's QName mapping was overwritten by plugin B, unregistering A can remove B's active QName mapping. This is a concrete index-consistency defect. The category and namespace collections are also mutable `ArrayList` values stored in concurrent maps; the map does not make concurrent list mutation safe.
+
+### 53.2 Registration can instantiate implementation classes just to obtain metadata
+
+`registerPlugin(Class)` calls deprecated reflective `Class.newInstance()` and registers that live instance. It does not record the class in `pluginClassesById` despite the field's name. This makes registration a construction/side-effect boundary, not descriptor-only discovery. It also requires a public no-argument construction path even when a host has a dependency resolver.
+
+### 53.3 Factory is not a host-neutral provider resolver
+
+`DefaultPluginFactory` resolves IDs/QNames by first retrieving a registered live instance, taking its class, then reflectively constructing a fresh instance. Its constructor cache selects a no-argument constructor or a special `PluginMetadata` constructor and makes it accessible; it has no host-supplied dependency resolver/provider abstraction. A plugin that requires ordinary constructor-injected dependencies cannot be created through this factory. This differs from `DefaultPluginBodyExecutor`, which uses the process-global Guice injector when present and falls back to reflection otherwise.
+
+The factory's configured creation path calls `plugin.initialize(configuration)` but does not call `validateConfiguration()`. Its public `createMockPlugin()` methods always throw because `MockPlugin` was removed, leaving an advertised API path that cannot succeed.
+
+### 53.4 Architecture consequence
+
+Do not merge these classes mechanically or preserve both as peer authorities. The target should have one runtime-owned immutable generation containing descriptor/provider bindings and one generation-bound provider construction service. The host supplies a narrow construction capability (manual composition or an optional IoC adapter); discovery reads descriptors without instantiating providers; registration validates both plugin ID and expanded QName collisions before publication; lookup returns provider definitions, not shared live plugin instances. Compatibility facades may delegate to this authority while preserving only behavior proven to be externally relied upon.
+
+### 53.5 Required tests
+
+1. Two plugin IDs claiming the same QName fail candidate validation; no overwrite occurs.
+2. Unregister/retire cannot remove another provider's QName mapping.
+3. Concurrent duplicate registration cannot pass an ID check-then-put race.
+4. Descriptor discovery does not construct provider classes or run plugin code.
+5. Host-supplied constructor/factory injection works without Guice and without a public no-arg constructor.
+6. Every public factory method either has a supported contract or is explicitly deprecated/removed behind a compatibility boundary; no stub that always throws is advertised as functional.
+
+No production code, tests, POMs or workflows changed in this audit.
