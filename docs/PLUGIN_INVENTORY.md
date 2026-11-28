@@ -623,3 +623,8 @@ The current factory test uses a stub subclass of `StreamingXmlParser`, so it doe
 ## 26. XML text whitespace preservation gap
 
 `StreamingXmlParser.endElement()` unconditionally trims accumulated element text before storing `_textContent` and omits the property when the trimmed value is empty. This loses boundary whitespace and conflates whitespace-only with absent text. The parser also stores text and child configurations separately, concatenating text segments around children so original mixed-content order cannot be reconstructed. `TextPlugin`, `TemplatePlugin` and other text-consuming plugins use this value; existing parser tests do not assert exact whitespace preservation. See [Plugin Registry Generation Design, section 56](PLUGIN_REGISTRY_GENERATION_DESIGN.md#56-streaming-xml-parser-trims-all-element-text-before-storing-it-2026-11-28).
+
+
+## 27. Host container ownership boundary
+
+The runtime may own its generation-bound provider adapter and plugin/artifact resources, but it must not close a host-owned Guice/Spring/other IoC container by default. Host containers, generation-specific adapters, plugin artifact classloaders, plugin instances and injected host services require distinct ownership/close rules. A container dedicated to one runtime may transfer ownership explicitly. See [Plugin Registry Generation Design, section 57](PLUGIN_REGISTRY_GENERATION_DESIGN.md#57-runtime-ownership-must-not-be-confused-with-ownership-of-the-host-ioc-container-independent-design-review-2026-11-28).
