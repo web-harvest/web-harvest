@@ -542,3 +542,16 @@ Do not count test files or test names as proof of optional-module runtime suppor
 ### CI execution qualification
 
 The root POM excludes `*IntegrationTest` from Surefire and runs those classes through Failsafe during `verify`. The dedicated Database, FTP, WebBrowser and ZIP workflows invoke `verify`; no dedicated Mail workflow was found in the inspected workflow inventory. Consequently FTP/Mail module CI can execute and pass the current fixture-presence tests without proving XML dispatch or plugin behavior. See section 43.1 of the registry design for exact workflow commands and boundaries.
+
+
+## 17. Optional plugin descriptor and lifecycle completeness (2026-11-28)
+
+See [Plugin Registry Generation Design, section 44](PLUGIN_REGISTRY_GENERATION_DESIGN.md#44-optional-plugin-class-contracts--xml-grammar-descriptor-completeness-and-ownership-2026-11-28) for the full class-by-class matrix.
+
+Key additional findings:
+- All ten principal XML contributions were inspected, not only the classes previously listed in the module summary.
+- Nine of ten return an empty `AttributeDefinition[]`, even where required/optional attribute name arrays and imperative validators exist. ZIP `zip-entry` is the only inspected class with populated attribute definitions. The current metadata therefore cannot be treated as a complete typed schema.
+- XML QName, plugin metadata ID and Maven module ID are demonstrably different identity spaces (e.g. XML `database` vs plugin ID `DatabasePlugin`). The target registry must model each independently.
+- FTP child parent constraints are expressed by `getRequiredParents()`; ZIP entry duplicates its `zip` containment relation in both `getDependencies()` and `getRequiredParents()`. These are grammar constraints, not module or Capability dependencies.
+- WebBrowser retains static session/context maps; Database stores connection-pool handles inside the Variable hierarchy; FTP/Mail/ZIP have operation-level resource paths requiring explicit failure/cancellation cleanup characterization.
+- Descriptor completeness must be explicit. Legacy incomplete metadata may be adapted, but must not be presented as a fully typed/validated descriptor.
