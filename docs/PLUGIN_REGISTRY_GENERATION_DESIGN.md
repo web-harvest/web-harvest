@@ -1086,3 +1086,74 @@ A Module may contribute multiple Plugins or providers; a Pack may span multiple 
 For technical groupings of artifacts, use terms such as *distribution profile* or *extension bundle*. Do not use *Pack* or *Kit* for a binary grouping unless it independently satisfies the functional/scenario definitions above.
 
 This section does not introduce Pack/Kit implementation into WebHarvest. It constrains the registry architecture so that future application-level composition and cross-application semantic interoperability remain possible.
+
+
+## 42. Optional-module contribution inventory — annotations, XML identities and build dependencies (2026-11-28)
+
+This section closes one bounded part of the Phase A inventory: the principal executable classes, their current XML names/namespaces, metadata membership flags, module POM dependencies and the available module test-file surface. Source evidence is taken from the PR base commit `c8830f0fe2f1e283abea95318d2c6fd9a644d0a4`; this is not a claim about later main changes or external embedding applications.
+
+### 42.1 Module and XML contribution matrix
+
+| Maven module | Executable class | XML local name | XML namespace | `isCorePlugin()` metadata | Current activation path |
+|---|---|---|---|---|---|
+| Database | `ConnectionPlugin` | `connection` | Core 2.1 | false | `DatabasePluginRegistrar` |
+| Database | `DatabasePlugin` | `database` | Core 2.1 | false | `DatabasePluginRegistrar` |
+| FTP | `FtpPlugin` | `ftp` | Core 2.1 | true | opt-in `PluginPackageScanner` |
+| FTP | `FtpGetPlugin` | `ftp-get` | Core 2.1 | true | opt-in `PluginPackageScanner` |
+| FTP | `FtpListPlugin` | `ftp-list` | Core 2.1 | true | opt-in `PluginPackageScanner` |
+| FTP | `FtpPutPlugin` | `ftp-put` | Core 2.1 | true | opt-in `PluginPackageScanner` |
+| Mail | `MailPlugin` | `mail` | Core 2.1 | true | opt-in `PluginPackageScanner` |
+| WebBrowser | `WebBrowserPlugin` | `web-browser` | Core 2.1 | true | opt-in `PluginPackageScanner` |
+| ZIP | `ZipPlugin` | `zip` | ZIP 2.1 | false | `ZipPluginRegistrar` |
+| ZIP | `ZipEntryPlugin` | `zip-entry` | ZIP 2.1 | false | `ZipPluginRegistrar` |
+
+The matrix is the set of principal plugin classes in the five optional modules, not a declaration that all ten are independently executable root elements. In particular, FTP child operations declare `ftp` as a required parent; ZIP entry declares `zip` as a required parent. Their runtime nesting/content constraints must not be reinterpreted as module dependencies.
+
+### 42.2 Metadata contradictions and dependency overloading
+
+The source exposes a concrete product-membership defect: FTP, Mail and WebBrowser are separate optional Maven modules, but their plugin metadata returns `isCorePlugin() == true`. Database and ZIP return false. The FTP/Mail/WebBrowser annotation is therefore a legacy scanner-eligibility marker as well as a misleading product-membership flag. It cannot safely drive default activation or module membership.
+
+The metadata dependency values are also not a reliable module graph:
+- the inspected Database and FTP/Mail/WebBrowser plugin metadata returns an empty dependency array;
+- `ZipEntryPlugin` reports `zip` as a dependency, while its source also declares `zip` as the required parent element;
+- FTP child plugins similarly declare `ftp` as a required parent through the plugin schema/metadata surface.
+
+This is evidence that current dependency fields mix or omit distinct relationships. Future descriptors must represent module requirements, runtime Capability requirements, plugin composition (only when genuinely required), and XML parent/child grammar constraints separately. The existing values must be adapted with provenance rather than copied into one generic dependency list.
+
+### 42.3 Maven dependency boundary
+
+The five optional POMs declare Core plus these production dependencies:
+
+| Module | Direct production dependency beyond Core | Consequence |
+|---|---|---|
+| Database | `commons-dbcp:commons-dbcp` | JDBC pool implementation is module-owned; JDBC drivers are supplied/configured separately |
+| FTP | `commons-net:commons-net` | FTP protocol implementation is optional |
+| Mail | `org.apache.commons:commons-email` | SMTP/email implementation is optional |
+| WebBrowser | `org.htmlunit:htmlunit` | HtmlUnit/browser automation and its transitive graph remain outside Core |
+| ZIP | none | Uses JDK ZIP APIs; optionality is product/activation policy, not a third-party dependency requirement |
+
+These are build/package dependencies, not automatically runtime Capability declarations. For example, Commons Net does not define the FTP Capability contract, and HtmlUnit does not make browser automation a Core capability. Root reactor membership likewise does not imply runtime activation. The inspected IDE POM depends directly on Core rather than these five optional artifacts.
+
+### 42.4 Test and fixture inventory
+
+The inspected tree contains module-level tests and XML fixtures for all five optional modules:
+- Database: registrar, plugin, connection-pool/driver/JNDI tests and a database XML example.
+- FTP: client factory, plugin behavior/metadata/charset tests, integration test and XML example.
+- Mail: plugin behavior/metadata-adjacent tests, integration test and XML examples.
+- WebBrowser: plugin behavior, metadata, lifecycle, bug regression and integration tests plus an XML example.
+- ZIP: plugin contract, entry behavior and integration tests plus an XML example.
+
+Presence of these files is not proof that each suite currently runs in the default reactor, that optional discovery/activation is covered end-to-end, or that each module's cancellation/resource lifecycle is fully characterized. The next verification pass must inspect test setup and CI invocation, then add a common host-composition integration contract rather than relying on per-module unit tests.
+
+### 42.5 Duplicate XML identity result and remaining gates
+
+Comparing the ten optional local names against the 44-name default Core registration set shows no current exact local-name collision. This does not make the current registry safe: it keys only by local name, discards namespace identity, and silently overwrites on collision. ZIP uses a distinct namespace; the other optional modules currently use the Core 2.1 namespace. Candidate-generation validation must compare expanded QNames (namespace URI + local name), report all conflicts before publication, and preserve explicit aliases.
+
+Still open:
+1. inspect all plugin classes in each optional module, not only the principal classes listed above, for executable/declarative distinctions and lifecycle behavior;
+2. inspect the complete module test and CI wiring to distinguish discovery, activation, dispatch and cleanup coverage;
+3. search public docs/examples/release artifacts and characterize external use of the package scanner, registrars and metadata membership flags;
+4. define a compatibility adapter that preserves legacy scanner configurations without treating `isCorePlugin` as product membership;
+5. add generated inventory checks so module IDs, plugin IDs, XML QNames, module membership and dependency categories cannot silently drift.
+
+No production code, tests, POMs or workflows were changed by this audit.
