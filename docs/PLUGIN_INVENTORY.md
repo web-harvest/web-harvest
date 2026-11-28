@@ -642,7 +642,7 @@ Functional Capability requirements/provisions are not authorization. Descriptors
 
 ## 30. Descriptor and SPI versioning gate
 
-Keep descriptor-format, provider-SPI, Core compatibility, plugin, module/artifact, XML dialect, semantic-contract and runtime-generation versions distinct. Descriptor loading must fail closed on unsupported major versions and canonical serialization must be deterministic without embedding runtime objects or secrets. See [Plugin Registry Generation Design, section 60](PLUGIN_REGISTRY_GENERATION_DESIGN.md#60-descriptor-spi-versioning-needs-a-fail-closed-compatibility-matrix-346-2026-11-28).
+Keep descriptor-format, provider-SPI, Core compatibility, plugin, module/artifact, XML dialect, semantic-contract and runtime-generation versions distinct. Descriptor loading must fail closed on unsupported major versions and canonical serialization must be deterministic without embedding runtime objects or secrets. See [Plugin Registry Generation Design, section 60](PLUGIN_REGISTRY_GENERATION_DESIGN.md#60-descriptorspi-versioning-needs-a-fail-closed-compatibility-matrix-346-2026-11-28).
 
 
 ## 31. Root-level configuration fallback semantics
