@@ -616,3 +616,5 @@ A source-level census of all 57 concrete plugin implementation candidates (47 Co
 ## 25. Parser abstraction and root dispatch findings
 
 `ConfigParser` has no parse method; `XMLConfig.reload()` only works when the injected parser is concretely `StreamingXmlParser` and otherwise returns a null tree. `XMLConfig.getVersion()` reads a `namespace` property that the parser does not populate (the namespace is stored in the configuration namespace field), so historical v1 detection is suspect and needs regression tests. `Scraper.execute()` also has a separate non-`config` root path that constructs by reflection rather than the ordinary child provider path. See [Plugin Registry Generation Design, section 55](PLUGIN_REGISTRY_GENERATION_DESIGN.md#55-configparser-is-a-marker-interface-and-xmlconfig-hard-codes-the-concrete-parser-2026-11-28).
+
+The current factory test uses a stub subclass of `StreamingXmlParser`, so it does not prove that `ConfigParser` is actually substitutable. The repository has no dedicated `XMLConfig` test for v1/v2 namespace version detection.
