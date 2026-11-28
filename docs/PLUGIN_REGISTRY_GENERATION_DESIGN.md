@@ -1734,3 +1734,24 @@ If an application deliberately creates a dedicated container per `CoreRuntime` o
 **Required acceptance tests:** two Core runtimes sharing one host container but using different plugin sets; two runtimes with separate generation-dedicated containers; closing one runtime must not close shared host services or affect the other runtime; borrowed singleton vs owned plugin-instance disposal; generation retirement with active plugin leases; adapter close failure and retry/quarantine behavior.
 
 This is a design clarification only. No production code, tests, POMs or workflows changed.
+
+
+## 58. Immutable generation publication is necessary but does not complete live extension reconciliation (#347) (2026-11-28)
+
+Independent comparison of this design with the full acceptance contract of issue #347 identifies an important scope boundary. Sections 4–10 define runtime-scoped immutable generations, atomic publication, session pinning and safe retirement. Section 39 deliberately says not to promise arbitrary hot-unload as the first milestone. That sequencing is sound, but it must not be read as weakening #347's P0 release gate: #347 explicitly requires managed extension artifacts to be added, updated, removed and re-added while the host remains running, without restart.
+
+The current generation design does not yet specify the complete artifact-source/reconciliation control plane. Before #347 implementation is considered designed, add a separate contract for:
+
+1. **Managed artifact source:** host/runtime-owned extension repository or directory/content-addressed store, artifact identity, provenance, integrity/fingerprint, version and defining classloader/module ownership. A running JVM classpath is not a mutable artifact source.
+2. **Reconciliation:** deterministic full scan plus incremental scan; filesystem watchers are hints only. Define ordering, debouncing, missed-event recovery, atomic artifact replacement and handling of partial/corrupt writes.
+3. **Provider lifecycle states:** discovered → descriptor-valid → compatible/available → enabled → authorized → activated → retiring/removed. Discovery and metadata projection must not construct provider classes or grant execution permission.
+4. **Candidate activation/publication:** parse descriptors without class initialization; validate dependencies, versions, collisions and policy; activate authorized provider bindings in an isolated candidate; publish atomically only after success; preserve last-known-good generation on failure.
+5. **Update/removal semantics:** stop new admissions to the old provider, pin existing sessions to their old generation, drain/cancel under explicit policy, release leases and close the artifact loader only after all references retire; support re-add as a new artifact/generation identity.
+6. **Observability:** expose artifact provenance, fingerprint, generation, state transitions, compatibility/authorization failures, reconciliation diagnostics and retirement blockers.
+7. **Security:** in-process classloaders and permission metadata are not a sandbox. Only trusted providers may execute in-process; untrusted extensions require a process/OS isolation and IPC boundary.
+
+`ServiceLoader` may enumerate provider declarations inside a managed artifact, but it does not replace artifact management, deterministic reconciliation, authorization, generation publication, removal or classloader retirement.
+
+**Decision boundary:** this PR's generation model is a prerequisite architecture for #347, not a claim that live extension hot-plug is already designed or implemented. The final acceptance scenario remains the #347 external fixture: add → discover → inspect/semantic/schema visibility → authorize → execute → update while an old session remains pinned → remove/drain/cleanup → re-add, all without host restart. No release GO or hot-plug capability claim is justified until that scenario passes.
+
+No production code, tests, POMs or workflows changed in this audit.
