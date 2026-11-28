@@ -1188,3 +1188,17 @@ Before replacing the activation path:
 6. Run the same host contract with two runtime instances in one JVM, one with the module selected and one without it; the unselected runtime must remain unable to resolve the module's XML names.
 
 This test audit is source-based. It does not report test execution results and does not change production code or tests.
+
+
+### 43.1 Maven test discovery and optional-module CI wiring
+
+The root POM explicitly excludes `**/*IntegrationTest.java` from Surefire and includes `**/*IntegrationTest.java` in Failsafe, whose `integration-test` and `verify` goals are bound in the build. Therefore the FTP and Mail fixture-only classes are not merely unselected naming artifacts: they are eligible for execution in `verify`, but their assertions still prove only fixture presence.
+
+The inspected module workflows invoke:
+- Database: `mvn -B -ntp -pl webharvest-database -am verify` (plus a separate IDE lifecycle-focused Surefire command).
+- FTP: `mvn --batch-mode --no-transfer-progress -U -Pskip-core-tests-in-reactor -pl webharvest-ftp -am clean verify`.
+- WebBrowser: `mvn --batch-mode --no-transfer-progress -pl webharvest-webbrowser -am verify` (plus dependency-tree, CLI and coverage steps).
+- ZIP: `mvn -B -ntp -pl webharvest-zip -am verify`.
+- Mail: no dedicated optional-Mail workflow was found in the inspected `.github/workflows` inventory. Its tests may still run in broader reactor jobs, but that is not equivalent to a focused Mail module gate.
+
+This makes the FTP/Mail test weakness operationally relevant: dedicated module CI can pass without proving plugin activation or behavior. A future common module contract workflow should fail if an optional module has no explicit discovery/activation/dispatch test, rather than treating a green `verify` as sufficient.
