@@ -1,8 +1,8 @@
 # Plugin inventory — evidence baseline
 
 **Status:** Preliminary inventory baseline; not an approved Core membership list.
-**Source snapshot:** `main` at `c4357d8fa531d5ba536b5d217e149de8e1bd8262` (2026-11-16).
-**Refresh note:** The seven primary registration/runtime/ZIP evidence files cited in this inventory were verified unchanged since the prior snapshot. This remains a targeted evidence baseline, not a complete per-plugin re-audit. Stage 1 descriptor projection and structural validation were subsequently merged in PR #90; they do not change the manual Core mappings or parser/registry lifecycle described here.
+**Source snapshot:** `main` at `c8830f0fe2f1e283abea95318d2c6fd9a644d0a4` (2026-11-27).
+**Refresh note:** Targeted refresh against the 2026-11-27 `main` snapshot covers the plugin SPI, metadata/schema contracts, Core and optional-module registration, package/class scanners, metadata catalog/factory, module POMs, and WebBrowser session lifecycle. This is still not a complete per-plugin or external-embedding consumer audit. Stage 1 descriptor projection and structural validation remain separate from the runtime registration and lifecycle contracts described here.
 **Tracking:** [Issue #93 — inventory and approve the built-in plugin set](https://github.com/web-harvest/web-harvest/issues/93).
 **Purpose:** Reconcile runtime registration, metadata discovery and module ownership before making any plugin moves.
 
@@ -69,10 +69,10 @@ The current source tree contains these plugin-named implementation classes outsi
 
 | Maven module | Plugin implementation classes visible in source tree | Preliminary product status |
 |---|---|---|
-| `webharvest-ftp` | `FtpPlugin`, `FtpGetPlugin`, `FtpPutPlugin`, `FtpListPlugin` | Optional-integration candidate; verify container/child semantics |
-| `webharvest-database` | `DatabasePlugin`, `ConnectionPlugin` | Optional-integration candidate; inspect connection/runtime support classes |
-| `webharvest-mail` | `MailPlugin` | Optional-integration candidate |
-| `webharvest-webbrowser` | `WebBrowserPlugin` | Optional-integration candidate |
+| `webharvest-ftp` | `FtpPlugin`, `FtpGetPlugin`, `FtpPutPlugin`, `FtpListPlugin` | Outside Core; optional integration (review direction 2026-11-27); retain container/child compatibility audit |
+| `webharvest-database` | `DatabasePlugin`, `ConnectionPlugin` | Outside default Core; optional-integration candidate; inspect connection/runtime support classes |
+| `webharvest-mail` | `MailPlugin` | Outside Core; optional integration (review direction 2026-11-27) |
+| `webharvest-webbrowser` | `WebBrowserPlugin` | Optional browser-rendering integration; HtmlUnit remains outside Core |
 | `webharvest-zip` | `ZipPlugin`, `ZipEntryPlugin` | Optional extension; PR #187 adds an explicit `ZipPluginRegistrar`, scoped execution-context stream and nested-archive runtime evidence; remains outside default Core |
 
 The database module also contains the following runtime/support classes, which are part of the module boundary audit even though they are not plugin entry points by name:
@@ -86,6 +86,19 @@ The database module also contains the following runtime/support classes, which a
 - `org.webharvest.runtime.database.StandaloneConnectionPool`
 
 Exception classes are not counted as user-facing plugin implementations.
+
+**Agreed membership direction (2026-11-27):** FTP, Mail and WebBrowser are outside Core and must be delivered as opt-in integrations. Their current `@CorePlugin` annotations are historical/discovery metadata, not product-boundary decisions or permission for default activation. WebBrowser remains an optional HtmlUnit-backed integration because browser automation is specialized, has a substantial engine dependency and a distinct resource lifecycle; ordinary HTTP acquisition remains available without it. Do not introduce a generic Core browser capability prematurely. Revisit that neutral contract only if a second browser provider or a demonstrated Core-wide use case requires it.
+
+### Current descriptor and dependency-contract findings (2026-11-27)
+
+- `@CorePlugin` exposes one `elementName` and one namespace. `PluginMetadata` also exposes one namespace/element-name pair. Neither is sufficient to describe multiple XML aliases for one executable plugin as an explicit first-class binding set.
+- `PluginMetadata` has a `String[] getDependencies()`, but this is not a module dependency manifest. The inspected FTP, Mail and WebBrowser metadata implementations all return an empty array while reporting `isCorePlugin() == true`; their Maven POMs independently declare third-party dependencies.
+- `PluginMetadataCatalog.collectDependencies()` combines metadata dependencies with `PluginConfigurationSchema.getRequiredParents()` and semantic required-parent types. This projects XML nesting constraints into the same `dependencies` list, conflating grammar constraints with dependency resolution.
+- `PluginClassScanner` filters on `@CorePlugin` and its fallback class list includes optional modules. `PluginPackageScanner` uses the same annotation as its opt-in discovery filter. Neither scanner represents product membership or an explicit host activation decision.
+- `PluginMetadataCatalog` loads discovered classes with `Class.forName(className)` and constructs plugin instances to read metadata. It is a metadata projection with reflective class initialization/instantiation, not a side-effect-free module manifest or runtime generation.
+- `DefaultPluginFactory` uses a mutable legacy `PluginRegistry` as its class lookup path, then reflectively creates a fresh instance. Its fallback metadata is inferred from the Java class name and supplies no declared module/capability requirements.
+
+These findings support a clean separation between module requirements, runtime capability requirements, plugin-composition dependencies, XML content constraints, and Maven/package dependencies. Do not repair the ambiguity by merely renaming the existing `dependencies` field.
 
 ## 3. Discovery and metadata discrepancies
 
@@ -399,7 +412,7 @@ membership decision.
 |---|---|---|---|
 | `webharvest-ftp` | `commons-net:commons-net` | `FtpPlugin`, `FtpGetPlugin`, `FtpPutPlugin` and `FtpListPlugin` connect to remote FTP servers, authenticate, and read/write/list remote files. The connection-oriented implementations disconnect in `finally`. Requires external network, credentials and remote filesystem access. | `FtpPluginIntegrationTest` only checks that the example XML resource exists. `FtpPluginTest` mostly covers metadata/schema/initialization; its execute and invalid-action tests accept a broad `Exception` without asserting the exact failure. No deterministic FTP server execution contract was found in the inspected tests. |
 | `webharvest-mail` | `org.apache.commons:commons-email` | `MailPlugin` creates SimpleEmail/HtmlEmail and calls `email.send()`; this is an external SMTP/network side effect that can deliver real email. | `MailPluginIntegrationTest` only checks that the example XML resource exists. No deterministic SMTP execution contract was found in the inspected integration test. |
-| `webharvest-webbrowser` | `net.sourceforge.htmlunit:htmlunit:2.70.0` | `WebBrowserPlugin` loads remote URLs, executes JavaScript/AJAX and stores WebClients in static `namedPages` / `defaultPage` state. The explicit `close` action closes clients, but the inspected class has no automatic Harvester-run cleanup hook; the static default client also raises cross-run isolation/concurrency questions. | The integration test executes XML but asserts only a non-null context; it does not assert loaded page content or script results. |
+| `webharvest-webbrowser` | `org.htmlunit:htmlunit:5.8.0` | `WebBrowserPlugin` loads remote URLs and executes JavaScript/AJAX. Current code keeps pages in a static map keyed by scraper session ID, with per-session `BrowserSessionState`; it registers for session completed/failed/cancelled events and closes clients on those terminal events. A weak-key context fallback exists when no `ScraperSession` is attached, and `closeAllPages()` remains a process-wide shutdown hook. This is better isolated than a single global default page, but the static bookkeeping and fallback lifecycle still need concurrency/cleanup tests. | Unit tests mainly cover metadata, initialization and unsupported actions; the XML integration test asserts only a non-null execution context, not rendered page content, JavaScript results or cleanup. |
 | `webharvest-zip` | No additional direct runtime library beyond Core/JDK | `ZipPlugin` owns a local `ZipOutputStream` and exposes it only in a scoped `DynamicScopeContext` value; `ZipEntryPlugin` reads it from that scope. Nested ZIP scopes restore the outer stream and try-with-resources closes it. | `ZipPluginIntegrationTest` executes the XML example and inspects outer and nested archive contents; `ZipEntryPluginTest` rejects an orphan entry. Optional ZIP CI runs Core+ZIP verify. See PR #187 / Issue #97. |
 | `webharvest-database` | `commons-dbcp:commons-dbcp`; no JDBC driver declared by the module | `DatabasePlugin` executes SQL via `PreparedStatement`, supports inline driver/url and a named `connection` path; `ConnectionPlugin` stores named connection factories in context. Named mode is currently blocked by unconditional driver/url schema requirements. Metadata/annotation names and namespaces also disagree. | 33 unit tests (12 DatabasePlugin, 10 ConnectionPlugin, 7 exception, 4 driver-manager); no successful SQL result assertion or executed XML integration fixture. Core CI excludes this optional module. Follow-up: Issue #185. |
 
@@ -407,6 +420,10 @@ The inspected Database, FTP, Mail, WebBrowser and ZIP classes carry `@CorePlugin
 annotations despite being in optional Maven modules. Database/FTP unit tests also
 assert `metadata.isCorePlugin() == true`. Therefore the annotation and
 `PluginMetadata.isCorePlugin()` flag are not reliable product-boundary signals.
+
+**WebBrowser re-check (2026-11-27):** the earlier static-global-state concern is too broad for the current source. Browser pages are grouped by scraper session ID and the state subscribes to terminal session events for cleanup; only the no-session compatibility path uses a weak-key context map. The remaining risks are whether every session reliably emits a terminal event, whether the no-session fallback closes resources deterministically, and whether the static maps are safe across multiple runtime instances with colliding session IDs. The module POM currently depends on HtmlUnit 5.8.0. The CLI POM directly includes this and all other optional modules in its shaded distribution, so module-level optionality does not currently mean the CLI distribution is minimal.
+
+**Agreed architecture direction (2026-11-27):** keep WebBrowser outside Core as an opt-in browser-rendering integration. JavaScript-capable browser execution is a specialized acquisition capability with a substantial engine dependency and a distinct resource lifecycle; ordinary HTTP acquisition remains available without it. Do not introduce a generic browser/rendering capability into Core now. Reconsider a neutral contract only if a second browser provider or a demonstrated baseline requirement justifies it. Do not promote the current HtmlUnit-backed implementation itself into Core merely because it is annotated `@CorePlugin` or reports `isCorePlugin() == true`.
 
 ### Database extension: concrete support gaps (Issue #185)
 
@@ -492,3 +509,142 @@ Evidence links:
 - [XQueryComplexTypesIntegrationTest.java](../webharvest-core/src/test/java/org/webharvest/examples/XQueryComplexTypesIntegrationTest.java)
 - [XMLPlugin.java](../webharvest-core/src/main/java/org/webharvest/plugin/core/XMLPlugin.java)
 - [TextProcessingPluginsIntegrationTest.java](../webharvest-core/src/test/java/org/webharvest/plugin/integration/TextProcessingPluginsIntegrationTest.java)
+
+
+## 15. Optional-module contribution contract audit (2026-11-28)
+
+The detailed source-backed matrix is maintained in [Plugin Registry Generation Design, section 42](PLUGIN_REGISTRY_GENERATION_DESIGN.md#42-optional-module-contribution-inventory--annotations-xml-identities-and-build-dependencies-2026-11-28).
+
+Key results:
+- The five optional modules expose ten principal XML plugin names: Database (2), FTP (4), Mail (1), WebBrowser (1), ZIP (2).
+- The ten names do not collide with the 44 default Core local-name registrations at the audited base commit. This does not make local-name-only dispatch safe; namespace identity and explicit collision validation remain required.
+- FTP, Mail and WebBrowser metadata incorrectly reports `isCorePlugin() == true` even though their Maven modules are optional. This flag currently also participates in legacy package-scanner eligibility and cannot be removed safely without a compatibility migration.
+- Database and ZIP use explicit registrars that mutate the global Core registry; FTP/Mail/WebBrowser rely on opt-in package scanning. There is no common module contribution contract.
+- `getDependencies()` and required-parent metadata do not provide a trustworthy module dependency graph. ZIP's `zip-entry` → `zip` relation and FTP child → `ftp` relation are XML containment constraints, not Maven module dependencies.
+- Optional POMs depend directly on Core plus Commons DBCP, Commons Net, Commons Email, HtmlUnit, or no additional production library (ZIP), respectively. These implementation libraries must not be promoted automatically to Core runtime Capabilities.
+- All five modules have test sources and XML fixtures, but activation/dispatch/resource lifecycle coverage must be verified separately from file presence.
+
+The audit is bounded to source and test paths at base commit `c8830f0fe2f1e283abea95318d2c6fd9a644d0a4`; external embedding usage and later main changes remain outside this evidence.
+
+
+## 16. Optional-module test evidence quality (2026-11-28)
+
+The follow-up source inspection distinguishes module test presence from real activation/dispatch evidence; details are in [Plugin Registry Generation Design, section 43](PLUGIN_REGISTRY_GENERATION_DESIGN.md#43-optional-module-integration-tests-do-not-provide-uniform-activation-or-execution-evidence-2026-11-28).
+
+- FTP and Mail classes named `*IntegrationTest` only locate their XML fixture and assert file existence. They construct a Core-only `ScraperModule`; they do not activate the optional package, parse the fixture or execute a plugin.
+- ZIP has meaningful explicit registrar, opt-in scanner and real archive-output tests, but all paths mutate the process-global registry.
+- WebBrowser has an XML execution test and lifecycle tests, but the inspected setup uses only Core `ScraperModule`; the source does not establish a deterministic, isolated activation path. Test-order/global-state contamination must be ruled out.
+- Database has plugin/connection/driver unit tests, but the inspected test inventory does not establish end-to-end optional XML activation and dispatch.
+
+Do not count test files or test names as proof of optional-module runtime support. The acceptance suite must independently verify discovery, explicit selection, generation publication, QName binding, factory resolution, execution, failure behavior and resource cleanup for each module.
+
+
+### CI execution qualification
+
+The root POM excludes `*IntegrationTest` from Surefire and runs those classes through Failsafe during `verify`. The dedicated Database, FTP, WebBrowser and ZIP workflows invoke `verify`; no dedicated Mail workflow was found in the inspected workflow inventory. Consequently FTP/Mail module CI can execute and pass the current fixture-presence tests without proving XML dispatch or plugin behavior. See section 43.1 of the registry design for exact workflow commands and boundaries.
+
+
+## 17. Optional plugin descriptor and lifecycle completeness (2026-11-28)
+
+See [Plugin Registry Generation Design, section 44](PLUGIN_REGISTRY_GENERATION_DESIGN.md#44-optional-plugin-class-contracts--xml-grammar-descriptor-completeness-and-ownership-2026-11-28) for the full class-by-class matrix.
+
+Key additional findings:
+- All ten principal XML contributions were inspected, not only the classes previously listed in the module summary.
+- Nine of ten return an empty `AttributeDefinition[]`, even where required/optional attribute name arrays and imperative validators exist. ZIP `zip-entry` is the only inspected class with populated attribute definitions. The current metadata therefore cannot be treated as a complete typed schema.
+- XML QName, plugin metadata ID and Maven module ID are demonstrably different identity spaces (e.g. XML `database` vs plugin ID `DatabasePlugin`). The target registry must model each independently.
+- FTP child parent constraints are expressed by `getRequiredParents()`; ZIP entry duplicates its `zip` containment relation in both `getDependencies()` and `getRequiredParents()`. These are grammar constraints, not module or Capability dependencies.
+- WebBrowser retains static session/context maps; Database stores connection-pool handles inside the Variable hierarchy; FTP/Mail/ZIP have operation-level resource paths requiring explicit failure/cancellation cleanup characterization.
+- Descriptor completeness must be explicit. Legacy incomplete metadata may be adapted, but must not be presented as a fully typed/validated descriptor.
+
+
+### Conditional configuration rules and defaults
+
+Section 45 of the registry design records behavior that is not visible in the current attribute-name metadata: Database named-vs-inline JDBC modes are mutually exclusive; FTP and WebBrowser actions have action-specific path/URL requirements; FTP defaults to port 21/passive mode; Mail defaults to port 25/plain text; WebBrowser defaults to 1000 ms wait and JavaScript enabled (malformed wait silently falls back); ZIP entry defaults charset to UTF-8. These constraints need typed conditional schemas and validator parity, not a flat list of required/optional strings.
+
+
+## 18. Existing public API and external SPI readiness (2026-11-28)
+
+See [Plugin Registry Generation Design, section 46](PLUGIN_REGISTRY_GENERATION_DESIGN.md#46-existing-public-plugin-api-is-not-yet-a-stable-independent-extension-spi-2026-11-28).
+
+The current public `Plugin` interface is coupled to `DynamicScopeContext` and `Variable`, combines execution with mutable parent/body hierarchy, and has no explicit close-result or cancellation/drain contract. `PluginMetadata` mixes plugin/module membership, XML identity, display/UI fields and semantic roles. `PluginConfigurationSchema` cannot represent secrets, conditional variants or cross-field constraints. `DefaultPluginConfiguration` has mutable child assignment.
+
+A concrete projection issue: `PluginMetadataCatalog.collectDependencies()` merges declared dependencies, required XML parents and semantic required-parent types into one `dependencies` list. Do not use this metadata output as a runtime dependency graph.
+
+The existing API should be retained behind a compatibility adapter while a smaller host-independent SPI is designed and proven with a third-party sample and two independent runtime instances.
+
+
+### Metadata discovery is not runtime activation
+
+Section 47 of the registry design records the current scanner/catalog split: the static IDE metadata catalog scans Core and known optional packages, loads classes reflectively and invokes no-argument constructors; the default runtime holder scans Core only; the opt-in package scanner mutates the global Core registry. Metadata can therefore be visible while the plugin is unavailable in the default runtime. The catalog descriptor also lacks first-class module/provider/QName identity and must remain a projection, not the activation authority.
+
+
+### External consumer boundary
+
+Section 48 of the registry design records a bounded public GitHub code search: no publicly indexed third-party imports of the current v2 plugin package or matching v2 XML namespace were surfaced. This is not evidence that no consumers exist. Private repositories, binary artifacts, Maven dependents, customer XML, downstream forks and embedding applications remain unknown. Preserve compatibility through adapters until those sources are inventoried.
+
+
+## 19. Core registry bootstrap consistency defect (2026-11-28)
+
+The direct source audit of `CorePluginsRegistrar` and `CorePluginRegistry` found a concrete state-desynchronization path: the registrar's static `initialized` guard is independent of the public registry `clear()` method. Calling `clear()` without `CorePluginsRegistrar.reset()` empties the map but leaves the guard true, so the next Core registration call is a no-op and the default 44 mappings remain absent. The registration batch also consists of individually visible map writes, and duplicate local names silently overwrite earlier classes. See [Plugin Registry Generation Design, section 49](PLUGIN_REGISTRY_GENERATION_DESIGN.md#49-core-registration-bootstrap-is-mutable-non-transactional-and-can-become-desynchronized-2026-11-28).
+
+
+## 20. XML execution seam, error policy and lifecycle findings (2026-11-28)
+
+The parser's `PluginConfigurationTree` is not a resolved execution plan: `StreamingXmlParser` leaves `elementInfo` null, so each tree node's `pluginClass` is null; the runtime body executor instead traverses mutable `PluginConfiguration.children` and resolves classes from the static `CorePluginRegistry`. Ordinary child bodies also use historical best-effort semantics (log most failures, continue siblings and return only successful results), while Try uses fail-fast/Catch semantics and validation/Include failures propagate. Finally, `AbstractPlugin.execute()` calls `doCleanup()` per invocation, and public `cleanup()` calls the same hook again for instance disposal. These are separate parser/binding, error-policy and lifecycle contracts that the target design must model explicitly. The SAX parser source also lacks explicit secure-processing/external-entity hardening; exploitability is not yet reproduced, so a deterministic XXE characterization test is required before claiming safety. See [Plugin Registry Generation Design, section 50](PLUGIN_REGISTRY_GENERATION_DESIGN.md#50-xml-to-execution-seam-error-policy-and-plugin-lifecycle-are-not-one-coherent-contract-2026-11-28).
+
+
+## 21. Namespace dispatch and validation admission gaps (2026-11-28)
+
+The XML parser stores a normalized namespace URI on configuration, but `DefaultPluginBodyExecutor` resolves the implementation by local element name only through `CorePluginRegistry`; unrelated namespaces can therefore collide with or resolve to Core mappings. Unknown elements are accepted into the parse tree and fail later during execution. Separately, `AbstractPlugin.initialize()` does not invoke `validateConfiguration()`, and the executor calls only `initialize()`. Validation is opt-in inside each plugin's `doInitialize()`: Database, Mail and File call it, while Http and Def do not and reject some missing inputs only during execution. The target binder must resolve expanded QNames and centrally validate the entire statically checkable plan before side effects. See [Plugin Registry Generation Design, section 51](PLUGIN_REGISTRY_GENERATION_DESIGN.md#51-namespace-dispatch-and-configuration-validation-are-not-enforced-at-the-execution-boundary-2026-11-28).
+
+
+## 22. Full plugin validation census
+
+A source-level census of all 57 concrete plugin implementation candidates (47 Core, 10 optional, including internal `BodyProcessorPlugin`) found that only 31 call `doValidateConfiguration()` from `doInitialize()`, 26 do not, and only 15 directly call `getConfigurationSchema().validate(configuration)` from their validator. The 26 non-calling implementations are listed in section 52 of [Plugin Registry Generation Design](PLUGIN_REGISTRY_GENERATION_DESIGN.md#52-repository-wide-plugin-initialization-validation-census-2026-11-28). This does not imply all 26 are invalid; it proves that `initialize()` is not a reliable framework-level validation gate and that meaningful schema validation is not uniformly wired.
+
+
+## 23. Legacy registry/factory consistency findings
+
+`DefaultPluginRegistry` stores live plugin instances, silently overwrites duplicate namespace/element keys, and `unregisterPlugin()` can remove a QName mapping that has since been overwritten by another plugin. Its ID uniqueness check is a non-atomic check-then-put, and category/namespace lists are mutable `ArrayList` values inside concurrent maps. `DefaultPluginFactory` reconstructs instances reflectively from a registered instance's class, supports only no-arg or `PluginMetadata` constructors, does not invoke validation, and its mock creation API always throws because `MockPlugin` was removed. These are concrete reasons to converge on one generation-bound provider authority, not to combine the two registries mechanically. See [Plugin Registry Generation Design, section 53](PLUGIN_REGISTRY_GENERATION_DESIGN.md#53-the-legacy-pluginregistry-and-pluginfactory-form-a-second-incompatible-construction-model-2026-11-28).
+
+
+## 24. Registry instance ownership gap
+
+`DefaultPluginRegistry.unregisterPlugin()` and `clear()` drop references without invoking cleanup or defining another close owner. Since `registerPlugin(Class)` constructs live instances, constructor-acquired resources may also lack rollback. The registry-held instance's role is ambiguous because `DefaultPluginFactory` creates a fresh instance from its class. See [Plugin Registry Generation Design, section 54](PLUGIN_REGISTRY_GENERATION_DESIGN.md#54-legacy-registry-removal-does-not-own-the-lifetime-of-registered-instances-2026-11-28).
+
+
+## 25. Parser abstraction and root dispatch findings
+
+`ConfigParser` has no parse method; `XMLConfig.reload()` only works when the injected parser is concretely `StreamingXmlParser` and otherwise returns a null tree. `XMLConfig.getVersion()` reads a `namespace` property that the parser does not populate (the namespace is stored in the configuration namespace field), so historical v1 detection is suspect and needs regression tests. `Scraper.execute()` also has a separate non-`config` root path that constructs by reflection rather than the ordinary child provider path. See [Plugin Registry Generation Design, section 55](PLUGIN_REGISTRY_GENERATION_DESIGN.md#55-configparser-is-a-marker-interface-and-xmlconfig-hard-codes-the-concrete-parser-2026-11-28).
+
+The current factory test uses a stub subclass of `StreamingXmlParser`, so it does not prove that `ConfigParser` is actually substitutable. The repository has no dedicated `XMLConfig` test for v1/v2 namespace version detection.
+
+
+## 26. XML text whitespace preservation gap
+
+`StreamingXmlParser.endElement()` unconditionally trims accumulated element text before storing `_textContent` and omits the property when the trimmed value is empty. This loses boundary whitespace and conflates whitespace-only with absent text. The parser also stores text and child configurations separately, concatenating text segments around children so original mixed-content order cannot be reconstructed. `TextPlugin`, `TemplatePlugin` and other text-consuming plugins use this value; existing parser tests do not assert exact whitespace preservation. See [Plugin Registry Generation Design, section 56](PLUGIN_REGISTRY_GENERATION_DESIGN.md#56-streaming-xml-parser-trims-all-element-text-before-storing-it-2026-11-28).
+
+
+## 27. Host container ownership boundary
+
+The runtime may own its generation-bound provider adapter and plugin/artifact resources, but it must not close a host-owned Guice/Spring/other IoC container by default. Host containers, generation-specific adapters, plugin artifact classloaders, plugin instances and injected host services require distinct ownership/close rules. A container dedicated to one runtime may transfer ownership explicitly. See [Plugin Registry Generation Design, section 57](PLUGIN_REGISTRY_GENERATION_DESIGN.md#57-runtime-ownership-must-not-be-confused-with-ownership-of-the-host-ioc-container-independent-design-review-2026-11-28).
+
+
+## 28. Live extension reconciliation remains a separate P0 design gate
+
+The immutable-generation design covers atomic publication, session pinning and retirement, but it does not yet fully specify the managed artifact source, deterministic full/incremental reconciliation, provider state machine, authorization-before-activation, last-known-good rollback, artifact provenance or live add/update/remove/re-add lifecycle required by #347. Section 39's decision to defer arbitrary hot-unload from the first migration slice is a sequencing rule, not a waiver of #347's P0 release acceptance. See [Plugin Registry Generation Design, section 58](PLUGIN_REGISTRY_GENERATION_DESIGN.md#58-immutable-generation-publication-is-necessary-but-does-not-complete-live-extension-reconciliation-347-2026-11-28).
+
+
+## 29. Capability vs permission policy boundary
+
+Functional Capability requirements/provisions are not authorization. Descriptors must separately declare requested host permissions and resource budgets; host policy independently authorizes them before activation/admission. Discovered, enabled, authorized and activated states must remain distinct, and unknown permissions fail closed. See [Plugin Registry Generation Design, section 59](PLUGIN_REGISTRY_GENERATION_DESIGN.md#59-capability-requirements-and-host-permissions-must-remain-separate-descriptor-contracts-349-2026-11-28).
+
+
+## 30. Descriptor and SPI versioning gate
+
+Keep descriptor-format, provider-SPI, Core compatibility, plugin, module/artifact, XML dialect, semantic-contract and runtime-generation versions distinct. Descriptor loading must fail closed on unsupported major versions and canonical serialization must be deterministic without embedding runtime objects or secrets. See [Plugin Registry Generation Design, section 60](PLUGIN_REGISTRY_GENERATION_DESIGN.md#60-descriptorspi-versioning-needs-a-fail-closed-compatibility-matrix-346-2026-11-28).
+
+
+## 31. Root-level configuration fallback semantics
+
+`RootConfigurationExecutor` defaults charset to UTF-8 and script language to BeanShell, and silently falls back to those defaults (with warnings) for unsupported values. These are legacy XML semantics that must be characterized separately from missing-value defaults and hard validation failures. See [Plugin Registry Generation Design, section 61](PLUGIN_REGISTRY_GENERATION_DESIGN.md#61-root-runtime-settings-also-contain-implicit-compatibility-fallback-policy-2026-11-28).

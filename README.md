@@ -59,7 +59,7 @@ The current production Groovy runtime is Apache Groovy 5.1.3 through the JSR-223
 Core includes built-in processors and preserves documented legacy compatibility such as the `<set-var>` alias alongside `<def>`. Optional integrations currently exist as Maven modules in this repository.
 
 The project direction is to:
-1. establish a format- and source-neutral Core semantic model and stable capability contracts;
+1. establish a format- and source-neutral Core model for data-operation semantics and runtime Capability contracts, while keeping shared domain semantics independently governed;
 2. make specialized plugins independently identifiable and composable across acquisition, parsing, extraction, validation, transformation, enrichment and destination operations;
 3. define safe, bounded adaptive composition: deterministic execution remains first-class, while agents may propose changes that Core validates and applies only at safe lifecycle boundaries;
 4. persist validated, portable definitions (eventually through a DSL) so they can be inspected, reused, reloaded and adapted in later runs;
@@ -106,9 +106,9 @@ See [LICENSE](LICENSE), [NOTICE](NOTICE) and [licences/webharvest_licence.txt](l
 
 The product category is **Adaptive Data Acquisition & Integration Platform**. The product roles are intentionally distinct:
 
-- **Core — portable semantic and execution foundation.** Core owns format-independent data-operation meaning, capability contracts, validation, policy enforcement and execution. XML is a compatibility/authoring adapter, not the semantic source of truth. Current Core still contains historical XML/workflow and Guice coupling; container-neutral, format-neutral Core is a target reached through explicit migration gates.
+- **Core — portable execution foundation and domain-neutral runtime contracts.** Core owns execution, validation mechanisms, policy enforcement and generic data-operation/Capability contracts. Cross-application domain semantics remain in independently governed, versioned semantic contracts; Core must not become the owner of every application's domain vocabulary. XML is a compatibility/authoring adapter, not the semantic source of truth. Current Core still contains historical XML/workflow and Guice coupling; container-neutral, format-neutral Core is a target reached through explicit migration gates.
 - **IDE — optional human-facing Control Plane.** The IDE may provide design, inspection, configuration, supervision and observation. It is a client; it does not own workflow semantics, plugin identity or runtime lifecycle.
 - **CLI — optional headless adapter.** CLI is one way to invoke Core from scripts, pipelines and automation. The broader data plane is not limited to CLI and must also support direct Java/API and other host integrations.
-- **Specialized plugins and Packs/Kits.** Plugins provide discrete capabilities and retain independent identities. Curated Packs/Kits may group compatible plugins for convenient distribution; they do not make the underlying extensions one inseparable library.
+- **Plugins, functional Packs and scenario Kits.** Plugins are executable providers that implement one or more stable Capability contracts. A Pack is a stable functional domain/value area; a Kit composes Capabilities into a scenario or outcome. Neither term denotes a Maven artifact or binary distribution. Technical groupings of compatible extension artifacts are distribution profiles or extension bundles. See [Cross-Application Semantic and Functional Architecture](docs/CROSS_APPLICATION_SEMANTIC_ARCHITECTURE.md).
 
 Agents are planners/proposers, not trusted runtime authorities. MCP is an optional interoperability adapter for capability discovery/invocation; it is not the semantic model, scheduler, authorization layer or a Core dependency. The runtime and policy boundary must validate all proposed changes, enforce resource/security budgets and preserve execution safety. See [Project Direction](docs/PROJECT_DIRECTION.md), [Monorepo policy](docs/MONOREPO.md), and [architecture decision #342](https://github.com/web-harvest/web-harvest/issues/342).

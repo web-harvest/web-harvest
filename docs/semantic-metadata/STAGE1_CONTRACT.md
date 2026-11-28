@@ -4,6 +4,12 @@ This document defines how the Stage 1 semantic model interprets plugin metadata.
 It distinguishes legacy catalog/IDE semantics from evidence strong enough to
 produce structural validation errors.
 
+## Scope boundary
+
+The term *semantic* here describes the limited interpretation of plugin metadata for XML/editor structure. It is not a canonical domain semantic contract, a cross-application ontology, or a stable runtime Capability contract. Qualified XML relationships in this document are document-grammar identities, not domain-entity relationships.
+
+For the cross-application meaning of semantic contracts and their distinction from Capabilities, see [Cross-Application Semantic and Functional Architecture](../CROSS_APPLICATION_SEMANTIC_ARCHITECTURE.md). The Stage 1 rules below must not be used as evidence that those broader contracts or runtime resolution guarantees already exist.
+
 ## Child policy
 
 A Stage 1 descriptor carries a child policy and its provenance.

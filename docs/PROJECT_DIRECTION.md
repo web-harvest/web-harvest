@@ -57,6 +57,10 @@ The semantic definition is independent of its serialization or authoring surface
 
 Separate framework/runtime lifecycle, individual execution lifecycle and composition/bootstrap adapters. Core semantics must not depend on Guice or any other IoC container. Support explicit/manual construction and host-provided containers through adapters. Container shutdown is not proof that executions, workers or resources have quiesced. Ownership, activation, stop, asynchronous quiescence, resource disposal and failure reporting must be explicit. The current Guice dependency is a migration fact, not the desired architecture.
 
+### Data and stream contract boundaries
+
+See [WebHarvest Data, Stream and Semantic Contract Architecture](WEBHARVEST_DATA_AND_STREAM_CONTRACT_ARCHITECTURE.md) for the proposed distinction between semantic data contracts, Capability contracts, Plugin/provider descriptors, representation/transport contracts and execution lineage. It also defines the target boundaries for media streams, AI providers, agent composition and optional MCP adapters. This document refines the direction below; it does not claim those contracts or implementations are already present.
+
 ### MCP and agent interoperability
 
 MCP is an optional adapter for exposing or consuming capabilities. It is not the workflow model, scheduler, authorization authority or a Core dependency. Direct Java/API use, CLI, IDE, deterministic planners and other protocols must remain viable without MCP or an LLM.
@@ -132,7 +136,7 @@ The current repository remains a monorepo while Core APIs and plugin boundaries 
 
 The intended future shape is:
 
-- **WebHarvest Core repository/artifacts:** runtime, essential plugins, stable SPI and semantic contracts.
+- **WebHarvest Core repository/artifacts:** runtime, essential plugins, stable SPI, domain-neutral data-operation semantics and Capability contracts. Shared domain semantic contracts remain independently governed and versioned.
 - **WebHarvest company extensions repository/artifacts:** optional company-maintained plugins such as FTP, database, mail, browser and archive integrations, subject to final classification.
 - **External third-party plugin repositories:** independently maintained plugins built against published Core APIs.
 - **CLI and IDE:** clients of Core, with their own release boundaries only when independent builds and compatibility are demonstrated.
@@ -198,7 +202,7 @@ The following order distinguishes release obligations from the longer-term platf
 | **P2 — semantic execution proof** | Demonstrate one end-to-end adaptive data operation | Load a saved definition; acquire from at least two materially different source categories; parse/validate/transform; deliver to a destination; encounter a condition; propose and validate a bounded route change; finish, evaluate, save and reload. First prove with a deterministic planner and without LLM/MCP/IDE/Guice dependencies. | [#342](https://github.com/web-harvest/web-harvest/issues/342) |
 | **P2 — agent adaptation** | Add policy-constrained runtime-time adaptation | Add agent/planner adapters only after the deterministic proposal/validation/apply path is stable. Preserve immutable generations, safe points, audit/replay and resource ownership. | [#342](https://github.com/web-harvest/web-harvest/issues/342) |
 | **P3 — portable DSL and adapters** | Persist and reuse semantic definitions | Define DSL only after semantic contracts; prove XML and DSL converge on the same model. Add optional MCP, CLI and IDE adapters without making any one of them mandatory. | [#342](https://github.com/web-harvest/web-harvest/issues/342) |
-| **P3 — ecosystem and distribution** | Curate optional capability sets | Establish compatibility metadata and optional Packs/Kits after SPI and out-of-tree proof. Keep individual plugin identities and avoid premature repository splits. | [#342](https://github.com/web-harvest/web-harvest/issues/342), [MONOREPO.md](MONOREPO.md) |
+| **P3 — ecosystem and distribution** | Curate optional capability sets | Establish compatibility metadata and curated technical distribution profiles/extension bundles after SPI and out-of-tree proof. Keep individual Module and Plugin identities; do not overload functional Pack/Kit terminology or split repositories prematurely. | [#342](https://github.com/web-harvest/web-harvest/issues/342), [MONOREPO.md](MONOREPO.md) |
 
 ### Immediate next sequence
 
@@ -407,28 +411,30 @@ The IDE is a separate product distribution from the Core library. This does not 
 
 CLI is one non-interactive interface to the broader Data Plane. It should expose Core execution to scripts, pipelines, scheduled jobs and external integrations. The Data Plane may also be accessed through programmatic APIs or direct agent/Core integration; it is not synonymous with the CLI. CLI is not intended to become a parallel human Control Plane or own semantic authority.
 
-CLI is a separate product distribution from both Core and IDE. Its current POM directly depends on Core and all five extension modules (Database, FTP, Mail, WebBrowser and ZIP), so today's shaded CLI distribution includes the integrations as a practical packaging fact. That current coupling must not define the long-term Data Plane contract or extension pack taxonomy.
+CLI is a separate product distribution from both Core and IDE. Its current POM directly depends on Core and all five extension modules (Database, FTP, Mail, WebBrowser and ZIP), so today's shaded CLI distribution includes the integrations as a practical packaging fact. That current coupling must not define the long-term Data Plane contract or functional Pack/Kit taxonomy.
 
-### 10.4 Official extension Packs/Kits
+### 10.4 Official extension distribution profiles
 
-Official extensions should be presented and managed as curated, compatible Packs/Kits: coherent capability sets with explicit versions and Core/SPI compatibility. A pack is a user-facing selection, installation and compatibility unit; it is not necessarily a single combined JAR.
+Technical distributions may combine selected extension Modules/artifacts for user convenience. These are **distribution profiles** or **extension bundles**, not functional Packs or scenario Kits.
 
-Keep individual extension modules/artifacts independently identifiable and buildable where appropriate. A future pack manifest should describe included extension IDs/artifacts, versions, required/optional capabilities, Core/SPI compatibility ranges and dependency constraints. This manifest/installer experience is a target, not a current feature.
+A distribution profile may describe included Module/artifact IDs and versions, Core/SPI compatibility ranges, required/optional runtime capabilities, dependency constraints and trust/activation policy. It is a technical installation and delivery unit. It does not own domain semantics and must not be used as a substitute for a Pack or Kit.
 
-Initial taxonomy candidates for evaluation (not yet approved release products):
+Candidate distribution profiles for evaluation (not approved release products):
 
-- **Data Integration Kit:** Database, FTP and Mail.
-- **Web Automation Kit:** WebBrowser.
-- **Archive capability / Kit:** ZIP, potentially included in broader kits rather than distributed as a standalone pack.
+- **Data Integration distribution:** Database, FTP and Mail Modules.
+- **Web Automation distribution:** WebBrowser Module.
+- **Archive support:** ZIP Module, potentially included in broader distributions.
 
-Validate these groupings against real workflows, runtime dependency footprint, security/trust profile, plugin discovery and user value before creating pack artifacts.
+Validate these groupings against real workflows, runtime dependency footprint, security/trust profile, plugin discovery and user value before creating distribution artifacts.
+
+The cross-application meanings of **Pack** and **Kit** are defined separately in [Cross-Application Semantic and Functional Architecture](CROSS_APPLICATION_SEMANTIC_ARCHITECTURE.md): a Pack is a stable functional domain/value area; a Kit is a scenario-oriented composition of Capabilities. Neither term denotes a Maven artifact, installer bundle or distribution profile.
 
 ### 10.5 Repository and distribution boundaries
 
 - Keep the current monorepo. Repository extraction is governed by the objective gates in [MONOREPO.md](MONOREPO.md).
 - Keep Core as the independently consumable library contract.
 - Distribute IDE and CLI separately from the Core library and from each other. A coordinated version number may be used initially, but artifact scope and release decisions must be explicit.
-- Keep extension-level artifact boundaries; compose official extensions into Packs/Kits above those artifacts.
+- Keep extension-level artifact boundaries; compose selected extensions into technical distribution profiles above those artifacts. Functional Packs and scenario Kits remain separate concepts.
 - Do not publish every Maven reactor module merely because it exists in the reactor.
 - Do not infer Central bundle membership from reactor membership or from the current CLI's shaded dependency graph.
 

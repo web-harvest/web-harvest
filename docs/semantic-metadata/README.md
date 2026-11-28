@@ -2,6 +2,19 @@
 
 This page describes the implementation present in the repository. It is not a declaration that the metadata endpoint is a stable third-party Plugin SPI.
 
+## Terminology boundary
+
+The word *semantic* in this Stage 1 package refers to local WebHarvest plugin/XML metadata used for editor descriptions and limited structural inspection. It does **not** mean that the current catalog is a canonical cross-application domain model, a stable Capability contract registry, or an authority for shared entity/event/value meanings.
+
+In particular:
+
+- A current `PluginDescriptor` is a projection of legacy plugin metadata, not a canonical semantic contract.
+- XML child/parent/attribute rules describe document structure; they are not domain relationships or runtime/module dependencies.
+- The current runtime-availability probe is a limited legacy registry-membership check; it does not prove that a compatible provider can be constructed or executed.
+- Capability IDs or categories in plugin metadata must not be assumed to have the identity, versioning and governance guarantees required for cross-application interoperability.
+
+The intended cross-application semantic model and the distinction between semantic contracts, Capabilities, Plugins and Modules are defined in [Cross-Application Semantic and Functional Architecture](../CROSS_APPLICATION_SEMANTIC_ARCHITECTURE.md). This Stage 1 implementation remains a bounded compatibility/inspection facility until the separately specified contracts are implemented.
+
 ## Runtime catalog
 
 The catalog is built from plugin classes at runtime:

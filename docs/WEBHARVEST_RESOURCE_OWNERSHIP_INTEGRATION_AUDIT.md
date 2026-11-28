@@ -1,0 +1,256 @@
+# Resource Ownership and Runtime Integration Audit
+
+**Status:** Source-backed integration audit; no production changes.
+**Inspected source revision:** `main` at `c8830f0fe2f1e283abea95318d2c6fd9a644d0a4`.
+**Related design:** [Plugin Registry Generation Design](PLUGIN_REGISTRY_GENERATION_DESIGN.md) and [Variable, Event and Payload Call-Site Audit](WEBHARVEST_VARIABLE_EVENT_PAYLOAD_CALLSITE_AUDIT.md).
+
+## 1. Executive findings
+
+WebHarvest already contains a substantial, tested resource ownership primitive: `org.webharvest.runtime.resource.ResourceLedger`.
+
+It is not currently connected to the built-in runtime composition path inspected in this audit:
+
+- `WebHarvestServiceImpl` creates a runtime ID and immutable `ExecutionOwner` for every accepted session, and tracks actual worker exit.
+- `ResourceLedger` accepts that runtime identity and supports runtime-, generation-, session- and operation-scoped resources, active-use leases, generation pins, abort, drain, quarantine and close-failure retention.
+- The built-in service does not construct, own or call a `ResourceLedger`.
+- `ScraperModule` does not bind it.
+- `DynamicScopeContext` / `ScraperContext` expose EventBus and ScraperSession but no resource ledger or resource-access contract.
+- The inspected `WebHarvestService` interface has no resource-lifecycle API.
+
+**Architectural consequence:** Do not invent a second resource ledger or a parallel generation-retirement mechanism before evaluating this existing implementation. The likely next task is an integration and contract review of ResourceLedger against the new runtime-generation/plugin-provider design, not a rewrite by default.
+
+A concrete ordering hazard also exists: cancellation publishes `SessionCancelledEvent` before the worker is known to have exited, while the Database optional module responds by physically closing pooled JDBC connections. That may be intended to abort blocked I/O, but the current event contract conflates abort with final resource closure.
+
+## 2. Existing ownership primitives
+
+### 2.1 ExecutionOwner and registry generation identity
+
+**FACT —** `webharvest-core/src/main/java/org/webharvest/runtime/session/ExecutionOwner.java`
+
+An immutable value identity combines:
+- runtime ID;
+- session ID;
+- execution-generation number.
+
+It distinguishes one execution owner from a reused session identifier.
+
+**FACT —** `webharvest-core/src/main/java/org/webharvest/runtime/registry/RegistryGenerationId.java`
+
+A separate immutable value identity combines runtime ID and an opaque registry-generation value. Its documentation explicitly distinguishes registry-generation identity from execution-generation identity; a content digest alone may not distinguish two simultaneously live provider/classloader lifetimes.
+
+**FACT —** `webharvest-core/src/main/java/org/webharvest/runtime/service/WebHarvestServiceImpl.java`
+
+- Owns a runtime UUID and monotonically increments an execution-generation counter.
+- Creates an `ExecutionOwner(runtimeId, sessionId, executionGeneration)` for each accepted session.
+- Supplies that owner to `ScraperSessionImpl`.
+
+These identities are suitable inputs to a runtime-scoped resource ownership model, but execution generation and registry generation must not be conflated.
+
+### 2.2 Actual worker-exit tracking
+
+**FACT —** `ExecutionTrackedSession` separates business completion from worker quiescence. It exposes execution state, termination disposition and waits for observed worker exit.
+
+**FACT —** `ScraperSessionImpl.markExecutionExited()` is documented as the only transition proving quiescence. Interrupt requests and unresponsive status do not set EXITED.
+
+**FACT —** `WebHarvestServiceImpl.SessionTask.run()` calls `markExecutionExited()` after the task has either:
+- passed the cancellation gate and completed its execution body and final task bookkeeping; or
+- been confirmed not to enter the worker body.
+
+For queued cancellation, `removeQueuedFuture()` marks exit only after the ThreadPoolExecutor confirms the task was removed. With generic executors, the task must run its cancellation gate and report exit itself.
+
+**INFERENCE —** The built-in service already has the correct semantic boundary needed by a resource ledger: observed worker exit, not Future cancellation, interruption, session terminal status or EventBus notification.
+
+## 3. ResourceLedger capabilities
+
+**FACT —** `webharvest-core/src/main/java/org/webharvest/runtime/resource/ResourceLedger.java`
+
+The implementation defines four scopes:
+- `RUNTIME` — owned by the runtime;
+- `GENERATION` — owned by an immutable `RegistryGenerationId`;
+- `SESSION` — owned by one `ExecutionOwner`;
+- `OPERATION` — owned by one `ExecutionOwner`, with narrower intended lifetime.
+
+Its key semantics are:
+
+1. Registration establishes ownership; it is not itself an active-use lease.
+2. Consumers acquire explicit leases attributed to an `ExecutionOwner`.
+3. Generation resources require a generation pin spanning the entire execution; a lease must match the exact pinned generation.
+4. Generation retirement atomically rejects new pins while allowing already-pinned executions to continue using their generation resources.
+5. Admission is closed before abort/drain; abort and close are separate actions.
+6. Session/operation resources require externally observed owner quiescence before final close.
+7. Drain waits for both the ownership boundary and active leases.
+8. Timeout leaves the resource `QUARANTINED`; the resource remains retained rather than being treated as safely closed.
+9. Close failure is retained as `CLOSE_FAILED`; only successfully closed registrations can be retired.
+10. The ledger explicitly refuses to infer worker exit from cancellation, interruption, EventBus delivery or terminal business status.
+
+This is materially more complete than a simple `AutoCloseable` list or a collection of plugin `doCleanup()` callbacks.
+
+### 3.1 Existing tests
+
+**FACT —** `webharvest-core/src/test/java/org/webharvest/runtime/resource/ResourceLedgerTest.java`
+
+The tests cover:
+- lease admission racing with close requests;
+- runtime resources with multiple attributed consumers;
+- rejection of foreign execution owners;
+- required owner quiescence even when no lease remains;
+- separate/idempotent abort and preserved abort failures;
+- close failures and retained registrations;
+- concurrent drain/close behavior;
+- exact generation pinning and draining across multiple sessions;
+- use by already-pinned sessions after retirement starts;
+- atomic pin admission versus generation retirement;
+- duplicate local resource IDs across owners/generations;
+- idempotent lease/pin release and stale registration tokens.
+
+**BOUNDARY —** These tests establish the behavior of ResourceLedger in isolation. They do not prove integration with WebHarvestService, ScraperContext, plugin construction, database pools, HTTP clients, browser drivers or classloader retirement.
+
+### 3.2 Adoption review items
+
+The ledger is a strong foundation, but the following points need explicit design decisions before it becomes the runtime authority:
+
+- **Generation tombstone retention:** `generations` is a `ConcurrentHashMap`; `generationEntry()` uses `computeIfAbsent`, and the inspected implementation never removes entries from this map. The source comment says retired entries remain as tombstones so stale IDs cannot be re-pinned. A long-lived runtime with frequent registry publications therefore retains one GenerationEntry per generation for its lifetime. Decide whether this is an accepted bounded-runtime trade-off or whether generation IDs are guaranteed never to be reused and tombstones can be safely retired.
+- **No ledger-level shutdown/drain-all operation:** the public API has registration-level `drainAndClose()`, `size()` and generation-pin operations, but no public snapshot of registrations or runtime-wide `shutdown()/drainAll()`. The integration must define who retains each Registration token and how runtime shutdown drains every resource, including resources whose plugin/provider owner has disappeared.
+- **Diagnostics surface:** outstanding leases and close/abort failures are visible through each Registration/DrainResult, but the ledger has no public aggregate diagnostic snapshot. The host needs a way to report all quarantined/failed resources without exposing mutable internal entries.
+- **Registration-token discipline:** `Registration.close()` retires only an already-CLOSED entry. Providers must retain the token until drain succeeds; losing the token can leave an entry retained, which is safer than premature close but needs host-level diagnostics/recovery.
+- **Close-failure recovery:** `drainAndClose()` returns immediately for `CLOSE_FAILED`; there is no retry/reset transition for the same registration. This may be intentional fail-safe behavior, but the host needs an explicit manual recovery/replacement policy rather than assuming a second drain retries the close.
+
+These are review questions, not evidence that the tested ledger state machine is incorrect.
+
+### 3.3 Do not confuse ownership, usage metering and budgets
+
+**FACT —** `runtime/tracking/ResourceType.java`, `TokenTracker.java`, `TokenTrackerImpl.java` and `TokenUsage.java` form a separate counter model. ResourceType defines names/units such as HTTP request count, HTTP bytes, CPU time and peak memory. The API stores caller-supplied counters; its documentation explicitly says the built-in runtime does not currently measure each resource automatically and that zero/default values do not prove measurement.
+
+**FACT —** `ScraperSession.java` and `SessionMetrics.java` similarly state that built-in processed-element, HTTP and plugin counters are not automatically connected to runtime events (issue #168).
+
+**INFERENCE —** Keep three separate concerns:
+- **ResourceLedger:** ownership, active use, abort, quiescence and close.
+- **TokenTracker/metrics:** measured or explicitly reported usage counters.
+- **Budget/policy:** admission limits, concurrency caps, quotas and billing policy.
+
+A resource lease is not a usage counter; a usage counter is not a quota; and neither implies a billing policy. Stream/payload limits need an explicit budget contract rather than assuming TokenTracker already enforces them.
+
+## 4. Integration gap in the built-in runtime
+
+The following host/runtime files were inspected for ResourceLedger references and lifecycle wiring:
+
+| Source path | Current integration observed |
+|---|---|
+| `runtime/service/WebHarvestServiceImpl.java` | Owns runtime ID, execution owner, session tasks and actual worker-exit tracking; no ResourceLedger field, construction or calls. |
+| `runtime/service/WebHarvestService.java` | Public service API exposes session execution, lookup, cancellation and shutdown; no resource ledger API. |
+| `ioc/ScraperModule.java` | Binds legacy Harvester-scoped EventBus/Registry and context factory; no ResourceLedger binding. |
+| `runtime/DynamicScopeContext.java` | Exposes EventBus and ScraperSession; no ResourceLedger or resource capability. |
+| `runtime/ScraperContext.java` | Stores EventBus and ScraperSession; no ResourceLedger reference. |
+| `plugin/AbstractPlugin.java` | Owns plugin initialize/execute/cleanup callbacks and publishes lifecycle events; no ResourceLedger registration or lease. |
+
+The production ResourceLedger source path and its dedicated test path exist, but no integration was found in the inspected host composition and execution path. GitHub code-search results were incomplete, so this is not a claim that every optional/external module has zero references.
+
+**INFERENCE —** ResourceLedger currently behaves as a tested runtime utility without a built-in runtime owner or plugin/provider integration contract. It cannot yet protect actual plugin resources merely by existing in Core.
+
+### 4.1 Shared HTTP client lifetime
+
+**FACT —** `webharvest-core/src/main/java/org/webharvest/ioc/ScraperModule.java` binds `HttpService` to `HttpServiceImpl` in Guice `Singleton` scope.
+
+**FACT —** `HttpServiceImpl` implements `AutoCloseable`; its `close()` closes the underlying Apache `CloseableHttpClient`. The `HttpService` interface itself does not extend `AutoCloseable` or expose a close operation.
+
+**UNKNOWN —** The inspected `ScraperModule` and `WebHarvestServiceImpl` paths do not show an explicit owner invoking `HttpServiceImpl.close()`. The actual injector lifetime and any external host shutdown hook must be traced before calling this a leak. It is nevertheless a shared runtime resource whose owner and close boundary need to be explicit in the integration design.
+
+## 5. Cancellation ordering hazard: database pool
+
+**FACT —** `ScraperSessionImpl.cancel()`
+
+1. Changes the business status to CANCELLED under the session monitor.
+2. Invokes the service cancellation callback, which requests interruption/cancellation of the worker.
+3. Signals business-completion waiters.
+4. Posts `SessionCancelledEvent`.
+5. Returns without waiting for `markExecutionExited()`.
+
+Therefore, `SessionCancelledEvent` is a cancellation notification, not proof that the worker has exited.
+
+**FACT —** `webharvest-database/src/main/java/org/webharvest/runtime/database/StandaloneConnectionPool.java`
+
+- Registers itself with the session EventBus.
+- Handles `SessionCancelledEvent` by calling `closeAllConnections()`.
+- `closeAllConnections()` calls `releaseAllConnections()`.
+- `releaseAllConnections()` iterates the registered proxies and closes their target physical JDBC connections.
+
+**FACT —** `DatabasePlugin.java` registers inline connection pools with the context EventBus when available and relies on session terminal events for physical connection cleanup.
+
+**FACT —** `webharvest-database/src/test/java/org/webharvest/runtime/database/StandaloneConnectionPoolTest.java`, `releasesConnectionsWhenSessionIsCancelled()`, posts a `SessionCancelledEvent` directly and asserts that the physical JDBC connection is already closed. The test does not model an in-flight JDBC operation, a still-running worker or delayed worker exit.
+
+**FACT —** `webharvest-webbrowser/src/main/java/org/webharvest/plugin/webbrowser/WebBrowserPlugin.java` maintains a static session-to-`BrowserSessionState` map. Each state registers with the session EventBus and closes its WebClient instances on `SessionCompletedEvent`, `SessionFailedEvent` and `SessionCancelledEvent`. It therefore has the same terminal-event-as-resource-close coupling.
+
+**FACT —** `WebBrowserPluginLifecycleTest.browserPagesAreIsolatedAndCleanedUpPerSession()` verifies that a completed session closes only its own browser pages. The inspected test does not simulate cancellation while a browser operation is still in flight.
+
+**RISK / INFERENCE —** On cancellation, physical JDBC connection closure can occur while the worker is still unwinding or while a JDBC call is responding to interruption. This may be intentional best-effort I/O abort, but the same action is also the final close. The current API does not explicitly distinguish:
+- stop admitting new operations;
+- abort/cancel active I/O;
+- wait until worker exit and active leases drain;
+- close the physical resource.
+
+This needs a deterministic cancellation race test with a blocked/in-flight JDBC operation before changing behavior. Do not silently delay cancellation abort if that would break responsiveness; separate abort from final close.
+
+### 5.1 Browser resources and existing worker-exit tests
+
+**FACT —** `WebBrowserPlugin.BrowserSessionState` registers itself directly on the context EventBus and closes all owned HtmlUnit `WebClient` instances on completed, failed and cancelled session events. It unregisters itself and removes the session entry after close.
+
+**FACT —** `WebBrowserPluginLifecycleTest.browserPagesAreIsolatedAndCleanedUpPerSession()` verifies session isolation and cleanup on successful completion. It does not exercise cancellation while a browser request/script is active.
+
+**FACT —** `WebHarvestServiceExecutionLifecycleTest.testCancellationBeforeFutureAttachmentInterruptsActiveWorker()` explicitly asserts that the worker remains active after the session is already CANCELLED; it only reports execution completion after a controlled callback is released. The grace-escalation and shutdown tests likewise assert that an unresponsive worker is not EXITED until it actually returns.
+
+**BOUNDARY —** These service tests establish the worker-exit distinction, but they do not register a JDBC/browser resource in the same test and assert its abort/close ordering. The existing database and browser tests separately prove terminal-event cleanup, not safe cleanup during an in-flight operation.
+
+**FACT —** The standard `WebHarvestServiceImpl` shares one injected-or-constructed Guava EventBus across its sessions and passes it to each `ScraperSessionImpl` and `ScraperContext`. The IDE's `ExecutionManager.createSessionForContext()` instead creates a separate EventBus per IDE job and shares it between that job's session and context. Resource subscribers must filter by session ID because the standard service bus is shared across sessions.
+
+**FACT —** The IDE stop path calls `ExecutionJob.stop()` (which interrupts its execution thread) and then `ScraperSession.cancel()`, which posts `SessionCancelledEvent`. The inspected IDE path does not use `ExecutionTrackedSession` or expose an equivalent confirmed worker-exit wait at this call site. Its stop/cleanup ordering therefore needs a separate characterization; do not assume the standard service's worker tracking protects IDE-owned executions.
+
+### 5.2 Event delivery is not a resource lifecycle protocol
+
+The current Guava EventBus is synchronous in-process notification. In the standard service, `ScraperSessionImpl.cancel()` invokes the task cancellation callback and posts the terminal event before the worker's `SessionTask.run()` finally block calls `markExecutionExited()`. The event callback can therefore run on the cancelling thread while the worker is still unwinding.
+
+### 5.3 Required deterministic integration test
+
+Before changing the Database or WebBrowser cleanup path, add a service-level test using a controlled blocking resource and latches:
+
+1. Start a session and enter a simulated in-flight JDBC/browser operation while holding a ResourceLedger lease.
+2. Request cancellation from a different thread.
+3. Assert that business status becomes CANCELLED and the provider's abort action is requested promptly.
+4. Assert that the worker has **not** yet reached EXITED and that final close has **not** run while the operation still holds its lease.
+5. Release/complete the blocked operation; let the service observe worker exit.
+6. Assert owner quiescence, lease drain and exactly one final close; verify registration retirement only after successful close.
+7. Repeat with a deliberately non-cooperative worker: assert the resource remains visible/quarantined and is not reported as safely closed while the worker is unresponsive.
+8. Verify that late/duplicate terminal notifications cannot cause duplicate abort/close or resurrect a retired registration.
+
+Run the same behavioral contract for an HTTP/browser provider and the database provider, not only against a fake ledger resource. Keep a separate IDE stop-path test because `ExecutionManager` does not use the same `ExecutionTrackedSession` coordinator.
+
+A safe provider lifecycle needs separate signals/actions:
+- stop admitting new operations;
+- request abort of active I/O when responsiveness requires it;
+- observe actual worker exit;
+- drain active resource leases;
+- perform final close and unregister.
+
+A single terminal event cannot safely represent all five transitions. Keep terminal events for observers and business/session status; make ResourceLedger/host lifecycle the authority for abort, quiescence, drain and close.
+
+## 6. Recommended integration direction (proposal, not implementation)
+
+1. **One ledger per runtime.** The runtime/service that owns `runtimeId` should own the corresponding ResourceLedger; avoid global/static ownership.
+2. **Pin one immutable registry generation at execution admission.** The execution task and its `ExecutionOwner` must carry the exact `RegistryGenerationId` selected before parsing/dispatch.
+3. **Release the generation pin only after actual worker exit.** The existing `SessionTask` exit path is the authoritative integration seam; business completion/cancellation events are not.
+4. **Give providers a narrow resource-registration/access contract.** Providers should register resources with explicit scope and receive only the registration/lease capabilities needed to use them. Do not expose the whole ledger as an unrestricted plugin service by default.
+5. **Use operation/session scopes for transient resources.** Examples include a request body stream, file handle, JDBC statement/result set or short-lived device session. Use generation scope for provider/classloader-bound resources; runtime scope for shared HTTP clients or shared transport pools.
+6. **Keep abort distinct from close.** Cancellation may invoke a provider-specific abort action; final close must wait for actual owner quiescence and lease drain.
+7. **Surface quarantine and close failures.** A timed-out or failed close is an unresolved resource, not a successful cleanup. Keep diagnostics and prevent premature generation retirement.
+8. **Test integration, not just ledger mechanics.** Add service-level tests for a blocked worker, cancellation, timeout, generation replacement, outstanding lease, provider cleanup and runtime shutdown before using ResourceLedger as the actual lifecycle authority.
+
+Before implementation, review ResourceLedger's API against the target runtime SPI and classloader lifecycle. Reuse or revise it based on that review; do not assume the current API is final simply because its unit tests are comprehensive.
+
+## 7. Review conclusion
+
+The repository already has two important foundations:
+- a built-in execution coordinator that distinguishes business status from actual worker exit;
+- a resource ledger with explicit ownership, generation pins, leases, abort/drain, quarantine and failure retention.
+
+The missing piece is their integration. This is a more precise next architecture task than designing another resource-management abstraction from scratch.
+
+No production code was changed by this audit.
