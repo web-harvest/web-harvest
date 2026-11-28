@@ -560,3 +560,14 @@ Key additional findings:
 ### Conditional configuration rules and defaults
 
 Section 45 of the registry design records behavior that is not visible in the current attribute-name metadata: Database named-vs-inline JDBC modes are mutually exclusive; FTP and WebBrowser actions have action-specific path/URL requirements; FTP defaults to port 21/passive mode; Mail defaults to port 25/plain text; WebBrowser defaults to 1000 ms wait and JavaScript enabled (malformed wait silently falls back); ZIP entry defaults charset to UTF-8. These constraints need typed conditional schemas and validator parity, not a flat list of required/optional strings.
+
+
+## 18. Existing public API and external SPI readiness (2026-11-28)
+
+See [Plugin Registry Generation Design, section 46](PLUGIN_REGISTRY_GENERATION_DESIGN.md#46-existing-public-plugin-api-is-not-yet-a-stable-independent-extension-spi-2026-11-28).
+
+The current public `Plugin` interface is coupled to `DynamicScopeContext` and `Variable`, combines execution with mutable parent/body hierarchy, and has no explicit close-result or cancellation/drain contract. `PluginMetadata` mixes plugin/module membership, XML identity, display/UI fields and semantic roles. `PluginConfigurationSchema` cannot represent secrets, conditional variants or cross-field constraints. `DefaultPluginConfiguration` has mutable child assignment.
+
+A concrete projection issue: `PluginMetadataCatalog.collectDependencies()` merges declared dependencies, required XML parents and semantic required-parent types into one `dependencies` list. Do not use this metadata output as a runtime dependency graph.
+
+The existing API should be retained behind a compatibility adapter while a smaller host-independent SPI is designed and proven with a third-party sample and two independent runtime instances.
