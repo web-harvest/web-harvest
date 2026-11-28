@@ -1775,3 +1775,29 @@ This policy boundary must integrate with the construction model from section 57:
 **Required acceptance tests:** discovered-but-disabled provider cannot execute; enabled-but-unauthorized provider cannot activate; permission escalation and unknown permission fail closed; filesystem/network/database/browser/script/secret grants are scoped; one plugin cannot obtain another plugin's grants; budgets are enforced and observable; diagnostics redact credentials; authorization changes affect new admissions without silently mutating an already admitted operation's grants.
 
 No production code, tests, POMs or workflows changed in this audit.
+
+
+## 60. Descriptor/SPI versioning needs a fail-closed compatibility matrix (#346) (2026-11-28)
+
+The target model already distinguishes module, plugin, XML dialect, semantic contract and runtime-generation identities, but the public descriptor contract must make its own version axes explicit. A single `version` field is insufficient and must not be overloaded.
+
+At minimum, define separately:
+
+1. **Descriptor format version:** version of the serialized descriptor schema and its interpretation rules.
+2. **Provider SPI/API version:** version of the Java/provider contract implemented by the artifact.
+3. **Supported Core runtime compatibility range:** the Core runtime API/contract range with which the provider is compatible.
+4. **Plugin implementation version:** version of the plugin's behavior/implementation, independent of the Java class name.
+5. **Module/artifact version:** version and immutable artifact identity/fingerprint for the technical distribution unit.
+6. **XML dialect/binding compatibility:** supported historical XML dialect versions and QName aliases; this is not the descriptor or provider SPI version.
+7. **Semantic contract versions:** versions of consumed/produced domain data/event/operation contracts; these are not implied by plugin or module version.
+8. **Registry generation identity:** runtime-issued lifetime identity for one published resolution/provider universe; it is not a content hash or schema version.
+
+The descriptor loader must validate the descriptor format before interpreting optional fields, reject unsupported major format/SPI versions, and define forward-compatible handling only for explicitly declared extension fields. Missing compatibility declarations must not silently mean "compatible with everything". Version ranges must have deterministic semantics, including prerelease/build metadata policy if semantic versioning is used. A plugin that is syntactically readable but incompatible must remain discovered/diagnosable, not executable.
+
+Canonical descriptor serialization must be deterministic: stable field ordering/normalization, stable IDs and expanded QNames, explicit alias order/precedence, no implementation `Class`, live injector, mutable plugin instance, secret plaintext or runtime generation object embedded in the descriptor. Provider binding identifiers and artifact provenance may be serialized; host-resolved objects remain runtime-only. Round-trip tests must compare semantic descriptor equality and stable fingerprints, not incidental JSON/YAML formatting alone.
+
+**Required acceptance tests:** positive/negative descriptor-format matrix; unsupported SPI/Core range rejection; missing/ambiguous compatibility declarations; forward extension-field policy; stable canonical serialization and fingerprint; round-trip equality across supported format versions; deterministic alias and ordering semantics; proof that descriptor-only parsing/projection does not load or instantiate provider implementation classes.
+
+This section is a design gate, not a decision to publish a specific JSON/YAML schema or Java package. Public SPI names and version numbers remain unapproved until maintainer review and out-of-reactor provider proof.
+
+No production code, tests, POMs or workflows changed in this audit.
