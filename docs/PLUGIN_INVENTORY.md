@@ -576,3 +576,8 @@ The existing API should be retained behind a compatibility adapter while a small
 ### Metadata discovery is not runtime activation
 
 Section 47 of the registry design records the current scanner/catalog split: the static IDE metadata catalog scans Core and known optional packages, loads classes reflectively and invokes no-argument constructors; the default runtime holder scans Core only; the opt-in package scanner mutates the global Core registry. Metadata can therefore be visible while the plugin is unavailable in the default runtime. The catalog descriptor also lacks first-class module/provider/QName identity and must remain a projection, not the activation authority.
+
+
+### External consumer boundary
+
+Section 48 of the registry design records a bounded public GitHub code search: no publicly indexed third-party imports of the current v2 plugin package or matching v2 XML namespace were surfaced. This is not evidence that no consumers exist. Private repositories, binary artifacts, Maven dependents, customer XML, downstream forks and embedding applications remain unknown. Preserve compatibility through adapters until those sources are inventoried.
