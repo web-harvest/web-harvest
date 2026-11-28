@@ -1669,3 +1669,25 @@ This compounds the split identified in section 53: the registry stores a live in
 **Required tests:** constructor failure and partial acquisition; registration rollback; unregister and clear with tracked resources; factory-created instance distinctness; generation retirement with active sessions; cleanup failure/quarantine and retry policy.
 
 No production code, tests, POMs or workflows changed in this audit.
+
+
+## 55. ConfigParser is a marker interface, and XMLConfig hard-codes the concrete parser (2026-11-28)
+
+The end-to-end configuration-loading path exposes another abstraction leak:
+
+- `ConfigParser` has no callable parse method; its former `parse(ConfigSource)` contract is commented out.
+- `ScraperModule` binds `ConfigParser` to `StreamingXmlParser`.
+- `DefaultConfigFactory` injects `Provider<ConfigParser>` and passes that abstraction to `XMLConfig`.
+- `XMLConfig.reload()` then checks `instanceof StreamingXmlParser` and casts to the concrete class to call `parseToTree()`. Any other `ConfigParser` implementation is logged as unsupported and produces a null configuration tree; the public `ConfigParser` abstraction cannot actually substitute a parser.
+
+This is not a pluggable parser boundary. It is a concrete implementation selected through a marker type, with the consumer reaching through the abstraction. It also makes format-neutral configuration loading and test doubles dependent on `StreamingXmlParser` internals.
+
+A related compatibility defect is visible in `XMLConfig.getVersion()`: it reads `configurationTree.getConfiguration().getProperty("namespace")`, but `StreamingXmlParser` stores the root namespace in `DefaultPluginConfiguration.namespace` and does not create a `namespace` property. For namespace-qualified XML roots, the version check therefore does not read the namespace that the parser actually captured; the comparison can incorrectly classify legacy 1.0 XML as v2. This requires a direct regression test for each historical namespace alias.
+
+There is also a second root construction path in `Scraper.execute()`: a `<config>` root delegates to `RootConfigurationExecutor` and `DefaultPluginBodyExecutor`, while a non-`config` root resolves by local name in `CorePluginRegistry` and constructs the plugin with `Class.newInstance()` directly. That path bypasses the Guice injector used by ordinary child execution and also bypasses the generation-bound provider/validation path. If non-config roots are supported by the historical XML contract, they must be normalized through the same binding and construction path as ordinary nodes; otherwise they must be rejected explicitly by the dialect adapter.
+
+**Design consequence:** define a real parser/adapter SPI whose contract returns a source-located syntax/configuration representation and does not expose implementation-specific casts. `XMLConfig` should consume that contract polymorphically. Version/dialect detection must use the parsed expanded root QName, not a string property that the parser never writes. Every supported root form must pass through the same generation-pinned binder, validation pipeline and provider construction service.
+
+**Required tests:** custom parser implementation through `ConfigParser`; XMLConfig reload with alternate parser; historical v1/v2 namespace version detection including aliases; non-config root with injected provider; same provider resolution and validation for config and direct roots.
+
+No production code, tests, POMs or workflows changed in this audit.
