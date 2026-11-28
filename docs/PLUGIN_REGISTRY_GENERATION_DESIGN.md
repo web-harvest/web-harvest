@@ -1505,3 +1505,52 @@ Add focused tests before or alongside migration:
 5. failed contribution validation must leave the active generation unchanged.
 
 No production code, tests, POMs or workflows changed in this audit.
+
+
+## 50. XML-to-execution seam, error policy and plugin lifecycle are not one coherent contract (2026-11-28)
+
+A cross-read of `StreamingXmlParser`, `PluginConfigurationTree`, `DefaultPluginConfiguration`, `DefaultPluginBodyExecutor`, `Plugin` and `AbstractPlugin` found several seams that the generation/SPI design must resolve explicitly.
+
+### 50.1 The parser builds a tree but does not bind it to runtime providers
+
+The SAX handler sets `elementInfo = null` for every element because the resolver lookup is commented out. Consequently every `PluginConfigurationTree.pluginClass` is null. The parser does preserve namespace URI on `DefaultPluginConfiguration`, but its attribute projection is a `Map<String,String>` keyed by SAX local name only. At end-element it copies child configurations into the parent's mutable `PluginConfiguration.setChildren()` list.
+
+The runtime body executor does not consume `PluginConfigurationTree` or its `pluginClass`; it traverses `PluginConfiguration.getChildren()` and resolves classes afresh through the static `CorePluginRegistry`. Therefore the current tree is a parser/editor representation, not a resolved execution plan. The parser's class-binding comments and the actual runtime path describe different architectures.
+
+**Design consequence:** keep syntax tree / source locations, validated immutable configuration, and bound executable plan as distinct stages. A parsed node must not pretend to carry a resolved provider when it does not. Bind all nodes against one captured generation after parsing and validation; preserve source locations through that transformation for diagnostics.
+
+### 50.2 Body error handling is an implicit execution policy, not a universal fail-fast contract
+
+`DefaultPluginBodyExecutor.executeChildrenInternal(..., failFast)` implements two different policies:
+
+- ordinary bodies call with `failFast=false`; most child `IllegalArgumentException` and other exceptions are logged and swallowed, later siblings continue, and the parent receives a list containing only successful non-empty results;
+- Try bodies call with `failFast=true`; ordinary failures are routed to the optional Catch, while interruption and requested exit bypass Catch. Include failures and plugin validation failures are propagated even through the ordinary best-effort path.
+
+This means an execution may complete with a partial result after a child has failed. It is not simply a defect: the implementation comments call it historical best-effort behavior. But it is a semantic contract that must not remain an undocumented incidental boolean in an executor implementation.
+
+**Design consequence:** define a typed error policy at the flow/body boundary (for example fail-fast, best-effort/continue, and structured catch), define which failure categories are recoverable, and make partial-result/error reporting observable. XML compatibility fixtures must pin the current policy before any default is changed. DSL and agent-generated plans must choose or inherit an explicit policy rather than silently acquiring best-effort behavior.
+
+### 50.3 One cleanup hook currently serves two different lifecycle boundaries
+
+`AbstractPlugin.execute()` invokes `doCleanup()` in its `finally` block after every invocation, including failure and cancellation paths. Separately, public `cleanup()` invokes the same `doCleanup()` when `initialized` is true, then clears `initialized` and the stored configuration. The per-invocation call does not clear either field.
+
+Thus invocation cleanup and instance disposal share one hook, while the plugin remains marked initialized after the per-invocation hook. A later explicit `cleanup()` can invoke the same hook again; a subsequent `execute()` can run without another `initialize()`. The interface does not define whether this is intended reuse, whether cleanup must be idempotent, or whether the hook releases only invocation-scoped resources or all instance resources.
+
+**Design consequence:** separate invocation scope/operation completion from plugin-instance close/disposal. Specify initialize → zero-or-more invocations → close, including failed initialization, concurrent invocation, cancellation, idempotency, close failure, and retry/quarantine semantics. Do not map the legacy hook mechanically to both lifecycle stages.
+
+### 50.4 XML parser hardening remains unproven
+
+The inspected `StreamingXmlParser.parseToTree()` creates a namespace-aware, non-validating `SAXParserFactory`, but does not set secure-processing or external-entity features and does not install a rejecting `EntityResolver`. The inspected parser tests cover ordinary XML, nested nodes, text and CDATA, but no DOCTYPE, external general entity, external parameter entity, external DTD or external schema cases.
+
+This source inspection is not by itself a reproduced exploit: actual behavior depends on the active JAXP provider and runtime configuration. It is, however, insufficient evidence to call the parser safe for untrusted XML. The required next step is a deterministic security characterization test that proves external file/network resolution is blocked, followed by explicit fail-closed parser hardening. The same test must run against every supported JDK/provider configuration.
+
+### 50.5 Required cross-layer acceptance tests
+
+1. Parse XML and retain expanded element/attribute names, source locations, mixed text semantics and immutable child ordering.
+2. Validate and bind against one pinned runtime generation; reject unknown QName and invalid parent-child grammar before executing any node.
+3. Prove a parsed tree does not imply provider resolution; the executable plan must contain explicit bound providers and generation identity.
+4. Characterize best-effort, fail-fast, Catch, validation failure, Include failure, cancellation and exit, including partial results and later sibling execution.
+5. Prove invocation completion and instance close are distinct, including close after initialization failure, double close, repeated invocation and cancellation.
+6. Prove DOCTYPE and external entity resolution are disabled, including file and network identifiers.
+
+No production code, tests, POMs or workflows changed in this audit.
