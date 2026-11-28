@@ -1755,3 +1755,23 @@ The current generation design does not yet specify the complete artifact-source/
 **Decision boundary:** this PR's generation model is a prerequisite architecture for #347, not a claim that live extension hot-plug is already designed or implemented. The final acceptance scenario remains the #347 external fixture: add → discover → inspect/semantic/schema visibility → authorize → execute → update while an old session remains pinned → remove/drain/cleanup → re-add, all without host restart. No release GO or hot-plug capability claim is justified until that scenario passes.
 
 No production code, tests, POMs or workflows changed in this audit.
+
+
+## 59. Capability requirements and host permissions must remain separate descriptor contracts (#349) (2026-11-28)
+
+The cross-application model defines Capability as a stable functional contract, while #349 requires host-controlled authorization and resource policy. These concepts must not be collapsed into one descriptor field or inferred from module membership.
+
+- **Capability requirement/provision:** what functional service a plugin consumes or provides (for example HTTP transport, filesystem access as a functional port, credential resolution, database access, browser rendering or script evaluation). This is a typed compatibility/composition contract, not permission to use a concrete host resource.
+- **Permission request:** which effects the provider asks the host to authorize, with scope and constraints (for example filesystem read/write roots, network destinations/ports, database identities/operations, browser navigation domains, script execution, secret identifiers, process/time/memory limits).
+- **Authorization decision/grant:** a host-policy result bound to runtime, generation, provider, plugin instance or invocation as appropriate. It must be explicit, auditable, revocable according to a documented boundary, and passed as narrow capability handles/tokens rather than exposing a global unrestricted service locator.
+- **Resource budget:** quantitative limits and accounting (time, memory, bytes, concurrency, connection counts, retries, output size). A permission to access a resource does not imply an unlimited budget.
+
+A descriptor should declare required and optional functional capabilities separately from requested permissions and resource budgets. Candidate validation checks whether compatible capability providers exist; host policy independently authorizes the requested effects before activation/admission. A discovered or enabled plugin is not necessarily authorized, and a valid capability binding does not grant permission. The runtime should model at least discovered, compatible/available, enabled, authorized, activated and retiring states as separate facts.
+
+For built-ins, the host may define an explicit trusted Core default profile for the approved subset. Third-party and side-effecting providers require explicit policy selection; no metadata flag, annotation, Maven module membership or classpath presence may imply trust. Unknown permission identifiers, unsupported scope forms and missing policy decisions fail closed with actionable diagnostics. The descriptor must not claim that an in-process ClassLoader or Java permission metadata sandboxes untrusted code; untrusted providers require a separate process/OS boundary.
+
+This policy boundary must integrate with the construction model from section 57: plugin code receives only the capability handles authorized for its scope; it does not receive the host injector, all runtime services or an unrestricted secret provider. Secret resolution remains a separate sensitive capability with its own least-privilege and redaction rules (section 45 / #424).
+
+**Required acceptance tests:** discovered-but-disabled provider cannot execute; enabled-but-unauthorized provider cannot activate; permission escalation and unknown permission fail closed; filesystem/network/database/browser/script/secret grants are scoped; one plugin cannot obtain another plugin's grants; budgets are enforced and observable; diagnostics redact credentials; authorization changes affect new admissions without silently mutating an already admitted operation's grants.
+
+No production code, tests, POMs or workflows changed in this audit.
