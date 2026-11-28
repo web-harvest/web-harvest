@@ -509,3 +509,19 @@ Evidence links:
 - [XQueryComplexTypesIntegrationTest.java](../webharvest-core/src/test/java/org/webharvest/examples/XQueryComplexTypesIntegrationTest.java)
 - [XMLPlugin.java](../webharvest-core/src/main/java/org/webharvest/plugin/core/XMLPlugin.java)
 - [TextProcessingPluginsIntegrationTest.java](../webharvest-core/src/test/java/org/webharvest/plugin/integration/TextProcessingPluginsIntegrationTest.java)
+
+
+## 15. Optional-module contribution contract audit (2026-11-28)
+
+The detailed source-backed matrix is maintained in [Plugin Registry Generation Design, section 42](PLUGIN_REGISTRY_GENERATION_DESIGN.md#42-optional-module-contribution-inventory--annotations-xml-identities-and-build-dependencies-2026-11-28).
+
+Key results:
+- The five optional modules expose ten principal XML plugin names: Database (2), FTP (4), Mail (1), WebBrowser (1), ZIP (2).
+- The ten names do not collide with the 44 default Core local-name registrations at the audited base commit. This does not make local-name-only dispatch safe; namespace identity and explicit collision validation remain required.
+- FTP, Mail and WebBrowser metadata incorrectly reports `isCorePlugin() == true` even though their Maven modules are optional. This flag currently also participates in legacy package-scanner eligibility and cannot be removed safely without a compatibility migration.
+- Database and ZIP use explicit registrars that mutate the global Core registry; FTP/Mail/WebBrowser rely on opt-in package scanning. There is no common module contribution contract.
+- `getDependencies()` and required-parent metadata do not provide a trustworthy module dependency graph. ZIP's `zip-entry` → `zip` relation and FTP child → `ftp` relation are XML containment constraints, not Maven module dependencies.
+- Optional POMs depend directly on Core plus Commons DBCP, Commons Net, Commons Email, HtmlUnit, or no additional production library (ZIP), respectively. These implementation libraries must not be promoted automatically to Core runtime Capabilities.
+- All five modules have test sources and XML fixtures, but activation/dispatch/resource lifecycle coverage must be verified separately from file presence.
+
+The audit is bounded to source and test paths at base commit `c8830f0fe2f1e283abea95318d2c6fd9a644d0a4`; external embedding usage and later main changes remain outside this evidence.
