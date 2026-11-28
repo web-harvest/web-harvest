@@ -1303,3 +1303,97 @@ A schema migration must test both value resolution and redaction. Templated secr
 5. The XML adapter must preserve the old wire form while mapping it to typed configuration without conflating secret references, ordinary variables and plugin-instance settings.
 
 No production code, tests, POMs or workflows changed in this audit.
+
+
+## 46. Existing public plugin API is not yet a stable independent extension SPI (2026-11-28)
+
+This pass inspected the current Core `Plugin`, `PluginMetadata`, `PluginConfigurationSchema`, `PluginConfiguration`, `PluginFactory`, `PluginRegistry`, `AbstractPlugin`, default implementations, metadata catalog and scanner. The fact that several interfaces are public does not establish a stable, host-independent SPI.
+
+### 46.1 Execution contract is coupled to Core runtime internals
+
+The current `Plugin` interface requires:
+- `execute(DynamicScopeContext)`;
+- return type `Variable`;
+- `getParentPlugin()` / `setParentPlugin(Plugin)`;
+- mutable execution hierarchy level;
+- explicit `initialize(PluginConfiguration)`, `validateConfiguration(...)`, `cleanup()`.
+
+This binds every plugin implementation to WebHarvest's DynamicScopeContext and Variable model. It also mixes the executable contract with a mutable XML/body hierarchy. A future host-independent SPI must separate:
+1. a small stable plugin/provider lifecycle contract;
+2. typed invocation inputs/outputs and execution context abstractions;
+3. optional XML/body-tree adapters;
+4. resource ownership and cancellation contracts.
+
+Do not simply publish the current `Plugin` interface as the extension API. A compatibility adapter can preserve it for existing in-repository plugins while the new provider contract remains independent of the legacy execution model.
+
+### 46.2 Metadata combines product, semantic, UI and grammar concerns
+
+`PluginMetadata` currently combines plugin identity/version, display name/author/category/tags, dependency IDs, configuration schema, XML namespace/local name, `isCorePlugin()`, Java class name and semantic roles. Its default `getDeclaredRoles()` infers roles from XML parent/child grammar and `VisualPluginMetadata`.
+
+These are not one concern. The target model should project distinct typed descriptors:
+- provider/plugin identity and implementation compatibility;
+- module identity and distribution/lifecycle metadata;
+- XML QName and grammar adapter metadata;
+- functional Capability contributions;
+- semantic contracts consumed/produced;
+- UI/editor presentation hints.
+
+A display category or XML parent role must not become a functional Capability or product Core-membership declaration.
+
+### 46.3 Schema API is too weak for the required configuration contract
+
+`PluginConfigurationSchema` exposes flat required/optional attribute names, a list of child names, body allowance, schema version, imperative `validate()`, root eligibility and required parent names. Its `AttributeDefinition` supports primitive type, required/default, allowed values, numeric bounds and regex pattern.
+
+It has no first-class representation for:
+- secret/sensitive values and redaction policy;
+- conditional/discriminated configuration variants;
+- mutually exclusive groups and cross-field constraints;
+- typed nested configuration and named parameter references;
+- validation phase, coercion/error policy and source location;
+- compatibility aliases/deprecation and migration rules;
+- child grammar keyed by expanded QName and child cardinality.
+
+This is why the conditional rules in section 45 cannot be represented faithfully by the current interface. Extendability through ad-hoc maps would not provide a stable schema contract.
+
+### 46.4 Configuration object mutability and identity
+
+`DefaultPluginConfiguration` copies initial property maps and returns copies from `getAllProperties()` and `getProperties()`, but exposes mutable child configuration through `setChildren()`. The interface itself combines plugin ID, XML namespace/local name, flat string properties and recursive children.
+
+The new design should use immutable, typed configuration snapshots after validation. Parsing/building may use a mutable builder, but the published runtime generation and invocation configuration must not be mutable through retained caller references. Keep plugin identity, XML source identity and configuration payload as separate values.
+
+### 46.5 Cleanup contract has no explicit ownership result
+
+`Plugin.cleanup()` returns void and is not an `AutoCloseable` contract. In `AbstractPlugin.cleanup()`, `doCleanup()` runs before the initialized flag and configuration are cleared; if cleanup throws, the instance remains marked initialized and retains its configuration. This may permit a retry, but there is no declared retry/idempotency/terminal-state contract.
+
+The target lifecycle must specify:
+- whether cleanup is idempotent and whether retry is supported;
+- how multiple close failures are aggregated and surfaced;
+- when a provider becomes unavailable to new invocations;
+- how active invocations are cancelled/drained before cleanup;
+- how failed cleanup is quarantined/diagnosed and who retains ownership;
+- how generation/runtime shutdown orders plugin, session and shared-service cleanup.
+
+The existing ResourceLedger audit remains the source for the separate resource-ownership adoption decision; this section does not propose a duplicate ledger.
+
+### 46.6 Registry and metadata catalog are different services — but their projections currently blur relationships
+
+`DefaultPluginRegistry` is an instance service, but `PluginRegistryHolder` provides a static process-global holder and scans only `org.webharvest.plugin.core` when lazily creating its default registry. The separate `PluginClassScanner` and `PluginMetadataCatalog` scan Core plus optional package names and cache metadata independently. This confirms that discovery/catalog visibility is not equivalent to selected runtime registration.
+
+A concrete semantic projection defect exists in `PluginMetadataCatalog.collectDependencies()`: it merges `PluginMetadata.getDependencies()`, schema `getRequiredParents()` and semantic `getRequiredParentTypes()` into one output list called dependencies. The resulting catalog cannot distinguish provider/module dependencies from XML containment or semantic parent constraints. This is a lossy UI/metadata projection and must not be reused as the authoritative runtime dependency graph.
+
+The registry APIs also allow direct mutation (register/unregister/clear/refresh) and store live plugin instances as well as classes. They are not an immutable generation publication boundary. The future generation builder must validate all identities and dependency categories before atomic publication; metadata catalog generation should be a read-only projection of that published model, not an independent source of plugin truth.
+
+### 46.7 Current SPI stabilization gates
+
+Before publishing an independent extension SPI:
+1. define stable provider/module/plugin identifiers and compatibility/version policy;
+2. remove mandatory dependency on `DynamicScopeContext`, `Variable`, Guice and global static holders from the new provider contract;
+3. define typed invocation context, inputs/outputs, cancellation and resource lifecycle;
+4. define immutable typed configuration and complete conditional schema model;
+5. separate module requirements, Capability requirements, XML parent/child grammar and semantic contract relations;
+6. define explicit discovery, trust/policy selection, activation and generation publication phases;
+7. prove a third-party sample plugin builds against the published Core API without compiling the WebHarvest reactor;
+8. prove two independent runtimes in one JVM can select different extension sets and shut down independently;
+9. preserve legacy `Plugin` implementations through an adapter and characterization suite rather than forcing a flag-day migration.
+
+No production code, tests, POMs or workflows changed in this audit.
