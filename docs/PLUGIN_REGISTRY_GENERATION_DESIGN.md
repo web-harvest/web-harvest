@@ -1710,3 +1710,27 @@ This finding does not decide whether every historical element must preserve all 
 **Required fixtures:** leading/trailing spaces for `text` and `template`; CDATA with leading/trailing newlines; whitespace-only and empty nodes; scripts with significant indentation; XSLT/XQuery expression text; mixed text + child elements; exact old-vs-new execution output for historical fixtures.
 
 No production code, tests, POMs or workflows changed in this audit.
+
+
+## 57. Runtime ownership must not be confused with ownership of the host IoC container (independent design review, 2026-11-28)
+
+The target diagrams and section 4.1 currently use phrases such as "runtime-owned injector/provider resolver" and list provider/injector/class-loader ownership inside a generation. This needs one precise ownership rule before the SPI is approved: **Core owns its runtime composition boundary and the generation-bound construction capability; the host owns its general-purpose IoC container unless it explicitly transfers ownership of a generation-dedicated container.**
+
+These are different resources:
+
+| Resource | Default owner | Generation/runtime responsibility |
+|---|---|---|
+| Host Guice/Spring/other application container | Host application | Core may receive a narrow provider/factory adapter; it must not close the host's whole container during generation retirement. |
+| Generation-specific provider adapter / binding snapshot | Runtime or generation, according to explicit transfer contract | Pin it with the generation; close only the adapter-owned resources when generation leases drain. |
+| Plugin implementation artifact/classloader | Extension runtime/generation | Generation owns artifact loading, isolation and retirement; close only after all generation pins/leases drain. |
+| Plugin instance (default) | Invocation owner | Create per invocation; close after invocation completion, with explicit partial-init rollback. |
+| Explicit reusable plugin instance | Declared runtime/session scope | Reuse only with descriptor concurrency/state contract and one deterministic close owner. |
+| Host services injected into plugins (HTTP, filesystem, event bridge, script provider, etc.) | Host or explicitly delegated capability owner | Expose narrow capability ports; ownership and close rights are explicit, not inferred from injection. |
+
+A Guice adapter should therefore implement the neutral construction/capability ports without leaking `Injector`, `Provider`, Guice scopes or annotations into Core SPI. The adapter may use the host container to create plugin instances, but it must distinguish borrowed host singletons from adapter-owned plugin instances and generation-owned artifact resources. Runtime close must release Core-owned sessions, plugin instances, generation pins and adapter leases; it must not call `Injector.shutdown` or equivalent on a host-owned container by default.
+
+If an application deliberately creates a dedicated container per `CoreRuntime` or generation and transfers close ownership, that is a supported explicit composition choice, not the default contract. The transfer must be visible in the builder/provider API and covered by tests. A second non-Guice adapter should prove that the neutral port is genuinely container-independent.
+
+**Required acceptance tests:** two Core runtimes sharing one host container but using different plugin sets; two runtimes with separate generation-dedicated containers; closing one runtime must not close shared host services or affect the other runtime; borrowed singleton vs owned plugin-instance disposal; generation retirement with active plugin leases; adapter close failure and retry/quarantine behavior.
+
+This is a design clarification only. No production code, tests, POMs or workflows changed.
