@@ -858,7 +858,7 @@ This is another reason not to extend the singleton map into a canonical registry
 
 A deeper source inspection changes one earlier design preference: **do not assume that the existing `PluginRegistry` interface should become the canonical runtime registry by extension**. The earlier suggestion to evolve it was a candidate, not an accepted decision.
 
-### 30.1 Existing `PluginRegistry` is an instance-management API, not a generation publisher
+### 34.1 Existing `PluginRegistry` is an instance-management API, not a generation publisher
 
 Source inspection of `PluginRegistry`, `DefaultPluginRegistry`, `PluginRegistryHolder`, `PluginFactory`, and `DefaultPluginFactory` establishes these properties:
 
@@ -874,7 +874,7 @@ Consequently, directly evolving this interface risks carrying its instance-shari
 
 **Revised direction:** design the runtime publication and immutable-generation contracts from the required semantics, not from either legacy registry API. The new design must be the sole runtime authority, not a parallel live registry. Existing `PluginRegistry`, `DefaultPluginRegistry`, `PluginRegistryHolder`, and `DefaultPluginFactory` should become temporary compatibility adapters where required, then be deprecated/retired after call-site and external API evidence. Do not name the new abstraction `PluginRegistryV2` merely to preserve old semantics. The exact public type names remain undecided pending the SPI/API review.
 
-### 30.2 Existing `RegistryGenerationId` is only an identity value object
+### 34.2 Existing `RegistryGenerationId` is only an identity value object
 
 The source tree already contains `org.webharvest.runtime.registry.RegistryGenerationId`. It is a final value object with two non-empty strings: `runtimeId` and `value`. Equality and hash code use both fields. Its Javadoc correctly distinguishes registry-generation identity from execution/task generation and states that equal snapshot content may still need distinct identities when provider/loader lifetimes differ.
 
@@ -882,7 +882,7 @@ The inspected repository tree contains this one production type under `runtime/r
 
 The class itself does not issue IDs, guarantee uniqueness, bind an ID to a generation, or manage lifecycle. Its constructor accepts caller-supplied values. It is therefore a useful primitive and a source of intended semantics, **not evidence that registry generations are implemented**. Before reusing it, add focused contract tests for runtime scoping, value validation, equality/hash behavior, and identity uniqueness at the publisher boundary. Consider whether its public constructor should remain public once ID issuance becomes runtime-owned; callers should not be able to fabricate identities that the runtime treats as published generations.
 
-### 30.3 Updated migration rule
+### 34.3 Updated migration rule
 
 The target should have three distinct seams:
 
