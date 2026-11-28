@@ -581,3 +581,8 @@ Section 47 of the registry design records the current scanner/catalog split: the
 ### External consumer boundary
 
 Section 48 of the registry design records a bounded public GitHub code search: no publicly indexed third-party imports of the current v2 plugin package or matching v2 XML namespace were surfaced. This is not evidence that no consumers exist. Private repositories, binary artifacts, Maven dependents, customer XML, downstream forks and embedding applications remain unknown. Preserve compatibility through adapters until those sources are inventoried.
+
+
+## 19. Core registry bootstrap consistency defect (2026-11-28)
+
+The direct source audit of `CorePluginsRegistrar` and `CorePluginRegistry` found a concrete state-desynchronization path: the registrar's static `initialized` guard is independent of the public registry `clear()` method. Calling `clear()` without `CorePluginsRegistrar.reset()` empties the map but leaves the guard true, so the next Core registration call is a no-op and the default 44 mappings remain absent. The registration batch also consists of individually visible map writes, and duplicate local names silently overwrite earlier classes. See [Plugin Registry Generation Design, section 49](PLUGIN_REGISTRY_GENERATION_DESIGN.md#49-core-registration-bootstrap-is-mutable-non-transactional-and-can-become-desynchronized-2026-11-28).
