@@ -618,3 +618,8 @@ A source-level census of all 57 concrete plugin implementation candidates (47 Co
 `ConfigParser` has no parse method; `XMLConfig.reload()` only works when the injected parser is concretely `StreamingXmlParser` and otherwise returns a null tree. `XMLConfig.getVersion()` reads a `namespace` property that the parser does not populate (the namespace is stored in the configuration namespace field), so historical v1 detection is suspect and needs regression tests. `Scraper.execute()` also has a separate non-`config` root path that constructs by reflection rather than the ordinary child provider path. See [Plugin Registry Generation Design, section 55](PLUGIN_REGISTRY_GENERATION_DESIGN.md#55-configparser-is-a-marker-interface-and-xmlconfig-hard-codes-the-concrete-parser-2026-11-28).
 
 The current factory test uses a stub subclass of `StreamingXmlParser`, so it does not prove that `ConfigParser` is actually substitutable. The repository has no dedicated `XMLConfig` test for v1/v2 namespace version detection.
+
+
+## 26. XML text whitespace preservation gap
+
+`StreamingXmlParser.endElement()` unconditionally trims accumulated element text before storing `_textContent` and omits the property when the trimmed value is empty. This loses boundary whitespace and conflates whitespace-only with absent text. `TextPlugin`, `TemplatePlugin` and other text-consuming plugins use this value; existing parser tests do not assert exact whitespace preservation. See [Plugin Registry Generation Design, section 56](PLUGIN_REGISTRY_GENERATION_DESIGN.md#56-streaming-xml-parser-trims-all-element-text-before-storing-it-2026-11-28).
