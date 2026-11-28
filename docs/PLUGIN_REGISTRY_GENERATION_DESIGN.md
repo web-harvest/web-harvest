@@ -1554,3 +1554,43 @@ This source inspection is not by itself a reproduced exploit: actual behavior de
 6. Prove DOCTYPE and external entity resolution are disabled, including file and network identifiers.
 
 No production code, tests, POMs or workflows changed in this audit.
+
+
+## 51. Namespace dispatch and configuration validation are not enforced at the execution boundary (2026-11-28)
+
+A final pass through the exact parser, dispatcher and representative Core/optional plugin implementations establishes two further gaps.
+
+### 51.1 Namespace is stored but ignored when selecting the implementation
+
+`StreamingXmlParser` receives SAX `uri`, normalizes it and stores it on `DefaultPluginConfiguration`. However, `DefaultPluginBodyExecutor.createChildPlugin()` selects the implementation only with `CorePluginRegistry.getPluginClass(childConfig.getElementName())`. That registry is keyed by local element name only. The namespace value never participates in dispatch.
+
+Consequences:
+- two providers cannot safely expose the same local name in different namespaces;
+- an element with an unrelated/unknown namespace but a registered Core local name can resolve to the Core implementation;
+- parser acceptance is not evidence that the XML QName is supported;
+- alias and namespace-normalization policy is not enforced at the binding boundary.
+
+The parser also constructs configurations for unknown elements rather than rejecting them during parse/validation; the failure is deferred until execution attempts a registry lookup. A future binder must resolve the complete expanded QName against the captured generation and explicit dialect aliases, and reject unsupported identities before any side effects.
+
+### 51.2 Configuration validation is opt-in per implementation, not a central admission gate
+
+The public `Plugin` API has a separate `validateConfiguration()` method. `AbstractPlugin.initialize()` does not call it; it invokes only `doInitialize()`. The default body executor likewise calls only `childPlugin.initialize(childConfig)`.
+
+Representative source evidence demonstrates inconsistent enforcement:
+- `DatabasePlugin.doInitialize()`, `MailPlugin.doInitialize()` and `FilePlugin.doInitialize()` explicitly call `doValidateConfiguration()`;
+- `HttpPlugin.doInitialize()` is empty, while its required URL is checked later in `doExecute()`;
+- `DefPlugin.doInitialize()` is empty, and a missing variable name is rejected during execution.
+
+Therefore the existence of `PluginConfigurationSchema` or `validateConfiguration()` does not establish that a flow is validated before execution. Some invalid configurations fail at initialization, some at first execution, and some may be accepted until a branch is reached. A flow can perform earlier side effects before a later node reveals an invalid configuration.
+
+**Design consequence:** make validation part of the explicit plan-admission pipeline, not a convention each plugin must remember. Validate every reachable node's static configuration, discriminated/conditional constraints, QName, parent-child grammar, provider availability and required capabilities before execution. Clearly separate static validation from values that can only be checked after runtime variable/template resolution; those require typed deferred checks with explicit failure timing. Plugin-specific validation should contribute to the common pipeline through a defined validator contract, not be silently skipped by the factory.
+
+### 51.3 Required acceptance tests
+
+1. Same local name in two namespaces resolves to distinct providers or is rejected as ambiguous; an unknown namespace cannot dispatch to Core by local name.
+2. Unsupported QName and unknown element are rejected before any plugin executes.
+3. A flow with an invalid later child is rejected before an earlier side-effecting child runs, for all statically checkable constraints.
+4. Core and optional plugins receive the same validation admission guarantees regardless of whether their legacy `doInitialize()` currently calls `doValidateConfiguration()`.
+5. Dynamic/template-dependent constraints are reported as deferred checks and fail at the documented stage without misrepresenting static validation as complete.
+
+No production code, tests, POMs or workflows changed in this audit.
