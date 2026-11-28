@@ -18,7 +18,7 @@ The recursive source tree at the inspected SHA contained 2,123 entries and 768 J
 
 All ten repository POMs were inspected: the root POM and the POMs for Core, CLI, IDE, Database, FTP, Mail, WebBrowser, ZIP and Docs.
 
-This is a repository-wide Java/POM scan, but not yet a complete dependency audit. Non-Java resources, XML examples, scripts, generated sources, workflow definitions, Maven effective dependency trees, SBOM contents and downstream consumers have not all been enumerated. The scan is text-based and should be followed by symbol-level call-site and binary/API checks before removal decisions.
+This is a repository-wide Java/POM scan, but not yet a complete dependency audit. The tree also contains 85 XML/property resource files; their contents and scripts/generated sources have not been scanned for dependency/service metadata. All 15 workflow files were enumerated and the dependency-inventory, reactor/SBOM and OSV workflows were inspected, but no effective-POM/dependency-tree artifact was produced for this docs-only PR: the dedicated dependency-inventory workflow is triggered by POM changes or manual dispatch. The PR OSV workflow generates separate production/test SBOMs, and the reactor workflow generates distribution provenance; their latest artifacts still need inspection. Downstream consumers remain outside repository scope. The scan is text-based and should be followed by symbol-level call-site and binary/API checks before removal decisions.
 
 ## 3. Maven dependency facts
 
@@ -128,7 +128,10 @@ This direction supports Guice, other IoC containers and no-IoC deployments witho
 ## 8. Required follow-up before implementation
 
 - [ ] Complete symbol-level references for every Guice/Guava production and test call site; classify public API, implementation, test-only and documentation-only references.
-- [ ] Inspect all non-Java resources, XML examples, scripts, generated sources, Maven profiles, workflow files and shaded/fat-JAR configuration.
+- [ ] Scan the 85 XML/property resources, scripts, generated sources and service metadata; inspect Maven profiles and shaded/fat-JAR configuration.
+- [ ] Obtain the dedicated dependency-inventory workflow artifact (effective POMs and resolved dependency trees) by manual dispatch or a POM-scoped verification run.
+- [ ] Inspect the production/test SBOMs and CLI/IDE distribution provenance artifacts from the PR workflows.
+- [ ] Check JSR-330/JSR-250 and other alternate injection annotations/APIs separately from Guice-specific imports.
 - [ ] Run effective POM/dependency-tree analysis for every module and record direct versus transitive runtime dependencies.
 - [ ] Inspect generated SBOMs and packaged CLI/IDE distributions to confirm actual dependency closure and service metadata.
 - [ ] Verify whether the project-owned `PluginDependencyInjector` has any production registration or call sites.
