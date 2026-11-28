@@ -1271,3 +1271,35 @@ For each plugin contribution, the migration suite must:
 - verify legacy XML serialization/round-trip and namespace identity, including aliases and old descriptor fallback.
 
 No production code, tests, POMs or workflows changed in this audit.
+
+
+## 45. Conditional configuration semantics and legacy defaults (2026-11-28)
+
+The attribute-name lists in section 44 understate the actual configuration contract. A further read of the execution and validation paths found the following conditions and defaults:
+
+| Plugin | Conditional / cross-field rules | Runtime defaults and coercion |
+|---|---|---|
+| Database | Either a named `connection` OR inline `driver` + `url`; named-connection mode rejects inline driver, URL, username or password. SQL is read separately as an operation input. | Empty strings are used while validating optional fields; no single complete schema expresses the mutually exclusive modes. |
+| FTP container | `action` is one of `get`, `put`, `list`, `mkdir`, `rmdir`, `del`; path requirements depend on the selected action. | Port defaults to 21; passive mode defaults true; remote/local paths default empty. Port is parsed as an integer after template evaluation. |
+| FTP get/list/put child operations | Each requires an `ftp` parent and carries its own host/username/password plus optional port/path fields. The parent container's action/path attributes are a separate legacy operation form. | Child behavior/defaults are implemented separately; do not assume one shared schema solely from similar attribute names. |
+| Mail | `type` selects HTML or plain-text implementation; unknown values fall through to plain text. | SMTP port defaults to 25; type defaults to `text`. |
+| WebBrowser | `action` is one of `load`, `execute-script`, `get-content`, `close`; URL/page requirements depend on action. | Wait defaults to 1000 ms; malformed wait values silently fall back to 1000. JavaScript defaults enabled; `true` and `yes` are accepted as true. |
+| ZIP entry | `name` required; `charset` optional. | Charset defaults to UTF-8. |
+
+These rules are enforced in imperative code, not consistently exposed through `AttributeDefinition`. The future descriptor needs conditional schemas/constraints (e.g. discriminated action variants and mutually exclusive groups), explicit coercion/error policy, and a single validation result model. It must not silently normalize malformed values where the legacy runtime currently falls back unless that behavior is deliberately retained as a versioned compatibility rule.
+
+### 45.1 Secrets and diagnostics
+
+The inspected configuration surfaces include database password, FTP password and other potentially sensitive connection data. A descriptor must classify sensitive fields independently of whether a plugin currently logs them. The Mail debug statement logs SMTP host, sender, recipient and subject; the FTP debug statement logs host, port, username and action. This pass did not find the FTP password in that debug statement, but it is still a sensitive configuration field and must be excluded from generic configuration dumps and diagnostic serialization.
+
+A schema migration must test both value resolution and redaction. Templated secret references must remain references/opaque secret values in diagnostics rather than being expanded into event payloads or logs. This requirement aligns with the separate configuration/secret work package; this registry audit does not define the secret provider implementation.
+
+### 45.2 Compatibility consequences
+
+1. A descriptor is more than an attribute-name list: it must express cross-field constraints, action-dependent requirements, defaulting, coercion and validation timing.
+2. Runtime behavior and descriptor validation must share one canonical validator or be proven equivalent by contract tests; two independent rule sets will drift.
+3. Legacy fallback behavior (e.g. malformed browser wait → 1000 ms, unknown mail type → plain text) must be characterized before it is preserved, rejected or deprecated.
+4. Conditional schemas must be usable by non-XML frontends and DSL generation; otherwise the new registry would remain coupled to the legacy XML surface.
+5. The XML adapter must preserve the old wire form while mapping it to typed configuration without conflating secret references, ordinary variables and plugin-instance settings.
+
+No production code, tests, POMs or workflows changed in this audit.
