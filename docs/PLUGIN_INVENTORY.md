@@ -633,3 +633,8 @@ The runtime may own its generation-bound provider adapter and plugin/artifact re
 ## 28. Live extension reconciliation remains a separate P0 design gate
 
 The immutable-generation design covers atomic publication, session pinning and retirement, but it does not yet fully specify the managed artifact source, deterministic full/incremental reconciliation, provider state machine, authorization-before-activation, last-known-good rollback, artifact provenance or live add/update/remove/re-add lifecycle required by #347. Section 39's decision to defer arbitrary hot-unload from the first migration slice is a sequencing rule, not a waiver of #347's P0 release acceptance. See [Plugin Registry Generation Design, section 58](PLUGIN_REGISTRY_GENERATION_DESIGN.md#58-immutable-generation-publication-is-necessary-but-does-not-complete-live-extension-reconciliation-347-2026-11-28).
+
+
+## 29. Capability vs permission policy boundary
+
+Functional Capability requirements/provisions are not authorization. Descriptors must separately declare requested host permissions and resource budgets; host policy independently authorizes them before activation/admission. Discovered, enabled, authorized and activated states must remain distinct, and unknown permissions fail closed. See [Plugin Registry Generation Design, section 59](PLUGIN_REGISTRY_GENERATION_DESIGN.md#59-capability-requirements-and-host-permissions-must-remain-separate-descriptor-contracts-349-2026-11-28).
