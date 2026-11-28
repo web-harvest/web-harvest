@@ -1691,3 +1691,7 @@ There is also a second root construction path in `Scraper.execute()`: a `<config
 **Required tests:** custom parser implementation through `ConfigParser`; XMLConfig reload with alternate parser; historical v1/v2 namespace version detection including aliases; non-config root with injected provider; same provider resolution and validation for config and direct roots.
 
 No production code, tests, POMs or workflows changed in this audit.
+
+### 55.1 Existing tests do not exercise parser substitutability or dialect version detection
+
+The only `DefaultConfigFactoryTest` parser double (`StubStreamingParser`) extends `StreamingXmlParser` and overrides `parseToTree()`. It therefore exercises substitution of a subclass, not an independent `ConfigParser` implementation; it cannot detect the concrete `instanceof`/cast restriction in `XMLConfig.reload()`. The repository test tree contains no dedicated `XMLConfig` test for `getVersion()` across v1/v2 namespaces or aliases. These are currently uncharacterized compatibility paths, not merely missing unit-test polish.
