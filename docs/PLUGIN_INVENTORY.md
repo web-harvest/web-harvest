@@ -537,3 +537,8 @@ The follow-up source inspection distinguishes module test presence from real act
 - Database has plugin/connection/driver unit tests, but the inspected test inventory does not establish end-to-end optional XML activation and dispatch.
 
 Do not count test files or test names as proof of optional-module runtime support. The acceptance suite must independently verify discovery, explicit selection, generation publication, QName binding, factory resolution, execution, failure behavior and resource cleanup for each module.
+
+
+### CI execution qualification
+
+The root POM excludes `*IntegrationTest` from Surefire and runs those classes through Failsafe during `verify`. The dedicated Database, FTP, WebBrowser and ZIP workflows invoke `verify`; no dedicated Mail workflow was found in the inspected workflow inventory. Consequently FTP/Mail module CI can execute and pass the current fixture-presence tests without proving XML dispatch or plugin behavior. See section 43.1 of the registry design for exact workflow commands and boundaries.
