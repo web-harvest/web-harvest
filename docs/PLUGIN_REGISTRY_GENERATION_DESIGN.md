@@ -1594,3 +1594,29 @@ Therefore the existence of `PluginConfigurationSchema` or `validateConfiguration
 5. Dynamic/template-dependent constraints are reported as deferred checks and fail at the documented stage without misrepresenting static validation as complete.
 
 No production code, tests, POMs or workflows changed in this audit.
+
+
+## 52. Repository-wide plugin initialization validation census (2026-11-28)
+
+To avoid relying on a few representative implementations, the audit inspected the initialization and validation methods across the full 57 concrete plugin implementation candidates identified by the repository inventory: 47 in Core and 10 in optional modules. This includes the internal `BodyProcessorPlugin`, which is not one of the 44 default XML mappings.
+
+Results from source inspection:
+
+| Initialization/validation pattern | Implementations |
+|---|---:|
+| `doInitialize()` explicitly invokes `doValidateConfiguration()` | 31 / 57 |
+| `doInitialize()` does not invoke `doValidateConfiguration()` | 26 / 57 |
+| `doValidateConfiguration()` directly calls `getConfigurationSchema().validate(configuration)` | 15 / 57 |
+
+The 26 implementations that do not invoke their validator during initialization are:
+
+- Core: `CasePlugin`, `CatchPlugin`, `ConstantPlugin`, `DefPlugin`, `ElsePlugin`, `EmptyPlugin`, `ExitPlugin`, `GetVarPlugin`, `HtmlToXmlPlugin`, `HttpPlugin`, `IfPlugin`, `JsonToXmlPlugin`, `LogPlugin`, `LoopPlugin`, `ReturnPlugin`, `ScriptPlugin`, `SleepPlugin`, `TemplatePlugin`, `TextPlugin`, `TokenizePlugin`, `TryPlugin`, `ValueOfPlugin`, `VarPlugin`, `XmlToJsonPlugin`.
+- Optional ZIP: `ZipEntryPlugin`, `ZipPlugin`.
+
+This is not a claim that all 26 are invalid or that every validator should reject a missing attribute. Several are intentionally configuration-light, and some perform checks in `doExecute()` or rely on parent semantics. The finding is that validation admission is not uniform or guaranteed by the framework: plugin authors independently decide whether initialization calls validation, and schema validation is directly invoked by only 15 implementations. The remaining validators include hand-written checks and no-op placeholders; the existence of a `doValidateConfiguration()` method is not proof of meaningful validation.
+
+This census reinforces the #346/#347 contract: the registry generation must bind a descriptor/schema/validator for every provider, and plan admission must run the shared validation pipeline before execution. Legacy plugin validators should be adapted as contributions to that pipeline and their runtime-dependent checks explicitly classified as deferred. The old `initialize()` hook must not be trusted as the validation boundary.
+
+**Audit boundary:** this is a source-level method census, not a proof that every individual validation rule is correct. The next verification layer is generated per-plugin tests for required/conditional attributes, child grammar, defaults/coercion, invalid values and side-effect-free preflight.
+
+No production code, tests, POMs or workflows changed in this audit.
