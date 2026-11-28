@@ -8,10 +8,13 @@ For current project direction and contribution guidance, start here:
 - [Cross-Application Semantic and Functional Architecture](CROSS_APPLICATION_SEMANTIC_ARCHITECTURE.md) — shared semantic contracts and the distinct meanings of Pack, Kit, Capability, Adapter, Plugin and Module.
 - [Cross-Application Semantic Contract Inventory](CROSS_APPLICATION_SEMANTIC_CONTRACT_INVENTORY.md) — evidence-led candidate domains, governance, versioning and validation gates; no schemas are approved yet.
 - [WebHarvest Data, Stream and Semantic Contract Architecture](WEBHARVEST_DATA_AND_STREAM_CONTRACT_ARCHITECTURE.md) — WebHarvest-specific boundaries for records, observations, events, artifacts, streams, AI providers, agents, MCP and Core.
-- [WebHarvest Data Contract Runtime Audit](WEBHARVEST_DATA_CONTRACT_RUNTIME_AUDIT.md) — source-backed assessment of current Variable, PluginConfiguration, runtime events, XML parsing and the absence of in-tree media/MCP paths on the inspected main revision.\n- [Variable, Event and Payload Call-Site Audit](WEBHARVEST_VARIABLE_EVENT_PAYLOAD_CALLSITE_AUDIT.md) — bounded source trace of both event-bus families and HTTP, file, database, binary and collection payload paths.\n- [Resource Ownership and Runtime Integration Audit](WEBHARVEST_RESOURCE_OWNERSHIP_INTEGRATION_AUDIT.md) — evaluates the existing ResourceLedger, actual worker-exit tracking, missing runtime integration and cancellation-time resource cleanup ordering.\n- [Minimal Payload and Stream API Design](WEBHARVEST_MINIMAL_PAYLOAD_STREAM_API_DESIGN.md) — a draft neutral boundary for finite payloads, live streams, semantic references, bounded delivery, legacy Variable adapters and ResourceLedger integration.
+- [WebHarvest Data Contract Runtime Audit](WEBHARVEST_DATA_CONTRACT_RUNTIME_AUDIT.md) — source-backed assessment of current Variable, PluginConfiguration, runtime events, XML parsing and the absence of in-tree media/MCP paths on the inspected main revision.
+- [Variable, Event and Payload Call-Site Audit](WEBHARVEST_VARIABLE_EVENT_PAYLOAD_CALLSITE_AUDIT.md) — bounded source trace of both event-bus families and HTTP, file, database, binary and collection payload paths.
+- [Resource Ownership and Runtime Integration Audit](WEBHARVEST_RESOURCE_OWNERSHIP_INTEGRATION_AUDIT.md) — evaluates the existing ResourceLedger, actual worker-exit tracking, missing runtime integration and cancellation-time resource cleanup ordering.
+- [Minimal Payload and Stream API Design](WEBHARVEST_MINIMAL_PAYLOAD_STREAM_API_DESIGN.md) — a draft neutral boundary for finite payloads, live streams, semantic references, bounded delivery, legacy Variable adapters and ResourceLedger integration.
 - [Plugin Author Guide](PLUGIN_AUTHOR_GUIDE.md) — target external plugin contract, discovery and compatibility expectations; explicitly marks what is not yet stable.
 - [Monorepo and Module Boundary Policy](MONOREPO.md) — current Maven modules, dependency direction and future repository extraction gates.
-- [Plugin Inventory](PLUGIN_INVENTORY.md) — preliminary source-backed registration/discovery baseline; not yet an approved Core membership list.
+- [Plugin Inventory](PLUGIN_INVENTORY.md) — source-backed registration/discovery baseline and optional-module contribution audit; not an approved Core membership list.
 - [Contributor Guide](../CONTRIBUTING.md) — branches, bug fixes, CI, review and evidence expectations.
 - [Workflow Security Model](SECURITY.md) — trust boundaries for executable XML, scripts, nested includes and the embedded IDE.
 - [Groovy Runtime Migration Notes](GROOVY_RUNTIME_MIGRATION.md) — production Groovy baseline and compatibility guidance.
@@ -21,7 +24,7 @@ For current project direction and contribution guidance, start here:
 
 The following documents describe proposed target architecture and are not claims of implemented behavior:
 
-- [Plugin Registry Generation Design](PLUGIN_REGISTRY_GENERATION_DESIGN.md) — one runtime-owned immutable generation, plugin descriptor and XML grammar projections, historical XML metadata migration, and retirement of legacy registries.
+- [Plugin Registry Generation Design](PLUGIN_REGISTRY_GENERATION_DESIGN.md) — one runtime-owned immutable generation, plugin descriptor and XML grammar projections, historical XML metadata migration, optional-module contribution inventory, and retirement of legacy registries.
 - [Configuration Parameters and Secret Resolution](CONFIGURATION_PARAMETER_AND_SECRET_MODEL.md) — runtime variables, plugin-instance configuration, versioned global parameter contexts and a future host-supplied secret-provider boundary.
 
 Current review: [PR #423](https://github.com/web-harvest/web-harvest/pull/423). These proposals remain subject to the source inventory, compatibility characterization and architecture gates tracked in GitHub Issues #346, #347, #422 and #424.
