@@ -1801,3 +1801,19 @@ Canonical descriptor serialization must be deterministic: stable field ordering/
 This section is a design gate, not a decision to publish a specific JSON/YAML schema or Java package. Public SPI names and version numbers remain unapproved until maintainer review and out-of-reactor provider proof.
 
 No production code, tests, POMs or workflows changed in this audit.
+
+
+## 61. Root runtime settings also contain implicit compatibility fallback policy (2026-11-28)
+
+`RootConfigurationExecutor.applyRuntimeSettings()` applies two root-level configuration properties before executing children:
+
+- `charset` defaults to UTF-8; an unsupported value is caught and silently replaced with UTF-8 after a warning.
+- `scriptlang` defaults to `beanshell`; an unrecognized value is replaced with `beanshell` after a warning. A subsequent `ScriptingLanguage.recognize()` null result is also replaced with BeanShell.
+
+These are observable XML compatibility semantics, but they are currently embedded as imperative fallback logic in the root executor rather than represented in a dialect/configuration schema. They also mean malformed configuration may execute using a different charset or scripting engine than the author requested.
+
+**Design consequence:** move root settings into the same typed dialect/configuration validation pipeline as plugin inputs, while preserving historical fallback behavior only where fixtures prove it is part of the compatibility contract. The descriptor must distinguish default-on-absence, normalization, invalid-value fallback and hard validation failure. Do not globally replace every legacy fallback with fail-fast behavior without a versioned compatibility decision; equally, do not let an agent-generated DSL inherit silent fallback accidentally.
+
+**Required fixtures:** absent, empty, whitespace-padded, valid and invalid charset values; absent, valid alias, case variant and unknown script language; verify the effective runtime settings and diagnostics, not only parser properties.
+
+No production code, tests, POMs or workflows changed in this audit.
