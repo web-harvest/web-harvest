@@ -525,3 +525,15 @@ Key results:
 - All five modules have test sources and XML fixtures, but activation/dispatch/resource lifecycle coverage must be verified separately from file presence.
 
 The audit is bounded to source and test paths at base commit `c8830f0fe2f1e283abea95318d2c6fd9a644d0a4`; external embedding usage and later main changes remain outside this evidence.
+
+
+## 16. Optional-module test evidence quality (2026-11-28)
+
+The follow-up source inspection distinguishes module test presence from real activation/dispatch evidence; details are in [Plugin Registry Generation Design, section 43](PLUGIN_REGISTRY_GENERATION_DESIGN.md#43-optional-module-integration-tests-do-not-provide-uniform-activation-or-execution-evidence-2026-11-28).
+
+- FTP and Mail classes named `*IntegrationTest` only locate their XML fixture and assert file existence. They construct a Core-only `ScraperModule`; they do not activate the optional package, parse the fixture or execute a plugin.
+- ZIP has meaningful explicit registrar, opt-in scanner and real archive-output tests, but all paths mutate the process-global registry.
+- WebBrowser has an XML execution test and lifecycle tests, but the inspected setup uses only Core `ScraperModule`; the source does not establish a deterministic, isolated activation path. Test-order/global-state contamination must be ruled out.
+- Database has plugin/connection/driver unit tests, but the inspected test inventory does not establish end-to-end optional XML activation and dispatch.
+
+Do not count test files or test names as proof of optional-module runtime support. The acceptance suite must independently verify discovery, explicit selection, generation publication, QName binding, factory resolution, execution, failure behavior and resource cleanup for each module.
