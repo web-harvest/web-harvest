@@ -1157,3 +1157,34 @@ Still open:
 5. add generated inventory checks so module IDs, plugin IDs, XML QNames, module membership and dependency categories cannot silently drift.
 
 No production code, tests, POMs or workflows were changed by this audit.
+
+
+## 43. Optional-module integration tests do not provide uniform activation or execution evidence (2026-11-28)
+
+A targeted read of the optional-module integration test sources reveals a significant difference between test-file presence and tested runtime behavior.
+
+| Module | Test setup / activation evidence | What the named integration test actually proves |
+|---|---|---|
+| FTP | Creates Guice injector with `new ScraperModule(...)`; no FTP registrar or package scan is invoked in the test setup | `FtpPluginIntegrationTest.testFtpPluginExample()` only locates the XML resource and asserts that the file exists. It does not parse or execute the XML. |
+| Mail | Same Core-only `ScraperModule` setup; no Mail registrar or package scan is invoked | `MailPluginIntegrationTest.testMailPluginExample()` only locates the XML resource and asserts that the file exists. It does not parse or execute the XML or send a message. |
+| WebBrowser | Core `ScraperModule`; the shared `WebBrowserIntegrationTestBase.executeXmlConfig()` loads and executes an XML configuration through `Harvest` / `Harvester` | Actual XML execution is exercised; separate lifecycle tests exist. The exact module activation path still needs to be reconciled with the default Core registry and scanner behavior. |
+| ZIP | Explicit `ZipPluginRegistrar.register(CorePluginRegistry.getInstance())` in setup; a separate test proves opt-in package scanning; cleanup resets/re-registers Core | Executes XML and inspects real ZIP archive entries, including nested archive and charset behavior. |
+| Database | Unit tests exist for plugin, connection and driver/pool behavior; no Database module registrar integration test appeared in the inspected test-file inventory | The inspected inventory does not establish an end-to-end XML activation/dispatch test for the optional Database module. |
+
+The FTP and Mail test names/comments currently overstate their evidence: they are resource-presence smoke checks, not plugin integration tests. Their setup also constructs only the Core Guice module, which does not register those optional plugin packages. They should not be used as evidence that FTP/Mail activation works.
+
+The ZIP suite is the strongest current optional-module activation example: it separately characterizes explicit registrar activation, opt-in package scanning, actual XML execution and archive output. It still mutates the global singleton and therefore does not prove runtime isolation.
+
+The WebBrowser test base does execute XML, but the inspected test setup alone does not demonstrate a general optional-module contribution mechanism. A passing browser execution must be tied to the exact classpath, annotation/scanner behavior and registry state before it is treated as proof of the future module SPI.
+
+### Required test correction and acceptance matrix
+
+Before replacing the activation path:
+1. Replace FTP and Mail resource-existence tests with deterministic runtime tests that prove default absence, explicit module selection, XML dispatch and meaningful behavior against local/mock endpoints; no real SMTP or FTP service should be required.
+2. Add Database XML dispatch coverage that explicitly activates the module and exercises connection/database parent-child behavior with H2 or a controlled provider.
+3. Keep WebBrowser execution and lifecycle tests, but add assertions that the default Core generation excludes it and that explicit activation is isolated to the selected runtime.
+4. Retain ZIP's explicit-registration and package-scanner characterization, then move its test to the common module-contribution contract.
+5. For every optional module, assert separately: discovered candidate, selected module, published contribution, XML QName binding, executable factory binding, configuration validation, success/failure behavior and resource cleanup.
+6. Run the same host contract with two runtime instances in one JVM, one with the module selected and one without it; the unselected runtime must remain unable to resolve the module's XML names.
+
+This test audit is source-based. It does not report test execution results and does not change production code or tests.
