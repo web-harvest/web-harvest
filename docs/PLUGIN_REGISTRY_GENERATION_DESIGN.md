@@ -1397,3 +1397,51 @@ Before publishing an independent extension SPI:
 9. preserve legacy `Plugin` implementations through an adapter and characterization suite rather than forcing a flag-day migration.
 
 No production code, tests, POMs or workflows changed in this audit.
+
+
+## 47. Metadata catalog and discovery are classpath projections, not an extension activation mechanism (2026-11-28)
+
+The follow-up inspection of `PluginClassScanner`, `PluginMetadataCatalog`, `PluginDescriptor` and `PluginMetadataValidator` closes another important boundary.
+
+### 47.1 Static metadata catalog construction
+
+`PluginMetadataCatalog` builds its descriptor map during static class initialization. It obtains class names from `PluginClassScanner.allPluginClassNames()`, attempts `Class.forName(className)`, verifies `Plugin` assignability, then invokes each class's no-argument constructor to obtain metadata. Classes that cannot be loaded or instantiated are skipped.
+
+Consequences:
+- Metadata discovery requires classes to be visible to the catalog's class-loading path and constructible without host-supplied dependencies.
+- There is no provider/classloader/module isolation boundary in this path.
+- A plugin requiring constructor injection or host services cannot contribute metadata through this mechanism without a no-arg compatibility construction path.
+- Static catalog initialization and static class-name caching are process-wide; there is no per-runtime selected extension set or refresh/publication transaction.
+- Optional module presence on the classpath can affect the global metadata catalog even when that module is not selected for execution.
+
+This is acceptable only as a legacy IDE/catalog projection, not as the target runtime discovery/activation SPI.
+
+### 47.2 Descriptor shape loses important identity and provenance
+
+The current `PluginDescriptor` has top-level plugin ID, element local name, display name, inferred origin, Java class name, category, description, semantics, UI hints, dependencies and extensions. The XML namespace is exported inside the untyped `extensions` map rather than as a first-class expanded QName. Module identity, artifact coordinates, provider identity, classloader identity, API compatibility and selection state are absent.
+
+`origin` is inferred from the implementation package. It is not authoritative Maven artifact/module provenance and must not be used to infer Core membership or optionality.
+
+The descriptor is therefore a metadata response model, not a canonical plugin/module descriptor. The new design should make QName, plugin ID, module ID, provider ID, artifact/version, compatibility range and provenance explicit typed fields.
+
+### 47.3 Discovery scanner and runtime registration have different policies
+
+The inspected paths have intentionally different scopes:
+- `PluginRegistryHolder` lazily creates a runtime registry by scanning only `org.webharvest.plugin.core`.
+- `PluginClassScanner` scans Core and the known optional package names for catalog metadata; it has a process-global cache and a compatibility fallback class list.
+- `PluginPackageScanner` scans explicitly supplied packages or a global system property and writes discovered classes into `CorePluginRegistry`.
+- `PluginMetadataCatalog` is a static read-only descriptor projection built from the metadata scanner, not from a selected runtime generation.
+
+Therefore the same classpath can yield: visible catalog metadata, no default runtime registration, and optional registration only after a separate scanner/registrar call. These are distinct states, not one lifecycle. The target model must make discovery, policy filtering, selection, contribution validation, activation and generation publication explicit and observable.
+
+### 47.4 Validation scope is metadata validation, not runtime readiness
+
+`PluginMetadataValidator` validates descriptor fields, semantic consistency, dependency references/cycles and missing attribute definitions. It does not instantiate a selected runtime generation, validate implementation/provider compatibility, verify classloader access, resolve factories, initialize services, test XML dispatch or prove cleanup.
+
+Because descriptor dependencies currently include merged parent relationships (section 46.6), even its dependency checks operate on a lossy projection. A successful metadata validation result must not be reported as proof of runtime activation or readiness.
+
+### 47.5 Target separation
+
+Retain a metadata/catalog projection for IDEs and tooling, but derive it from a validated immutable descriptor model. Runtime activation must consume explicit selected module/provider contributions through a host-owned loader/factory boundary. The runtime must not depend on static catalog initialization, global package properties or no-argument reflective construction as its extension mechanism.
+
+No production code, tests, POMs or workflows changed in this audit.
