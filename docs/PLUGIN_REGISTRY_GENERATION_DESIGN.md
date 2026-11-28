@@ -1474,3 +1474,34 @@ Until that inventory is closed, the migration policy remains conservative: prese
 5. Produce a compatibility matrix separating source, binary, XML and runtime-behavior compatibility.
 
 No production code, tests, POMs or workflows changed in this bounded search.
+
+
+## 49. Core registration bootstrap is mutable, non-transactional and can become desynchronized (2026-11-28)
+
+A direct read of `CorePluginsRegistrar` and `CorePluginRegistry` exposes additional failure modes beyond the already documented process-global ownership problem.
+
+### 49.1 Public registry clearing can desynchronize the registrar guard
+
+`CorePluginsRegistrar.registerCorePlugins()` uses a separate static `initialized` boolean as its idempotency guard. `CorePluginRegistry.clear()` is independently public and clears only the singleton map; it does not reset that boolean. The supported test helper `CorePluginsRegistrar.reset()` happens to clear both, but callers that invoke the public registry `clear()` directly can leave the state as:
+
+- registrar guard: `initialized == true`;
+- registry contents: empty (or partially repopulated by another contributor).
+
+A subsequent `registerCorePlugins()` returns early and does not restore the 44 built-in mappings. This is a concrete split-brain state between registration bookkeeping and registry contents, not merely a theoretical preference for immutable registries.
+
+### 49.2 Registration is visible incrementally and duplicate keys overwrite silently
+
+The registrar performs 44 independent `put` operations against a process-wide `ConcurrentHashMap`. The map's thread safety does not make the registration batch atomic: concurrent readers can observe a partially populated Core set while registration is in progress. `registerMapping()` also uses plain `put`, so a duplicate local element name silently replaces the earlier class; there is no duplicate diagnostic, provenance record, or collision policy. The `processorClass` argument is accepted but ignored in the current implementation.
+
+These properties make the current registry unsuitable as a generation publication boundary even if the global singleton were retained: bootstrap must validate a complete candidate off-line, reject conflicting identities, and publish one immutable snapshot atomically.
+
+### 49.3 Required characterization before replacement
+
+Add focused tests before or alongside migration:
+1. public `clear()` followed by `registerCorePlugins()` must either deterministically restore the complete mapping or the API must be narrowed so callers cannot create this state;
+2. duplicate XML identity must fail with both contributing sources identified, not silently overwrite;
+3. concurrent lookup during candidate construction must see either the previous complete generation or the new complete generation, never a partial set;
+4. optional module registration must be scoped to a runtime candidate and must not mutate another runtime's visible mapping;
+5. failed contribution validation must leave the active generation unchanged.
+
+No production code, tests, POMs or workflows changed in this audit.
