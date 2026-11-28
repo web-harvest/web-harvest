@@ -1656,3 +1656,16 @@ Do not merge these classes mechanically or preserve both as peer authorities. Th
 6. Every public factory method either has a supported contract or is explicitly deprecated/removed behind a compatibility boundary; no stub that always throws is advertised as functional.
 
 No production code, tests, POMs or workflows changed in this audit.
+
+
+## 54. Legacy registry removal does not own the lifetime of registered instances (2026-11-28)
+
+A further lifecycle read of `DefaultPluginRegistry` confirms that `unregisterPlugin()` removes map/index entries and `clear()` clears the maps, but neither operation invokes `Plugin.cleanup()` or any close/disposal contract on the live plugin instances stored by the registry. The registry therefore owns references to instances without defining who closes them when they are removed. `registerPlugin(Class)` also constructs an instance as part of registration, so even constructor-acquired resources have no registry-owned rollback/close path if later registration fails or the entry is removed.
+
+This compounds the split identified in section 53: the registry stores a live instance, while `DefaultPluginFactory` generally creates a different fresh instance from the stored instance's class. It is not clear whether the registry-held object is a prototype, an active singleton, a metadata carrier or a resource owner. The current API does not specify this distinction.
+
+**Design consequence:** descriptors and provider definitions belong in the immutable generation; plugin instances belong to explicit runtime/session/invocation scopes. Each instance scope must have one clear owner and deterministic close semantics. Registry publication/removal must not rely on arbitrary plugin instance cleanup, and a failed candidate must roll back every resource it acquired before publication. Legacy adapters must define what happens to any pre-existing registered instances rather than silently dropping references.
+
+**Required tests:** constructor failure and partial acquisition; registration rollback; unregister and clear with tracked resources; factory-created instance distinctness; generation retirement with active sessions; cleanup failure/quarantine and retry policy.
+
+No production code, tests, POMs or workflows changed in this audit.
