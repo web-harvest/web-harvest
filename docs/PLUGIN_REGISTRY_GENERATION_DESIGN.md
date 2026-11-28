@@ -1445,3 +1445,32 @@ Because descriptor dependencies currently include merged parent relationships (s
 Retain a metadata/catalog projection for IDEs and tooling, but derive it from a validated immutable descriptor model. Runtime activation must consume explicit selected module/provider contributions through a host-owned loader/factory boundary. The runtime must not depend on static catalog initialization, global package properties or no-argument reflective construction as its extension mechanism.
 
 No production code, tests, POMs or workflows changed in this audit.
+
+
+## 48. External consumer compatibility search — public evidence remains incomplete (2026-11-28)
+
+A bounded GitHub code-search pass was made for the current package/API identity and XML namespace:
+- exact `org.webharvest.plugin.Plugin`;
+- `org.webharvest.plugin`;
+- `webharvest-core PluginMetadata`;
+- exact `http://org.webharvest/schema/2.1/core`.
+
+The search did not surface a publicly indexed third-party implementation importing the current v2 plugin API or a public external configuration corpus using this namespace. A broader `DynamicScopeContext` / `Variable` search surfaced the historical upstream `janih/web-harvest` codebase, which is lineage evidence, not proof of a current v2 plugin consumer.
+
+This result must be interpreted narrowly:
+- GitHub code search does not cover private repositories, unindexed repositories, binary JARs, Maven caches, enterprise source hosts or deployed XML held by customers.
+- No conclusion that external consumers do not exist is justified.
+- Existing published artifacts, release history, Maven Central dependents, downstream forks and actual embedding applications remain to be inventoried separately.
+- The old WorkFusion/Web-Harvest integration history is a separate legacy consumer lineage and must not be used as evidence that the current v2 SPI is compatible or unused.
+
+Until that inventory is closed, the migration policy remains conservative: preserve the current public interfaces and XML wire behavior through adapters; do not make a breaking removal based only on repository-local call sites or a negative public code-search result.
+
+### External compatibility evidence still required
+
+1. Inspect published Maven coordinates, release tags/artifacts and binary API history.
+2. Enumerate public forks and downstream repositories, then search their imports, subclassing, registrars, scanner properties and XML fixtures.
+3. Identify known embedding applications and their shipped WebHarvest versions.
+4. Search release archives and user documentation for custom plugin packages and serialized XML.
+5. Produce a compatibility matrix separating source, binary, XML and runtime-behavior compatibility.
+
+No production code, tests, POMs or workflows changed in this bounded search.
