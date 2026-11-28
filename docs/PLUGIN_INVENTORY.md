@@ -628,3 +628,8 @@ The current factory test uses a stub subclass of `StreamingXmlParser`, so it doe
 ## 27. Host container ownership boundary
 
 The runtime may own its generation-bound provider adapter and plugin/artifact resources, but it must not close a host-owned Guice/Spring/other IoC container by default. Host containers, generation-specific adapters, plugin artifact classloaders, plugin instances and injected host services require distinct ownership/close rules. A container dedicated to one runtime may transfer ownership explicitly. See [Plugin Registry Generation Design, section 57](PLUGIN_REGISTRY_GENERATION_DESIGN.md#57-runtime-ownership-must-not-be-confused-with-ownership-of-the-host-ioc-container-independent-design-review-2026-11-28).
+
+
+## 28. Live extension reconciliation remains a separate P0 design gate
+
+The immutable-generation design covers atomic publication, session pinning and retirement, but it does not yet fully specify the managed artifact source, deterministic full/incremental reconciliation, provider state machine, authorization-before-activation, last-known-good rollback, artifact provenance or live add/update/remove/re-add lifecycle required by #347. Section 39's decision to defer arbitrary hot-unload from the first migration slice is a sequencing rule, not a waiver of #347's P0 release acceptance. See [Plugin Registry Generation Design, section 58](PLUGIN_REGISTRY_GENERATION_DESIGN.md#58-immutable-generation-publication-is-necessary-but-does-not-complete-live-extension-reconciliation-347-2026-11-28).
