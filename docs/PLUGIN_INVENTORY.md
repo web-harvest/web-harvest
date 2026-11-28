@@ -638,3 +638,8 @@ The immutable-generation design covers atomic publication, session pinning and r
 ## 29. Capability vs permission policy boundary
 
 Functional Capability requirements/provisions are not authorization. Descriptors must separately declare requested host permissions and resource budgets; host policy independently authorizes them before activation/admission. Discovered, enabled, authorized and activated states must remain distinct, and unknown permissions fail closed. See [Plugin Registry Generation Design, section 59](PLUGIN_REGISTRY_GENERATION_DESIGN.md#59-capability-requirements-and-host-permissions-must-remain-separate-descriptor-contracts-349-2026-11-28).
+
+
+## 30. Descriptor and SPI versioning gate
+
+Keep descriptor-format, provider-SPI, Core compatibility, plugin, module/artifact, XML dialect, semantic-contract and runtime-generation versions distinct. Descriptor loading must fail closed on unsupported major versions and canonical serialization must be deterministic without embedding runtime objects or secrets. See [Plugin Registry Generation Design, section 60](PLUGIN_REGISTRY_GENERATION_DESIGN.md#60-descriptor-spi-versioning-needs-a-fail-closed-compatibility-matrix-346-2026-11-28).
