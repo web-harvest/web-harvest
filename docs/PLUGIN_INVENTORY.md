@@ -571,3 +571,8 @@ The current public `Plugin` interface is coupled to `DynamicScopeContext` and `V
 A concrete projection issue: `PluginMetadataCatalog.collectDependencies()` merges declared dependencies, required XML parents and semantic required-parent types into one `dependencies` list. Do not use this metadata output as a runtime dependency graph.
 
 The existing API should be retained behind a compatibility adapter while a smaller host-independent SPI is designed and proven with a third-party sample and two independent runtime instances.
+
+
+### Metadata discovery is not runtime activation
+
+Section 47 of the registry design records the current scanner/catalog split: the static IDE metadata catalog scans Core and known optional packages, loads classes reflectively and invokes no-argument constructors; the default runtime holder scans Core only; the opt-in package scanner mutates the global Core registry. Metadata can therefore be visible while the plugin is unavailable in the default runtime. The catalog descriptor also lacks first-class module/provider/QName identity and must remain a projection, not the activation authority.
