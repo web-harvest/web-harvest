@@ -12,6 +12,7 @@ For current project direction and contribution guidance, start here:
 - [Variable, Event and Payload Call-Site Audit](WEBHARVEST_VARIABLE_EVENT_PAYLOAD_CALLSITE_AUDIT.md) — bounded source trace of both event-bus families and HTTP, file, database, binary and collection payload paths.
 - [Resource Ownership and Runtime Integration Audit](WEBHARVEST_RESOURCE_OWNERSHIP_INTEGRATION_AUDIT.md) — evaluates the existing ResourceLedger, actual worker-exit tracking, missing runtime integration and cancellation-time resource cleanup ordering.
 - [Guava and Guice Runtime Dependency Audit](WEBHARVEST_GUICE_GUAVA_DEPENDENCY_AUDIT.md) — bounded repository-wide Java/POM scan of IoC coupling, event-bus dependencies and the migration boundary for container-neutral Core.
+- [Historical XML Dialect Compatibility Audit](WEBHARVEST_XML_DIALECT_COMPATIBILITY_AUDIT.md) — inventories 1.0/2.0/2.1 schemas and identifies namespace, element-alias, version-reporting and fixture gaps in the current parser.
 - [Minimal Payload and Stream API Design](WEBHARVEST_MINIMAL_PAYLOAD_STREAM_API_DESIGN.md) — a draft neutral boundary for finite payloads, live streams, semantic references, bounded delivery, legacy Variable adapters and ResourceLedger integration.
 - [Plugin Author Guide](PLUGIN_AUTHOR_GUIDE.md) — target external plugin contract, discovery and compatibility expectations; explicitly marks what is not yet stable.
 - [Monorepo and Module Boundary Policy](MONOREPO.md) — current Maven modules, dependency direction and future repository extraction gates.
