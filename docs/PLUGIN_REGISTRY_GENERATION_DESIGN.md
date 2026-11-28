@@ -1695,3 +1695,18 @@ No production code, tests, POMs or workflows changed in this audit.
 ### 55.1 Existing tests do not exercise parser substitutability or dialect version detection
 
 The only `DefaultConfigFactoryTest` parser double (`StubStreamingParser`) extends `StreamingXmlParser` and overrides `parseToTree()`. It therefore exercises substitution of a subclass, not an independent `ConfigParser` implementation; it cannot detect the concrete `instanceof`/cast restriction in `XMLConfig.reload()`. The repository test tree contains no dedicated `XMLConfig` test for `getVersion()` across v1/v2 namespaces or aliases. These are currently uncharacterized compatibility paths, not merely missing unit-test polish.
+
+
+## 56. Streaming XML parser trims all element text before storing it (2026-11-28)
+
+`StreamingXmlParser.endElement()` converts the accumulated SAX character data with `toString().trim()` before storing `_textContent`, and stores the property only when the trimmed value is non-empty. This is not a neutral parse operation: it discards leading/trailing whitespace and makes whitespace-only content indistinguishable from absent content.
+
+The effect is observable for text-bearing nodes. `TextPlugin.doExecute()` returns `_textContent` directly (or interpolates it), while `TemplatePlugin` reads `_textContent` as raw template text; `ScriptPlugin`, `XMLPlugin` and declarative XSLT/XQuery children also consume source text. The documentation itself uses CDATA templates containing formatted XML/JSON/email bodies, where boundary whitespace can be meaningful. The existing text-content tests assert ordinary values and only use `contains()` for multiline content; they do not assert exact preservation of leading/trailing spaces, newlines, tabs, whitespace-only nodes or mixed content.
+
+This finding does not decide whether every historical element must preserve all formatting whitespace. XML dialect semantics may intentionally normalize some element classes. The current parser applies one global trim policy before it knows the element's semantic role, so it cannot express those distinctions.
+
+**Design consequence:** preserve lexical text segments and whitespace in the parsed representation. Apply normalization only in a typed element/dialect adapter where the historical contract explicitly requires it. Distinguish absent text, empty text and whitespace-only text. Define mixed-content ordering so text before/after child elements is not silently flattened or lost.
+
+**Required fixtures:** leading/trailing spaces for `text` and `template`; CDATA with leading/trailing newlines; whitespace-only and empty nodes; scripts with significant indentation; XSLT/XQuery expression text; mixed text + child elements; exact old-vs-new execution output for historical fixtures.
+
+No production code, tests, POMs or workflows changed in this audit.
