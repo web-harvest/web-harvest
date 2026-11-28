@@ -606,3 +606,8 @@ A source-level census of all 57 concrete plugin implementation candidates (47 Co
 ## 23. Legacy registry/factory consistency findings
 
 `DefaultPluginRegistry` stores live plugin instances, silently overwrites duplicate namespace/element keys, and `unregisterPlugin()` can remove a QName mapping that has since been overwritten by another plugin. Its ID uniqueness check is a non-atomic check-then-put, and category/namespace lists are mutable `ArrayList` values inside concurrent maps. `DefaultPluginFactory` reconstructs instances reflectively from a registered instance's class, supports only no-arg or `PluginMetadata` constructors, does not invoke validation, and its mock creation API always throws because `MockPlugin` was removed. These are concrete reasons to converge on one generation-bound provider authority, not to combine the two registries mechanically. See [Plugin Registry Generation Design, section 53](PLUGIN_REGISTRY_GENERATION_DESIGN.md#53-the-legacy-pluginregistry-and-pluginfactory-form-a-second-incompatible-construction-model-2026-11-28).
+
+
+## 24. Registry instance ownership gap
+
+`DefaultPluginRegistry.unregisterPlugin()` and `clear()` drop references without invoking cleanup or defining another close owner. Since `registerPlugin(Class)` constructs live instances, constructor-acquired resources may also lack rollback. The registry-held instance's role is ambiguous because `DefaultPluginFactory` creates a fresh instance from its class. See [Plugin Registry Generation Design, section 54](PLUGIN_REGISTRY_GENERATION_DESIGN.md#54-legacy-registry-removal-does-not-own-the-lifetime-of-registered-instances-2026-11-28).
