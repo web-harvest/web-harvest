@@ -555,3 +555,8 @@ Key additional findings:
 - FTP child parent constraints are expressed by `getRequiredParents()`; ZIP entry duplicates its `zip` containment relation in both `getDependencies()` and `getRequiredParents()`. These are grammar constraints, not module or Capability dependencies.
 - WebBrowser retains static session/context maps; Database stores connection-pool handles inside the Variable hierarchy; FTP/Mail/ZIP have operation-level resource paths requiring explicit failure/cancellation cleanup characterization.
 - Descriptor completeness must be explicit. Legacy incomplete metadata may be adapted, but must not be presented as a fully typed/validated descriptor.
+
+
+### Conditional configuration rules and defaults
+
+Section 45 of the registry design records behavior that is not visible in the current attribute-name metadata: Database named-vs-inline JDBC modes are mutually exclusive; FTP and WebBrowser actions have action-specific path/URL requirements; FTP defaults to port 21/passive mode; Mail defaults to port 25/plain text; WebBrowser defaults to 1000 ms wait and JavaScript enabled (malformed wait silently falls back); ZIP entry defaults charset to UTF-8. These constraints need typed conditional schemas and validator parity, not a flat list of required/optional strings.
