@@ -1202,3 +1202,72 @@ The inspected module workflows invoke:
 - Mail: no dedicated optional-Mail workflow was found in the inspected `.github/workflows` inventory. Its tests may still run in broader reactor jobs, but that is not equivalent to a focused Mail module gate.
 
 This makes the FTP/Mail test weakness operationally relevant: dedicated module CI can pass without proving plugin activation or behavior. A future common module contract workflow should fail if an optional module has no explicit discovery/activation/dispatch test, rather than treating a green `verify` as sufficient.
+
+
+## 44. Optional plugin class contracts — XML grammar, descriptor completeness and ownership (2026-11-28)
+
+This pass inspected every production Java source file in the five optional modules at base commit `c8830f0fe2f1e283abea95318d2c6fd9a644d0a4`. The table below describes the principal executable classes; helper, exception, IoC and JDBC implementation classes are not XML plugins.
+
+### 44.1 Executable contribution and containment matrix
+
+| XML QName | Runtime class | Parent / child grammar | Attribute contract surface | Metadata caveat |
+|---|---|---|---|---|
+| Core `connection` | `ConnectionPlugin` | Standalone declaration; no child elements | Required: `id`, `driver`, `url`; optional: username, password, pool size | `AttributeDefinition[]` is empty despite required/optional lists; plugin ID `connection`, version 2.2.0 |
+| Core `database` | `DatabasePlugin` | Standalone operation; no child elements | Optional legacy connection, URL, driver, username, password and SQL attributes | `AttributeDefinition[]` empty; plugin ID is `DatabasePlugin`, version 2.1.0 |
+| Core `ftp` | `FtpPlugin` | Container; allows `ftp-get`, `ftp-put`, `ftp-list` | Required host, username, password, action; optional port, remote/local paths, passive mode | `AttributeDefinition[]` empty; `isCorePlugin() == true` |
+| Core `ftp-get` | `FtpGetPlugin` | Requires parent `ftp`; no children | Required host, username, password; optional port and path | `getDependencies()` empty; parent constraint is separately represented by `getRequiredParents()` |
+| Core `ftp-list` | `FtpListPlugin` | Requires parent `ftp`; no children | Same general connection fields as FTP get | Same descriptor gap |
+| Core `ftp-put` | `FtpPutPlugin` | Requires parent `ftp`; no children | Required host, username, password; optional port and path | Same descriptor gap |
+| Core `mail` | `MailPlugin` | Standalone operation; no children | Required SMTP host, from, to, subject; optional port, type, from-name | `AttributeDefinition[]` empty; `isCorePlugin() == true` |
+| Core `web-browser` | `WebBrowserPlugin` | Standalone operation; no children | Required action; optional URL, page, wait, JavaScript enabled | `AttributeDefinition[]` empty; `isCorePlugin() == true`; static session/context state exists |
+| ZIP `zip` | `ZipPlugin` | Container; allows `zip-entry` | No required or optional attributes in legacy metadata | ZIP namespace; `isCorePlugin() == false` |
+| ZIP `zip-entry` | `ZipEntryPlugin` | Requires parent `zip`; no children | Required name; optional charset (default UTF-8) | Has actual `AttributeDefinition` objects; legacy `getDependencies()` also returns `zip` |
+
+The FTP parent/child relationship is explicitly represented by `getRequiredParents()` on each child and by the parent's allowed-child list. It must remain a grammar/composition constraint, not be turned into a module dependency or a runtime Capability dependency. ZIP currently duplicates the containment relation: `ZipEntryPlugin.getDependencies()` returns `zip` and it also declares `getRequiredParents() == [zip]`. A migration adapter must preserve the effective XML grammar once, not create two dependency edges.
+
+### 44.2 Schema metadata is materially incomplete
+
+Nine of the ten principal classes return an empty `AttributeDefinition[]`; ZIP `zip-entry` is the exception. Yet most of those same classes expose required/optional attribute name arrays and implement local configuration validation. Database `ConnectionPlugin` and `DatabasePlugin` likewise have required/optional name lists but no attribute definition objects.
+
+This means the existing descriptor surface is internally inconsistent:
+- the required/optional name arrays can support a basic editor/validator projection, but do not encode a complete typed schema;
+- `AttributeDefinition` is not currently a universal source of truth;
+- per-plugin `validateConfiguration` implementations may enforce constraints independently of the metadata projection;
+- defaults, units, sensitivity/secret classification, cross-field conditions, child grammar and error locations are not consistently represented in one inspectable descriptor.
+
+The new design must not simply serialize current metadata getters as a supposedly complete schema. It needs an explicit descriptor completeness level (or equivalent migration status), typed attribute definitions, default/required semantics, secret markers, child grammar, validation ownership and a test proving descriptor/runtime validator agreement. Legacy plugins can be adapted with an explicitly incomplete schema and must not silently appear fully described.
+
+### 44.3 Plugin ID, XML identity and module identity are different namespaces
+
+The inspected source already demonstrates three different identity spaces:
+1. XML identity: expanded QName (namespace URI + local name), used for parsing/dispatch compatibility.
+2. Plugin identity: metadata IDs such as `DatabasePlugin`, `FtpPlugin`, `FtpGetPlugin`, and the lower-case `connection` ID; these are not consistently equal to XML local names.
+3. Module identity: Maven artifact / optional extension unit such as `webharvest-ftp` or `webharvest-zip`.
+
+For example `database` is the XML local name while its plugin ID is `DatabasePlugin`; FTP's root XML element is `ftp` while the plugin ID is `FtpPlugin`. The new registry must use distinct typed IDs and explicit mappings. It must not derive one identity from another by lower-casing class names or XML names.
+
+The `@CorePlugin` annotation is also not a reliable product/module membership declaration. FTP/Mail/WebBrowser classes are annotated and return `isCorePlugin() == true`, while their Maven artifacts are optional. Annotation presence, scanner eligibility, product membership and runtime selection must be separate concepts.
+
+### 44.4 Resource ownership evidence by module
+
+- Database: `ConnectionPlugin` creates a `StandaloneConnectionPool`, stores a `ConnectionFactoryVariable` in the dynamic scope context and exposes close paths. The factory is therefore scoped through a Variable/context hierarchy rather than a first-class runtime resource owner. Database operations also register cleanup around JDBC objects and react to session lifecycle events; the in-flight cancellation race remains as recorded in the resource audit.
+- FTP: protocol client and streams are created during operation execution. The inspected classes contain direct transfer/stream close paths, but this pass does not establish a uniform runtime-owned lease or cancellation/drain contract. Partial failure and interruption cleanup require targeted tests.
+- Mail: the plugin creates/configures the email transport during execution; this audit does not establish a reusable runtime-owned transport pool or a common close hook. Failure after connection establishment needs explicit cleanup characterization.
+- WebBrowser: static maps retain browser session state by session/context, and terminal event handlers close state. A static `closeAllPages()` path exists. This is incompatible with a clean runtime-isolation claim until ownership is moved behind a runtime/session resource scope or explicitly partitioned and proven.
+- ZIP: archive/entry streams are operation-scoped and the plugin builds the archive from nested entry content. The new resource model must define partial archive failure, output ownership and stream closure; ZIP registrar state is a separate global registry concern.
+
+These are audit findings, not proof that every path leaks. The absence of one shared ownership contract and the existence of static/global state are sufficient to block claims of isolated multi-runtime operation until characterized.
+
+### 44.5 Required descriptor and lifecycle migration tests
+
+For each plugin contribution, the migration suite must:
+- assert the stable module ID, plugin ID and expanded XML QName independently;
+- compare required/optional attributes, types, defaults and secret markers against actual runtime validation;
+- test missing, blank, malformed and cross-field-invalid values with structured diagnostics;
+- validate allowed-child and required-parent rules without confusing them with module dependencies;
+- test construction/initialization failure after partial resource acquisition;
+- test normal completion, exception, cancellation and concurrent session shutdown;
+- assert no resource remains owned by the wrong runtime and that a second runtime is unaffected;
+- verify legacy XML serialization/round-trip and namespace identity, including aliases and old descriptor fallback.
+
+No production code, tests, POMs or workflows changed in this audit.
